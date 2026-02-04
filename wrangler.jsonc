@@ -1,0 +1,30 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cloudflare-remix-vite-mcp",
+	"compatibility_date": "2026-02-04",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "./worker/index.ts",
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS",
+	},
+	"tsconfig": "./tsconfig.worker.json",
+	"migrations": [
+		{
+			"new_sqlite_classes": ["MCP"],
+			"tag": "v1",
+		},
+	],
+
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "MCP",
+				"name": "MCP_OBJECT",
+			},
+		],
+	},
+	"observability": {
+		"enabled": true,
+	},
+}

@@ -1,0 +1,10 @@
+{
+	"extends": "@epic-web/config/typescript",
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.remix.tsbuildinfo",
+		"lib": ["DOM", "DOM.Iterable", "ES2022"],
+		"jsx": "react-jsx",
+		"jsxImportSource": "@remix-run/component"
+	},
+	"include": ["./types/reset.d.ts"]
+}

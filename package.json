@@ -1,0 +1,43 @@
+{
+  "name": "epicflare",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "A starter and reference for building full stack web applications",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "npm run build && wrangler deploy",
+    "build": "wrangler build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "preview": "vite preview",
+    "generate-types": "wrangler types ./types/worker-configuration.d.ts",
+    "pretypecheck": "npm run generate-types",
+    "typecheck": "tsc --noEmit",
+    "inspect": "inspector",
+    "validate": "concurrently --kill-others-on-fail -n format,lint,build,typecheck -c green,yellow,blue,magenta \"npm run format:check\" \"npm run lint:fix\" \"npm run build\" \"npm run typecheck\""
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.23.0",
+    "@epic-web/config": "^1.21.3",
+    "@mcpjam/inspector": "^1.5.12",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "wrangler": "^4.62.0"
+  },
+  "prettier": "@epic-web/config/prettier",
+  "dependencies": {
+    "@epic-web/invariant": "^1.0.0",
+    "@mcp-ui/server": "6.0.0",
+    "@modelcontextprotocol/ext-apps": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "agents": "^0.3.10",
+    "remix": "3.0.0-alpha.2",
+    "zod": "^4.3.6"
+  }
+}
