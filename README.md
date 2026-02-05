@@ -38,4 +38,5 @@ See `docs/getting-started.md` for the full setup paths and expectations.
 
 - `docs/getting-started.md` for degit setup, environment variables, and
   deployment.
+- `docs/environment-variables.md` for adding new env vars.
 - `docs/agents/setup.md` for local development and verification commands.

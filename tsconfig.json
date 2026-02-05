@@ -1,4 +1,4 @@
 {
 	"extends": "./tsconfig.remix.json",
-	"include": ["./client", "./server", "./types/reset.d.ts"]
+	"include": ["./client", "./server", "./types/env.d.ts"]
 }

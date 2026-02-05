@@ -18,9 +18,11 @@ Quick notes for getting a local Epicflare environment running.
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
   - `bun run dev:worker`
+- Set `CLOUDFLARE_ENV` to switch Wrangler environments (defaults to
+  `production`). Playwright sets this to `test`.
 
 ## Checks
 
-- `bun run validate` runs format, lint, build, and typecheck.
+- `bun run validate` runs format, lint, build, typecheck, and Playwright tests.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.

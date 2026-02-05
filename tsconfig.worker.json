@@ -7,7 +7,7 @@
 		"worker/**/*.ts",
 		"mcp/**/*.ts",
 		"server/**/*.ts",
-		"./types/reset.d.ts",
+		"./types/env.d.ts",
 		"./types/worker-configuration.d.ts"
 	]
 }

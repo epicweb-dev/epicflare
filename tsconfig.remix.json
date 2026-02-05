@@ -7,5 +7,5 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "remix/component"
 	},
-	"include": ["./types/reset.d.ts", "./client", "./server"]
+	"include": ["./types/env.d.ts", "./client", "./server"]
 }

@@ -1,6 +1,6 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider'
 import { MCP } from '../mcp/index.ts'
-import { handleRequest } from '../server/handler'
+import { handleRequest } from '../server/handler.ts'
 import {
 	apiHandler,
 	handleAuthorizeRequest,
@@ -27,7 +27,7 @@ const appHandler = withCors({
 			'Access-Control-Allow-Headers': 'content-type, authorization',
 		}
 	},
-	async handler(request: Request, env, ctx) {
+	async handler(request, env, ctx) {
 		const url = new URL(request.url)
 
 		if (url.pathname === oauthPaths.authorize) {

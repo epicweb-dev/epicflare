@@ -1,7 +1,7 @@
+import type { AppEnv } from './env-schema.ts'
+
 declare global {
-	interface Env {
-		COOKIE_SECRET: string
-	}
+	interface Env extends AppEnv {}
 
 	interface CustomExportedHandler<Props = {}> {
 		fetch: (

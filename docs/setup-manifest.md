@@ -22,6 +22,8 @@ Local development uses `.env`, which Wrangler loads automatically:
 
 - `COOKIE_SECRET` (generate with `openssl rand -hex 32`)
 
+Tests use `.env.test` when `CLOUDFLARE_ENV=test` (set by Playwright).
+
 ## GitHub Actions secrets
 
 Configure these secrets for deploy workflows:

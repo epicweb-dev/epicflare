@@ -1,10 +1,11 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { platform } from 'node:os'
 import readline from 'node:readline'
+import getPort from 'get-port'
 
 type Command = 'dev' | 'client' | 'worker' | 'build' | 'deploy' | 'typecheck'
 
-const defaultWorkerOrigin = 'http://localhost:8787'
+const defaultWorkerPort = 3742
 
 const ansiReset = '\x1b[0m'
 const ansiBright = '\x1b[1m'
@@ -51,7 +52,7 @@ if (!(command in commands)) {
 }
 
 if (command === 'dev') {
-	startDev()
+	void startDev()
 } else if (command === 'client') {
 	runBunScript('dev:client', extraArgs, {}, { outputFilter: 'client' })
 } else if (command === 'worker') {
@@ -64,8 +65,17 @@ if (command === 'dev') {
 	runBunScript('typecheck')
 }
 
-function startDev() {
-	const workerOrigin = resolveWorkerOrigin()
+async function startDev() {
+	const desiredPort = Number.parseInt(
+		process.env.PORT ?? String(defaultWorkerPort),
+		10,
+	)
+	const portRange = Array.from(
+		{ length: 10 },
+		(_, index) => desiredPort + index,
+	)
+	const workerPort = await getPort({ port: portRange })
+	const workerOrigin = resolveWorkerOrigin(workerPort)
 
 	const client = runBunScript(
 		'dev:client',
@@ -78,7 +88,7 @@ function startDev() {
 	const worker = runBunScript(
 		'dev:worker',
 		extraArgs,
-		{},
+		{ PORT: String(workerPort) },
 		{ outputFilter: 'worker' },
 	)
 
@@ -86,8 +96,10 @@ function startDev() {
 	shutdown = setupShutdown([client, worker])
 }
 
-function resolveWorkerOrigin() {
-	return (process.env.WORKER_DEV_ORIGIN || defaultWorkerOrigin).trim()
+function resolveWorkerOrigin(port: number) {
+	const envOrigin = process.env.WORKER_DEV_ORIGIN
+	if (envOrigin) return envOrigin.trim()
+	return `http://localhost:${port}`
 }
 
 function runBunScript(
@@ -143,6 +155,7 @@ function pipeStream(
 
 function setupShutdown(children: Array<ChildProcess>) {
 	function doShutdown() {
+		console.log(dim('\nShutting down...'))
 		for (const child of children) {
 			if (!child.killed) {
 				child.kill('SIGINT')
