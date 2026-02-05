@@ -14,7 +14,7 @@ export default defineConfig({
 		trace: 'on-first-retry',
 	},
 	webServer: {
-		command: `bun run build:client && bun run preview`,
+		command: `bun run build:client && bun run preview -- --var COOKIE_SECRET:test-cookie-secret`,
 		url: baseURL,
 		reuseExistingServer: true,
 		env: {
