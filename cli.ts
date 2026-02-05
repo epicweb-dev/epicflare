@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { platform } from 'node:os'
 import readline from 'node:readline'
-import getPort from 'get-port'
+import { setTimeout as delay } from 'node:timers/promises'
+import getPort, { clearLockedPorts } from 'get-port'
 
 type Command = 'dev' | 'client' | 'worker' | 'build' | 'deploy' | 'typecheck'
 
@@ -233,6 +234,7 @@ function showHelp(header?: string) {
 async function restartDev(
 	{ announce }: { announce: boolean } = { announce: true },
 ) {
+	await stopChildren(devChildren)
 	const desiredPort = Number.parseInt(
 		process.env.PORT ?? String(defaultWorkerPort),
 		10,
@@ -241,10 +243,9 @@ async function restartDev(
 		{ length: 10 },
 		(_, index) => desiredPort + index,
 	)
+	clearLockedPorts()
 	const workerPort = await getPort({ port: portRange })
 	workerOrigin = resolveWorkerOrigin(workerPort)
-
-	stopChildren(devChildren)
 	const client = runBunScript(
 		'dev:client',
 		[],
@@ -267,12 +268,26 @@ async function restartDev(
 	}
 }
 
-function stopChildren(children: Array<ChildProcess>) {
-	for (const child of children) {
-		if (!child.killed) {
-			child.kill('SIGINT')
-		}
-	}
+async function stopChildren(children: Array<ChildProcess>) {
+	await Promise.all(children.map((child) => stopChild(child)))
+}
+
+async function stopChild(child: ChildProcess) {
+	if (child.killed) return
+	child.kill('SIGINT')
+	const didExit = await waitForExit(child, 5000)
+	if (didExit) return
+	child.kill('SIGTERM')
+	await waitForExit(child, 2000)
+}
+
+function waitForExit(child: ChildProcess, timeoutMs: number) {
+	return Promise.race([
+		new Promise<boolean>((resolve) => {
+			child.once('exit', () => resolve(true))
+		}),
+		delay(timeoutMs).then(() => false),
+	])
 }
 
 function logAppRunning(getOrigin: () => string) {

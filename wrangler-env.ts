@@ -1,6 +1,9 @@
+import { setTimeout as delay } from 'node:timers/promises'
+import net from 'node:net'
 import getPort from 'get-port'
 
 const envName = process.env.CLOUDFLARE_ENV ?? 'production'
+const portWaitTimeoutMs = 5000
 const args = process.argv.slice(2)
 
 const hasEnvFlag = args.includes('--env') || args.includes('-e')
@@ -40,5 +43,59 @@ const proc = Bun.spawn(['wrangler', ...commandArgs], {
 	env: processEnv,
 })
 
+const handleSignal = (signal: NodeJS.Signals) => {
+	proc.kill(signal)
+}
+
+process.on('SIGINT', () => handleSignal('SIGINT'))
+process.on('SIGTERM', () => handleSignal('SIGTERM'))
+
 const exitCode = await proc.exited
+if (isDevCommand && resolvedPort) {
+	const didFreePort = await waitForPortFree(
+		Number.parseInt(resolvedPort, 10),
+		portWaitTimeoutMs,
+	)
+	if (!didFreePort) {
+		console.warn(
+			`Timed out waiting for port ${resolvedPort} to free up before exit.`,
+		)
+	}
+}
 process.exit(exitCode)
+
+async function waitForPortFree(port: number, timeoutMs: number) {
+	const start = Date.now()
+	while (await isPortInUse(port)) {
+		if (Date.now() - start >= timeoutMs) {
+			return false
+		}
+		await delay(100)
+	}
+	return true
+}
+
+function isPortInUse(port: number) {
+	return new Promise<boolean>((resolve) => {
+		const socket = new net.Socket()
+
+		const finish = (inUse: boolean) => {
+			socket.removeAllListeners()
+			socket.destroy()
+			resolve(inUse)
+		}
+
+		socket.setTimeout(250)
+		socket.once('connect', () => finish(true))
+		socket.once('timeout', () => finish(true))
+		socket.once('error', (error) => {
+			if ('code' in error && error.code === 'ECONNREFUSED') {
+				finish(false)
+				return
+			}
+			finish(true)
+		})
+
+		socket.connect(port, '127.0.0.1')
+	})
+}
