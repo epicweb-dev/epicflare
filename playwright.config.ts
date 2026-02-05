@@ -14,10 +14,13 @@ export default defineConfig({
 		trace: 'on-first-retry',
 	},
 	webServer: {
-		command:
-			'bun run build:client && WRANGLER_LOG_PATH=. WRANGLER_DISABLE_REQUEST_BODY_DRAINING=true bun run preview',
+		command: `bun run build:client && bun run preview`,
 		url: baseURL,
 		reuseExistingServer: true,
+		env: {
+			WRANGLER_LOG_PATH: './logs.local',
+			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
+		},
 	},
 	projects: [
 		{
