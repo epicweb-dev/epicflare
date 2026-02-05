@@ -1,6 +1,6 @@
 # Epicflare
 
-We use bun for installing dependencies and running scripts.
+We use bun for installing dependencies and running scripts. Do not use npm.
 
 ## Agent setup
 
