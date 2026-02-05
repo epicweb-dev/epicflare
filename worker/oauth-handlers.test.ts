@@ -47,16 +47,43 @@ const createHelpers = (
 	...overrides,
 })
 
-const hashPassword = async (password: string) => {
-	const data = new TextEncoder().encode(password)
-	const hash = await crypto.subtle.digest('SHA-256', data)
-	return Array.from(new Uint8Array(hash))
+const passwordHashPrefix = 'pbkdf2_sha256'
+const passwordSaltBytes = 16
+const passwordHashBytes = 32
+const passwordHashIterations = 120_000
+
+const toHex = (bytes: Uint8Array) =>
+	Array.from(bytes)
 		.map((value) => value.toString(16).padStart(2, '0'))
 		.join('')
+
+const createPasswordHash = async (password: string) => {
+	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
+	const key = await crypto.subtle.importKey(
+		'raw',
+		new TextEncoder().encode(password),
+		'PBKDF2',
+		false,
+		['deriveBits'],
+	)
+	const derivedBits = await crypto.subtle.deriveBits(
+		{
+			name: 'PBKDF2',
+			salt,
+			iterations: passwordHashIterations,
+			hash: 'SHA-256',
+		},
+		key,
+		passwordHashBytes * 8,
+	)
+	const hash = new Uint8Array(derivedBits)
+	return `${passwordHashPrefix}$${passwordHashIterations}$${toHex(salt)}$${toHex(
+		hash,
+	)}`
 }
 
 const createDatabase = async (password: string) => {
-	const passwordHash = await hashPassword(password)
+	const passwordHash = await createPasswordHash(password)
 	return {
 		prepare: () => ({
 			bind: () => ({

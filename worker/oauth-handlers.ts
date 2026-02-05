@@ -39,21 +39,130 @@ const escapeHtml = (value: string) =>
 		.replaceAll('"', '&quot;')
 		.replaceAll("'", '&#39;')
 
+const passwordHashPrefix = 'pbkdf2_sha256'
+const passwordSaltBytes = 16
+const passwordHashBytes = 32
+const passwordHashIterations = 120_000
+const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
+
+const toHex = (bytes: Uint8Array) =>
+	Array.from(bytes)
+		.map((value) => value.toString(16).padStart(2, '0'))
+		.join('')
+
+const fromHex = (value: string) => {
+	const normalized = value.trim().toLowerCase()
+	if (!/^[0-9a-f]+$/.test(normalized) || normalized.length % 2 !== 0) {
+		return null
+	}
+	const bytes = new Uint8Array(normalized.length / 2)
+	for (let index = 0; index < normalized.length; index += 2) {
+		const byte = Number.parseInt(normalized.slice(index, index + 2), 16)
+		if (Number.isNaN(byte)) return null
+		bytes[index / 2] = byte
+	}
+	return bytes
+}
+
+const timingSafeEqual = (left: Uint8Array, right: Uint8Array) => {
+	if (left.length !== right.length) return false
+	let result = 0
+	for (let index = 0; index < left.length; index += 1) {
+		result |= left[index] ^ right[index]
+	}
+	return result === 0
+}
+
 const createUserId = async (email: string) => {
 	const normalized = email.trim().toLowerCase()
 	const data = new TextEncoder().encode(normalized)
 	const hash = await crypto.subtle.digest('SHA-256', data)
-	return Array.from(new Uint8Array(hash))
-		.map((value) => value.toString(16).padStart(2, '0'))
-		.join('')
+	return toHex(new Uint8Array(hash))
 }
 
-const hashPassword = async (password: string) => {
+const derivePasswordKey = async (
+	password: string,
+	salt: Uint8Array,
+	iterations: number,
+	length: number,
+) => {
+	const key = await crypto.subtle.importKey(
+		'raw',
+		new TextEncoder().encode(password),
+		'PBKDF2',
+		false,
+		['deriveBits'],
+	)
+	const derivedBits = await crypto.subtle.deriveBits(
+		{
+			name: 'PBKDF2',
+			salt,
+			iterations,
+			hash: 'SHA-256',
+		},
+		key,
+		length * 8,
+	)
+	return new Uint8Array(derivedBits)
+}
+
+const createPasswordHash = async (password: string) => {
+	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
+	const hash = await derivePasswordKey(
+		password,
+		salt,
+		passwordHashIterations,
+		passwordHashBytes,
+	)
+	return `${passwordHashPrefix}$${passwordHashIterations}$${toHex(salt)}$${toHex(
+		hash,
+	)}`
+}
+
+const hashLegacyPassword = async (password: string) => {
 	const data = new TextEncoder().encode(password)
 	const hash = await crypto.subtle.digest('SHA-256', data)
-	return Array.from(new Uint8Array(hash))
-		.map((value) => value.toString(16).padStart(2, '0'))
-		.join('')
+	return toHex(new Uint8Array(hash))
+}
+
+const verifyPassword = async (
+	password: string,
+	storedHash: string,
+): Promise<{ valid: boolean; upgradedHash?: string }> => {
+	const normalizedHash = storedHash.trim()
+	if (normalizedHash.startsWith(`${passwordHashPrefix}$`)) {
+		const [prefix, iterationsRaw, saltHex, hashHex, ...extra] =
+			normalizedHash.split('$')
+		if (prefix !== passwordHashPrefix || extra.length > 0) {
+			return { valid: false }
+		}
+		const iterations = Number.parseInt(iterationsRaw, 10)
+		const salt = saltHex ? fromHex(saltHex) : null
+		const hash = hashHex ? fromHex(hashHex) : null
+		if (!iterations || iterations < 1 || !salt || !hash) {
+			return { valid: false }
+		}
+		const derived = await derivePasswordKey(
+			password,
+			salt,
+			iterations,
+			hash.length,
+		)
+		return { valid: timingSafeEqual(derived, hash) }
+	}
+
+	if (legacyPasswordHashPattern.test(normalizedHash)) {
+		const legacyHash = await hashLegacyPassword(password)
+		const valid = timingSafeEqual(
+			new TextEncoder().encode(legacyHash),
+			new TextEncoder().encode(normalizedHash.toLowerCase()),
+		)
+		if (valid) {
+			return { valid: true, upgradedHash: await createPasswordHash(password) }
+		}
+	}
+
+	return { valid: false }
 }
 
 const renderPage = (title: string, body: SafeHtml, status = 200) =>
@@ -350,19 +459,29 @@ export async function handleAuthorizeRequest(
 	)
 		.bind(normalizedEmail)
 		.first<{ password_hash: string }>()
-	const passwordHash = userRecord ? await hashPassword(password) : null
+	const passwordCheck = userRecord
+		? await verifyPassword(password, userRecord.password_hash)
+		: null
 
-	if (
-		!userRecord ||
-		!passwordHash ||
-		passwordHash !== userRecord.password_hash
-	) {
+	if (!userRecord || !passwordCheck?.valid) {
 		return renderAuthorizePage({
 			request: authRequest,
 			client,
 			errorMessage: 'Invalid email or password.',
 			emailValue: email,
 		})
+	}
+
+	if (passwordCheck.upgradedHash) {
+		try {
+			await env.APP_DB.prepare(
+				'UPDATE users SET password_hash = ? WHERE email = ?',
+			)
+				.bind(passwordCheck.upgradedHash, normalizedEmail)
+				.run()
+		} catch {
+			// Ignore upgrade failures so valid logins still succeed.
+		}
 	}
 
 	const resolvedScopes = resolveScopes(authRequest.scope)
