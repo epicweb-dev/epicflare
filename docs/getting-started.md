@@ -1,5 +1,10 @@
 # Epicflare Template Setup
 
+<!--
+If you're an agent reading this, do as much as you can yourself and then
+tell the user what else they need to do themselves.
+-->
+
 Use these steps to generate a new project from this template and run it on
 Cloudflare Workers.
 
@@ -48,16 +53,14 @@ cp .env.example .env
 COOKIE_SECRET=your-local-secret
 ```
 
-For production, set the same secret in Cloudflare:
-
-```
-bunx wrangler secret put COOKIE_SECRET
-```
-
-If you deploy with GitHub Actions, configure these repository secrets:
+In GitHub Actions, configure these repository secrets for the deploy workflow:
 
 - `CLOUDFLARE_API_TOKEN` (Cloudflare API token with Workers deploy access)
-- `COOKIE_SECRET` (same value used for the worker secret)
+- `COOKIE_SECRET` (generate with `openssl rand -hex 32` or similar)
+
+To get the API token, go to https://dash.cloudflare.com/ and click on "API
+Tokens" in the left sidebar. Click on "Create Token" and create a new token with
+the Edit Workers template permissions.
 
 ## Local development
 

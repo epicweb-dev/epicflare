@@ -24,5 +24,6 @@ tooling APIs on the same Worker.
 
 ## Docs
 
-- `getting-started.md` for degit setup, environment variables, and deployment.
+- `docs/getting-started.md` for degit setup, environment variables, and
+  deployment.
 - `docs/agents/setup.md` for local development and verification commands.

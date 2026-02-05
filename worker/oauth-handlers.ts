@@ -2,8 +2,10 @@ import type {
 	AuthRequest,
 	OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
+import { z } from 'zod'
 import { Layout } from '../server/layout.ts'
 import { render } from '../server/render.ts'
+import { createDb, sql } from './db.ts'
 
 export const oauthPaths = {
 	authorize: '/oauth/authorize',
@@ -37,6 +39,7 @@ const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const passwordHashIterations = 120_000
 const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
+const userRecordSchema = z.object({ password_hash: z.string() })
 
 const toHex = (bytes: Uint8Array) =>
 	Array.from(bytes)
@@ -317,11 +320,11 @@ export async function handleAuthorizeRequest(
 		return respondAuthorizeError(request, 'Email and password are required.')
 	}
 
-	const userRecord = await env.APP_DB.prepare(
-		'SELECT password_hash FROM users WHERE email = ?',
+	const db = createDb(env.APP_DB)
+	const userRecord = await db.queryFirst(
+		sql`SELECT password_hash FROM users WHERE email = ${normalizedEmail}`,
+		userRecordSchema,
 	)
-		.bind(normalizedEmail)
-		.first<{ password_hash: string }>()
 	const passwordCheck = userRecord
 		? await verifyPassword(password, userRecord.password_hash)
 		: null
@@ -332,11 +335,9 @@ export async function handleAuthorizeRequest(
 
 	if (passwordCheck.upgradedHash) {
 		try {
-			await env.APP_DB.prepare(
-				'UPDATE users SET password_hash = ? WHERE email = ?',
+			await db.exec(
+				sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE email = ${normalizedEmail}`,
 			)
-				.bind(passwordCheck.upgradedHash, normalizedEmail)
-				.run()
 		} catch {
 			// Ignore upgrade failures so valid logins still succeed.
 		}

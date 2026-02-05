@@ -89,6 +89,7 @@ const createDatabase = async (password: string) => {
 		prepare: () => ({
 			bind: () => ({
 				first: async () => ({ password_hash: passwordHash }),
+				run: async () => ({ success: true }),
 			}),
 		}),
 	} as unknown as D1Database
