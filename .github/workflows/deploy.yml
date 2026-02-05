@@ -92,6 +92,24 @@ jobs:
       - name: 🧪 Playwright Tests
         run: bun run test:e2e
 
+  mcp-e2e:
+    runs-on: ubuntu-latest
+    name: 🧩 MCP E2E
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧩 MCP E2E Tests
+        run: bun run test:mcp
+
   deploy:
     runs-on: ubuntu-latest
     name: 🚀 Deploy
@@ -100,6 +118,7 @@ jobs:
       - typecheck
       - test
       - e2e
+      - mcp-e2e
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
