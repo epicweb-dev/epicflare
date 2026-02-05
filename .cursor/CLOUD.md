@@ -31,6 +31,8 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 ## Documentation
 
 - [AGENTS.md](../AGENTS.md) - Agent instructions and verification steps
+- [docs/agents/remix/index.md](../docs/agents/remix/index.md) - Remix package
+  docs
 - [docs/agents/setup.md](../docs/agents/setup.md) - Setup documentation
 - [docs/agents/testing-principles.md](../docs/agents/testing-principles.md) -
   Testing guidelines

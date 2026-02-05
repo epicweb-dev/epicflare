@@ -20,6 +20,6 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 
 - [Setup](./docs/agents/setup.md)
 - [Code Style](./docs/agents/code-style.md)
-- [Remix Components](./docs/agents/remix-components.md)
+- [Remix Packages](./docs/agents/remix/index.md)
 - [Testing Principles](./docs/agents/testing-principles.md)
 - [End-to-End Testing](./docs/agents/end-to-end-testing.md)
