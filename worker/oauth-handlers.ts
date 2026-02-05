@@ -48,6 +48,14 @@ const createUserId = async (email: string) => {
 		.join('')
 }
 
+const hashPassword = async (password: string) => {
+	const data = new TextEncoder().encode(password)
+	const hash = await crypto.subtle.digest('SHA-256', data)
+	return Array.from(new Uint8Array(hash))
+		.map((value) => value.toString(16).padStart(2, '0'))
+		.join('')
+}
+
 const renderPage = (title: string, body: SafeHtml, status = 200) =>
 	render(
 		Layout({
@@ -326,6 +334,7 @@ export async function handleAuthorizeRequest(
 
 	const email = String(formData.get('email') ?? '').trim()
 	const password = String(formData.get('password') ?? '')
+	const normalizedEmail = email.toLowerCase()
 
 	if (!email || !password) {
 		return renderAuthorizePage({
@@ -336,21 +345,41 @@ export async function handleAuthorizeRequest(
 		})
 	}
 
+	const userRecord = await env.APP_DB.prepare(
+		'SELECT password_hash FROM users WHERE email = ?',
+	)
+		.bind(normalizedEmail)
+		.first<{ password_hash: string }>()
+	const passwordHash = userRecord ? await hashPassword(password) : null
+
+	if (
+		!userRecord ||
+		!passwordHash ||
+		passwordHash !== userRecord.password_hash
+	) {
+		return renderAuthorizePage({
+			request: authRequest,
+			client,
+			errorMessage: 'Invalid email or password.',
+			emailValue: email,
+		})
+	}
+
 	const resolvedScopes = resolveScopes(authRequest.scope)
 	if (Array.isArray(resolvedScopes)) {
-		const userId = await createUserId(email)
-		const displayName = email.split('@')[0] || 'user'
+		const userId = await createUserId(normalizedEmail)
+		const displayName = normalizedEmail.split('@')[0] || 'user'
 		const { redirectTo } = await helpers.completeAuthorization({
 			request: authRequest,
 			userId,
 			metadata: {
-				email,
+				email: normalizedEmail,
 				clientId: authRequest.clientId,
 			},
 			scope: resolvedScopes,
 			props: {
 				userId,
-				email,
+				email: normalizedEmail,
 				displayName,
 			},
 		})
