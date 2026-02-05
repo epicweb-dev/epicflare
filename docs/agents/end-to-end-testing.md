@@ -38,6 +38,7 @@ Avoid `page.locator('css')` unless no accessible alternative exists.
 
 - The test server is started via Playwright `webServer` using Wrangler.
 - The base URL defaults to `http://localhost:8787`.
+- Playwright sets `CLOUDFLARE_ENV=test` so Wrangler loads `.env.test`.
 - Client routes live in `client/app.tsx` and `client/client-routes.tsx`.
 - API endpoints are defined in `server/routes.ts` and mapped in
   `server/router.ts`.
