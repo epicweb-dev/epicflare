@@ -1,4 +1,5 @@
-import { Counter } from './counter.tsx'
+import { ClientParamRoute, ClientRoute, HomeRoute } from './client-routes.tsx'
+import { Router } from './client-router.tsx'
 import { colors, spacing, typography } from './styles/tokens.ts'
 
 export function App() {
@@ -11,26 +12,80 @@ export function App() {
 				fontFamily: typography.fontFamily,
 			}}
 		>
-			<h1
+			<nav
 				css={{
-					fontSize: typography.fontSize.xl,
-					fontWeight: typography.fontWeight.semibold,
-					marginBottom: spacing.md,
-					color: colors.text,
+					display: 'flex',
+					gap: spacing.md,
+					flexWrap: 'wrap',
+					marginBottom: spacing.xl,
 				}}
 			>
-				Epicflare Remix 3
-			</h1>
-			<p
-				css={{
-					marginBottom: spacing.lg,
-					color: colors.textMuted,
+				<a
+					href="/"
+					css={{
+						color: colors.primary,
+						fontWeight: typography.fontWeight.medium,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Home
+				</a>
+				<a
+					href="/client-route"
+					css={{
+						color: colors.primary,
+						fontWeight: typography.fontWeight.medium,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Client Route
+				</a>
+				<a
+					href="/client/42"
+					css={{
+						color: colors.primary,
+						fontWeight: typography.fontWeight.medium,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Client Param
+				</a>
+			</nav>
+			<Router
+				setup={{
+					routes: {
+						'/': HomeRoute(),
+						'/client-route': ClientRoute(),
+						'/client/:id': ClientParamRoute(),
+					},
+					fallback: () => (
+						<section>
+							<h2
+								css={{
+									fontSize: typography.fontSize.lg,
+									fontWeight: typography.fontWeight.semibold,
+									marginBottom: spacing.sm,
+									color: colors.text,
+								}}
+							>
+								Not Found
+							</h2>
+							<p css={{ color: colors.textMuted }}>
+								That route does not exist.
+							</p>
+						</section>
+					),
 				}}
-			>
-				Remix 3 components running on the client, backed by Remix 3 routing in
-				the worker.
-			</p>
-			<Counter setup={{ initial: 1 }} />
+			/>
 		</main>
 	)
 }

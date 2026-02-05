@@ -26,4 +26,12 @@
 	"observability": {
 		"enabled": true,
 	},
+	"d1_databases": [
+		{
+			"binding": "APP_DB",
+			"database_name": "epicflare",
+			"database_id": "16601d74-b13d-441c-96d7-53095b856cde",
+			"migrations_dir": "migrations",
+		},
+	],
 }

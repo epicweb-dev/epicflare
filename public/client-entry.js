@@ -2223,6 +2223,205 @@ function Counter(handle, setup = {}) {
   );
 }
 
+// client/client-routes.tsx
+function HomeRoute() {
+  return (_match) => /* @__PURE__ */ jsx("section", { children: [
+    /* @__PURE__ */ jsx(
+      "h1",
+      {
+        css: {
+          fontSize: typography.fontSize.xl,
+          fontWeight: typography.fontWeight.semibold,
+          marginBottom: spacing.md,
+          color: colors.text
+        },
+        children: "Epicflare Remix 3"
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "p",
+      {
+        css: {
+          marginBottom: spacing.lg,
+          color: colors.textMuted
+        },
+        children: "Remix 3 components running on the client, backed by Remix 3 routing in the worker."
+      }
+    ),
+    /* @__PURE__ */ jsx(Counter, { setup: { initial: 1 } })
+  ] });
+}
+function ClientRoute() {
+  return (match) => /* @__PURE__ */ jsx("section", { children: [
+    /* @__PURE__ */ jsx(
+      "h2",
+      {
+        css: {
+          fontSize: typography.fontSize.lg,
+          fontWeight: typography.fontWeight.semibold,
+          marginBottom: spacing.sm,
+          color: colors.text
+        },
+        children: "Client-side Route"
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "p",
+      {
+        css: {
+          marginBottom: spacing.md,
+          color: colors.textMuted
+        },
+        children: "This page is rendered by the client-side router without a server roundtrip."
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "p",
+      {
+        css: {
+          color: colors.text,
+          fontSize: typography.fontSize.sm
+        },
+        children: [
+          "Current path: ",
+          match.path
+        ]
+      }
+    )
+  ] });
+}
+function ClientParamRoute() {
+  return (match) => /* @__PURE__ */ jsx("section", { children: [
+    /* @__PURE__ */ jsx(
+      "h2",
+      {
+        css: {
+          fontSize: typography.fontSize.lg,
+          fontWeight: typography.fontWeight.semibold,
+          marginBottom: spacing.sm,
+          color: colors.text
+        },
+        children: "Client Param Route"
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "p",
+      {
+        css: {
+          marginBottom: spacing.md,
+          color: colors.textMuted
+        },
+        children: "This route proves `:id` params are working."
+      }
+    ),
+    /* @__PURE__ */ jsx("p", { css: { color: colors.text }, children: [
+      "ID param: ",
+      /* @__PURE__ */ jsx("strong", { children: match.params.id ?? "missing" })
+    ] }),
+    /* @__PURE__ */ jsx(
+      "p",
+      {
+        css: {
+          color: colors.text,
+          fontSize: typography.fontSize.sm
+        },
+        children: [
+          "Current path: ",
+          match.path
+        ]
+      }
+    )
+  ] });
+}
+
+// client/client-router.tsx
+var routerEvents = new EventTarget();
+var routerInitialized = false;
+var notify = () => {
+  routerEvents.dispatchEvent(new Event("navigate"));
+};
+var compileRoutePattern = (pattern) => {
+  const paramNames = [];
+  const regexPattern = pattern.replace(/:([^/]+)/g, (_, name) => {
+    paramNames.push(name);
+    return "([^/]+)";
+  }).replace(/\*/g, ".*");
+  return {
+    pattern: new RegExp(`^${regexPattern}$`),
+    paramNames
+  };
+};
+var matchRoute = (path, routes) => {
+  for (const [pattern, view] of Object.entries(routes)) {
+    const { pattern: compiled, paramNames } = compileRoutePattern(pattern);
+    const result = compiled.exec(path);
+    if (!result) continue;
+    const params = {};
+    paramNames.forEach((name, index) => {
+      const value = result[index + 1];
+      if (value !== void 0) params[name] = value;
+    });
+    return {
+      view,
+      match: { path, params }
+    };
+  }
+  return null;
+};
+var shouldHandleClick = (event, anchor) => {
+  if (event.defaultPrevented) return false;
+  if (event.button !== 0) return false;
+  if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
+    return false;
+  if (anchor.target && anchor.target !== "_self") return false;
+  if (anchor.hasAttribute("download")) return false;
+  const href = anchor.getAttribute("href");
+  if (!href || href.startsWith("#")) return false;
+  const destination = new URL(href, window.location.href);
+  if (destination.origin !== window.location.origin) return false;
+  return true;
+};
+var handleDocumentClick = (event) => {
+  const target = event.target;
+  const anchor = target?.closest("a");
+  if (!anchor || typeof window === "undefined") return;
+  if (!shouldHandleClick(event, anchor)) return;
+  event.preventDefault();
+  const destination = new URL(anchor.href, window.location.href);
+  navigate(`${destination.pathname}${destination.search}${destination.hash}`);
+};
+var ensureRouter = () => {
+  if (routerInitialized) return;
+  routerInitialized = true;
+  window.addEventListener("popstate", notify);
+  document.addEventListener("click", handleDocumentClick);
+};
+var getPathname = () => {
+  if (typeof window === "undefined") return "/";
+  return window.location.pathname;
+};
+var navigate = (to) => {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === to) {
+    notify();
+    return;
+  }
+  window.history.pushState({}, "", to);
+  notify();
+};
+function Router(handle, setup) {
+  ensureRouter();
+  handle.on(routerEvents, { navigate: () => handle.update() });
+  return () => {
+    const path = getPathname();
+    const result = matchRoute(path, setup.routes);
+    if (result) {
+      return result.view(result.match);
+    }
+    return setup.fallback ? setup.fallback({ path, params: {} }) : null;
+  };
+}
+
 // client/app.tsx
 function App() {
   return () => /* @__PURE__ */ jsx(
@@ -2236,28 +2435,90 @@ function App() {
       },
       children: [
         /* @__PURE__ */ jsx(
-          "h1",
+          "nav",
           {
             css: {
-              fontSize: typography.fontSize.xl,
-              fontWeight: typography.fontWeight.semibold,
-              marginBottom: spacing.md,
-              color: colors.text
+              display: "flex",
+              gap: spacing.md,
+              flexWrap: "wrap",
+              marginBottom: spacing.xl
             },
-            children: "Epicflare Remix 3"
+            children: [
+              /* @__PURE__ */ jsx(
+                "a",
+                {
+                  href: "/",
+                  css: {
+                    color: colors.primary,
+                    fontWeight: typography.fontWeight.medium,
+                    textDecoration: "none",
+                    "&:hover": {
+                      textDecoration: "underline"
+                    }
+                  },
+                  children: "Home"
+                }
+              ),
+              /* @__PURE__ */ jsx(
+                "a",
+                {
+                  href: "/client-route",
+                  css: {
+                    color: colors.primary,
+                    fontWeight: typography.fontWeight.medium,
+                    textDecoration: "none",
+                    "&:hover": {
+                      textDecoration: "underline"
+                    }
+                  },
+                  children: "Client Route"
+                }
+              ),
+              /* @__PURE__ */ jsx(
+                "a",
+                {
+                  href: "/client/42",
+                  css: {
+                    color: colors.primary,
+                    fontWeight: typography.fontWeight.medium,
+                    textDecoration: "none",
+                    "&:hover": {
+                      textDecoration: "underline"
+                    }
+                  },
+                  children: "Client Param"
+                }
+              )
+            ]
           }
         ),
         /* @__PURE__ */ jsx(
-          "p",
+          Router,
           {
-            css: {
-              marginBottom: spacing.lg,
-              color: colors.textMuted
-            },
-            children: "Remix 3 components running on the client, backed by Remix 3 routing in the worker."
+            setup: {
+              routes: {
+                "/": HomeRoute(),
+                "/client-route": ClientRoute(),
+                "/client/:id": ClientParamRoute()
+              },
+              fallback: () => /* @__PURE__ */ jsx("section", { children: [
+                /* @__PURE__ */ jsx(
+                  "h2",
+                  {
+                    css: {
+                      fontSize: typography.fontSize.lg,
+                      fontWeight: typography.fontWeight.semibold,
+                      marginBottom: spacing.sm,
+                      color: colors.text
+                    },
+                    children: "Not Found"
+                  }
+                ),
+                /* @__PURE__ */ jsx("p", { css: { color: colors.textMuted }, children: "That route does not exist." })
+              ] })
+            }
           }
-        ),
-        /* @__PURE__ */ jsx(Counter, { setup: { initial: 1 } })
+        )
       ]
     }
   );

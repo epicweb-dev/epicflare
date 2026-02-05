@@ -1,12 +1,14 @@
 import { createRouter } from 'remix/fetch-router'
 import health from './handlers/health.ts'
 import home from './handlers/home.ts'
+import { Layout } from './layout.ts'
+import { render } from './render.ts'
 import routes from './routes.ts'
 
 const router = createRouter({
 	middleware: [],
-	defaultHandler() {
-		return new Response('Not Found', { status: 404 })
+	async defaultHandler() {
+		return render(Layout({}))
 	},
 })
 
