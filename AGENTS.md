@@ -2,6 +2,15 @@
 
 We use bun for installing dependencies and running scripts.
 
+## Agent setup
+
+- Install dependencies with `bun install`.
+
+## Verification before commit
+
+- Run the Full Gate: `bun run validate`.
+- Run formatting: `bun run format`.
+
 ## References
 
 - [Setup](./docs/agents/setup.md)
