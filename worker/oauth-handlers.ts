@@ -127,7 +127,7 @@ async function hashLegacyPassword(password: string) {
 async function verifyPassword(
 	password: string,
 	storedHash: string,
-): Promise<{ valid: boolean; upgradedHash?: string }> => {
+): Promise<{ valid: boolean; upgradedHash?: string }> {
 	if (!storedHash) {
 		return { valid: false }
 	}
@@ -251,10 +251,7 @@ function respondAuthorizeError(
 	errorCode = 'invalid_request',
 ) {
 	return wantsJson(request)
-		? jsonResponse(
-				{ ok: false, error: message, code: errorCode },
-				{ status },
-			)
+		? jsonResponse({ ok: false, error: message, code: errorCode }, { status })
 		: createAuthorizeErrorRedirect(request, errorCode, message)
 }
 
