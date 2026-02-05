@@ -5,6 +5,18 @@ applications on Cloudflare Workers. It ships a Remix-powered UI, server routing,
 and OAuth-protected MCP endpoints so you can build both a user-facing app and
 tooling APIs on the same Worker.
 
+## Quick start
+
+```
+bunx degit epicweb-dev/epicflare my-epicflare-app
+cd my-epicflare-app
+bun install
+bun ./docs/post-download.ts --guided
+bun run dev
+```
+
+See `docs/getting-started.md` for the full setup paths and expectations.
+
 ## Tech stack and infrastructure
 
 - Cloudflare Workers with Wrangler for local dev, builds, and deploys.

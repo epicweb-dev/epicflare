@@ -23,72 +23,86 @@ We use bun for scripts and installs.
 bun install
 ```
 
-## Post-download setup
+## Expectations and assumptions
 
-Run the setup script to update Wrangler config, create a local `.env`. It
-removes itself after running.
+The setup flow assumes:
+
+- Bun is installed (uses `bun`/`bunx`).
+- You run commands from the repo root (needs `wrangler.jsonc` and
+  `package.json`).
+- You can write to `wrangler.jsonc`, `package.json`, `.env`, and `docs/`.
+- Wrangler is available. If you are not logged in, the script prints
+  `bunx wrangler login` and stops. In interactive mode, it can run the login for
+  you.
+
+See `docs/setup-manifest.md` for required resources and secrets.
+
+## Preflight checks
+
+Run a quick validation of your environment and Wrangler login:
 
 ```
-bun ./docs/post-download.ts
+bun ./docs/post-download.ts --check
 ```
 
-For non-interactive runs (like agents/CI), pass flags or `--defaults`. The
-`--defaults` flag skips prompts and uses defaults based on the current directory
-name (worker/package/database names), plus a generated cookie secret.
+## Quick Start (local only)
+
+1. Run the guided setup script:
+
+```
+bun ./docs/post-download.ts --guided
+```
+
+2. Start local development:
+
+```
+bun run dev
+```
+
+## Full Cloudflare setup (deploy)
+
+1. Run the guided setup script and create resources when prompted:
+
+```
+bun ./docs/post-download.ts --guided
+```
+
+2. Configure GitHub Actions secrets for deploy:
+
+- `CLOUDFLARE_API_TOKEN` (Workers deploy access)
+- `COOKIE_SECRET` (generate with `openssl rand -hex 32` or similar)
+
+3. Deploy:
+
+```
+bun run deploy
+```
+
+## Agent/CI setup
+
+Use non-interactive flags or `--defaults`. The `--defaults` flag skips prompts
+and uses defaults based on the current directory name (worker/package/database
+names), plus a generated cookie secret.
 
 ```
 bun ./docs/post-download.ts --defaults --database-id <id> --preview-database-id <id> --kv-namespace-id <id>
 ```
 
-To preview changes without writing, add `--dry-run`.
+To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
+`--json`. To run preflight checks only, add `--check`.
 
-The script expects:
+### Script flags
 
-- Bun installed (uses `bun`/`bunx`).
-- Running from the repo root (needs `wrangler.jsonc` and `package.json`).
-- Write access to `wrangler.jsonc`, `package.json`, `.env`, and `docs/`.
-- Wrangler authentication available. If you are not logged in, the script will
-  print the `bunx wrangler login` command and stop. In interactive mode, it can
-  offer to run the login command for you.
-
-## Cloudflare prerequisites
-
-1. Install Wrangler if you do not have it already:
-
-```
-bunx wrangler --version
-```
-
-2. Authenticate with Cloudflare:
-
-```
-bunx wrangler login
-```
-
-## Environment variables
-
-Local development uses `.env` which Wrangler loads automatically.
-
-1. Create a local env file:
-
-```
-cp .env.example .env
-```
-
-2. Update the value in `.env`:
-
-```
-COOKIE_SECRET=your-local-secret
-```
-
-In GitHub Actions, configure these repository secrets for the deploy workflow:
-
-- `CLOUDFLARE_API_TOKEN` (Cloudflare API token with Workers deploy access)
-- `COOKIE_SECRET` (generate with `openssl rand -hex 32` or similar)
-
-To get the API token, go to https://dash.cloudflare.com/ and click on "API
-Tokens" in the left sidebar. Click on "Create Token" and create a new token with
-the Edit Workers template permissions.
+- `--guided`: interactive, state-aware flow (resource creation optional).
+- `--check`: run preflight checks only.
+- `--defaults`: accept defaults without prompts.
+- `--dry-run`: show changes without writing or deleting the script.
+- `--json`: print a JSON summary.
+- `--app-name`, `--worker-name`, `--package-name`
+- `--database-name`, `--database-id`
+- `--preview-database-name`, `--preview-database-id`
+- `--kv-namespace-id`, `--kv-namespace-preview-id`
+- `--kv-namespace-title`, `--kv-namespace-preview-title` (used when creating)
 
 ## Local development
 
