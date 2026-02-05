@@ -7,11 +7,16 @@ export type AuthSession = {
 	email: string
 }
 
+const cookieSecret =
+	(globalThis as { process?: { env?: { COOKIE_SECRET?: string } } }).process
+		?.env?.COOKIE_SECRET ?? crypto.randomUUID()
+
 const sessionCookie = createCookie('epicflare_session', {
 	httpOnly: true,
 	sameSite: 'Lax',
 	path: '/',
 	maxAge: sessionMaxAgeSeconds,
+	secrets: [cookieSecret],
 })
 
 const isAuthSession = (value: unknown): value is AuthSession => {

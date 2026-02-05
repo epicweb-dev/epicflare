@@ -41,7 +41,7 @@ export default {
 		const session = await readAuthSession(request)
 
 		if (!session) {
-			return Response.redirect('/login', 302)
+			return Response.redirect(new URL('/login', request.url), 302)
 		}
 
 		return render(
