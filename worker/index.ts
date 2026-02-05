@@ -39,7 +39,7 @@ export default {
 				}
 			}
 
-			return handleRequest(request)
+			return handleRequest(request, env)
 		},
 	}),
 }

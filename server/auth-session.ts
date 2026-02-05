@@ -8,21 +8,31 @@ export type AuthSession = {
 }
 
 let sessionCookie: ReturnType<typeof createCookie> | null = null
+let sessionSecret: string | null = null
 
-const getSessionCookie = () => {
-	if (sessionCookie) return sessionCookie
+export const setAuthSessionSecret = (secret: string) => {
+	if (!secret) {
+		throw new Error('Missing COOKIE_SECRET for session signing.')
+	}
 
-	const cookieSecret =
-		(globalThis as { process?: { env?: { COOKIE_SECRET?: string } } }).process
-			?.env?.COOKIE_SECRET ?? crypto.randomUUID()
+	if (sessionCookie && sessionSecret === secret) {
+		return
+	}
 
+	sessionSecret = secret
 	sessionCookie = createCookie('epicflare_session', {
 		httpOnly: true,
 		sameSite: 'Lax',
 		path: '/',
 		maxAge: sessionMaxAgeSeconds,
-		secrets: [cookieSecret],
+		secrets: [secret],
 	})
+}
+
+const getSessionCookie = () => {
+	if (!sessionCookie) {
+		throw new Error('Session cookie not configured. Call setAuthSessionSecret.')
+	}
 
 	return sessionCookie
 }

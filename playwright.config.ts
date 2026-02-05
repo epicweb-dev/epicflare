@@ -18,6 +18,7 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: true,
 		env: {
+			COOKIE_SECRET: 'playwright-cookie-secret',
 			WRANGLER_LOG_PATH: './logs.local',
 			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
 		},
