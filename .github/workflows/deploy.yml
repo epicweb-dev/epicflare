@@ -22,8 +22,22 @@ jobs:
           bun-version: latest
           cache: true
 
+      - name: 🎭 Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: 📥 Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: 🎭 Install Playwright Browsers
+        run: bun run test:e2e:install
+
+      - name: 🧪 Playwright Tests
+        run: bun run test:e2e
 
       - name: 🧪 Typecheck
         run: bun run typecheck
