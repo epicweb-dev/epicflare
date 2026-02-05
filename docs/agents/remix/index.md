@@ -2,6 +2,19 @@
 
 Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 
+## Table of contents
+
+- [Start here](#start-here)
+- [UI and components](#ui-and-components)
+- [Routing and requests](#routing-and-requests)
+- [Sessions and cookies](#sessions-and-cookies)
+- [Responses and headers](#responses-and-headers)
+- [Uploads and parsing](#uploads-and-parsing)
+- [Files and storage](#files-and-storage)
+- [Middleware and utilities](#middleware-and-utilities)
+- [Package map](#package-map)
+- [Update instructions](#update-instructions)
+
 ## Start here
 
 - Building UI with Remix Component: [component](./component/index.md)
@@ -18,6 +31,86 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
   [lazy-file](./lazy-file.md) + [fs](./fs.md)
 - Static assets and compression: [static-middleware](./static-middleware.md) +
   [compression-middleware](./compression-middleware/index.md)
+
+## UI and components
+
+- [component](./component/index.md)
+  - [Getting started](./component/getting-started.md)
+  - [Components](./component/components.md)
+  - [Styling basics](./component/styling-basics.md)
+  - [Animate basics](./component/animate-basics.md)
+  - [Testing](./component/testing.md)
+- [interaction](./interaction/index.md)
+  - [Event listeners and interactions](./interaction/listeners.md)
+  - [Containers and disposal](./interaction/containers-and-disposal.md)
+  - [Custom interactions and typed targets](./interaction/custom-interactions.md)
+
+## Routing and requests
+
+- [fetch-router](./fetch-router/index.md)
+  - [Basic usage and route maps](./fetch-router/usage.md)
+  - [Routing based on request method](./fetch-router/routing-methods.md)
+  - [Resource-based routes](./fetch-router/routing-resources.md)
+  - [Middleware and request context](./fetch-router/middleware.md)
+- [route-pattern](./route-pattern.md)
+- [node-fetch-server](./node-fetch-server/index.md)
+  - [Quick start](./node-fetch-server/quick-start.md)
+  - [Advanced usage](./node-fetch-server/advanced-usage.md)
+  - [Migration from Express](./node-fetch-server/migration.md)
+  - [Demos and benchmark](./node-fetch-server/demos-and-benchmark.md)
+- [fetch-proxy](./fetch-proxy.md)
+
+## Sessions and cookies
+
+- [session](./session/index.md)
+  - [Flash data and security](./session/flash-and-security.md)
+  - [Storage strategies](./session/storage-strategies.md)
+  - [Related packages](./session/related.md)
+- [session-middleware](./session-middleware.md)
+- [cookie](./cookie.md)
+
+## Responses and headers
+
+- [response](./response/index.md)
+  - [File responses](./response/file-responses.md)
+  - [HTML responses](./response/html-responses.md)
+  - [Redirect responses](./response/redirect-responses.md)
+  - [Compressed responses](./response/compress-responses.md)
+  - [Related packages](./response/related.md)
+- [headers](./headers/index.md)
+  - [Accept headers](./headers/accept-headers.md)
+  - [Content and cache headers](./headers/content-headers.md)
+  - [Cookie headers](./headers/cookie-headers.md)
+  - [Conditionals and ranges](./headers/conditional-headers.md)
+  - [Raw header parsing](./headers/raw-headers.md)
+- [html-template](./html-template.md)
+
+## Uploads and parsing
+
+- [form-data-middleware](./form-data-middleware.md)
+- [form-data-parser](./form-data-parser.md)
+- [multipart-parser](./multipart-parser/index.md)
+  - [Limits and Node bindings](./multipart-parser/limits-and-node.md)
+  - [Low-level APIs](./multipart-parser/low-level.md)
+  - [Benchmarks and related packages](./multipart-parser/benchmarks.md)
+
+## Files and storage
+
+- [file-storage](./file-storage.md)
+- [lazy-file](./lazy-file.md)
+- [fs](./fs.md)
+- [tar-parser](./tar-parser.md)
+
+## Middleware and utilities
+
+- [compression-middleware](./compression-middleware/index.md)
+  - [Options and configuration](./compression-middleware/options.md)
+- [static-middleware](./static-middleware.md)
+- [logger-middleware](./logger-middleware.md)
+- [method-override-middleware](./method-override-middleware.md)
+- [async-context-middleware](./async-context-middleware.md)
+- [mime](./mime.md)
+- [remix](./remix.md)
 
 ## Package map
 
