@@ -170,11 +170,9 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 				return
 			}
 
-			const successMessage =
-				mode === 'login'
-					? 'Signed in successfully.'
-					: 'Account created successfully.'
-			setState('success', successMessage)
+			if (typeof window !== 'undefined') {
+				window.location.assign('/account')
+			}
 		} catch {
 			setState('error', 'Network error. Please try again.')
 		}

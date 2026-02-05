@@ -1,7 +1,22 @@
+import { setAuthSessionSecret } from './auth-session.ts'
 import router from './router.ts'
 
-export async function handleRequest(request: Request) {
+const resolveCookieSecret = (env: Env) => {
+	const secret =
+		env.COOKIE_SECRET ??
+		(globalThis as { process?: { env?: { COOKIE_SECRET?: string } } }).process
+			?.env?.COOKIE_SECRET
+
+	if (!secret) {
+		throw new Error('Missing COOKIE_SECRET for session signing.')
+	}
+
+	return secret
+}
+
+export async function handleRequest(request: Request, env: Env) {
 	try {
+		setAuthSessionSecret(resolveCookieSecret(env))
 		return await router.fetch(request)
 	} catch (error) {
 		console.error('Remix server handler failed:', error)

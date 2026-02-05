@@ -1,4 +1,8 @@
 declare global {
+	interface Env {
+		COOKIE_SECRET: string
+	}
+
 	interface CustomExportedHandler<Props = {}> {
 		fetch: (
 			request: Request,
@@ -7,3 +11,5 @@ declare global {
 		) => Response | Promise<Response>
 	}
 }
+
+export {}

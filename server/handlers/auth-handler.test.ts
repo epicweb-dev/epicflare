@@ -1,6 +1,7 @@
 /// <reference types="bun" />
-import { expect, test } from 'bun:test'
+import { beforeAll, expect, test } from 'bun:test'
 import { RequestContext } from 'remix/fetch-router'
+import { setAuthSessionSecret } from '../auth-session.ts'
 import auth from './auth.ts'
 
 const createAuthRequest = (body: unknown, url: string) => {
@@ -15,6 +16,10 @@ const createAuthRequest = (body: unknown, url: string) => {
 		run: () => auth.action(context),
 	}
 }
+
+beforeAll(() => {
+	setAuthSessionSecret('test-cookie-secret')
+})
 
 test('auth handler returns 400 for invalid JSON', async () => {
 	const authRequest = createAuthRequest('{', 'http://example.com/auth')
