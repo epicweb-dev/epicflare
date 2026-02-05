@@ -1,7 +1,7 @@
 import { setAuthSessionSecret } from './auth-session.ts'
 import router from './router.ts'
 
-const resolveCookieSecret = (env: Env) => {
+function resolveCookieSecret(env: Env) {
 	const secret = env.COOKIE_SECRET
 
 	if (!secret) {

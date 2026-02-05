@@ -1,6 +1,6 @@
 import { html, type SafeHtml } from 'remix/html-template'
 
-const defaultEntryScripts = ['/client-entry.js']
+const defaultEntryScripts: Array<string> = ['/client-entry.js']
 const defaultShell = html`<div class="app-shell">
 	<div
 		class="loading-spinner"
@@ -17,7 +17,7 @@ export function Layout({
 }: {
 	children?: SafeHtml
 	title?: string
-	entryScripts?: string[] | false
+	entryScripts?: Array<string> | false
 }) {
 	const scripts = entryScripts === false ? [] : entryScripts
 	const shell = children ?? defaultShell

@@ -10,14 +10,19 @@ const ansiReset = '\x1b[0m'
 const ansiBright = '\x1b[1m'
 const ansiDim = '\x1b[2m'
 
-const colorize = (text: string, color: string) => {
+function colorize(text: string, color: string) {
 	const bunColor = typeof Bun === 'undefined' ? null : Bun.color
 	const colorCode = bunColor ? bunColor(color, 'ansi-16m') || '' : ''
 	return colorCode ? `${colorCode}${text}${ansiReset}` : text
 }
 
-const bright = (text: string) => `${ansiBright}${text}${ansiReset}`
-const dim = (text: string) => `${ansiDim}${text}${ansiReset}`
+function bright(text: string) {
+	return `${ansiBright}${text}${ansiReset}`
+}
+
+function dim(text: string) {
+	return `${ansiDim}${text}${ansiReset}`
+}
 
 const commands: Record<Command, string> = {
 	dev: 'Start client + worker dev servers',
@@ -30,7 +35,7 @@ const commands: Record<Command, string> = {
 
 type OutputFilterKey = 'client' | 'worker' | 'default'
 
-const outputFilters: Record<OutputFilterKey, RegExp[]> = {
+const outputFilters: Record<OutputFilterKey, Array<RegExp>> = {
 	client: [],
 	worker: [],
 	default: [],
@@ -87,7 +92,7 @@ function resolveWorkerOrigin() {
 
 function runBunScript(
 	script: string,
-	args: string[] = [],
+	args: Array<string> = [],
 	envOverrides: Record<string, string> = {},
 	options: { outputFilter?: OutputFilterKey } = {},
 ): ChildProcess {
@@ -125,7 +130,7 @@ function pipeOutput(
 function pipeStream(
 	source: NodeJS.ReadableStream,
 	target: NodeJS.WritableStream,
-	filters: RegExp[],
+	filters: Array<RegExp>,
 ) {
 	const rl = readline.createInterface({ input: source })
 	rl.on('line', (line) => {
@@ -136,8 +141,8 @@ function pipeStream(
 	})
 }
 
-function setupShutdown(children: ChildProcess[]) {
-	const doShutdown = () => {
+function setupShutdown(children: Array<ChildProcess>) {
+	function doShutdown() {
 		for (const child of children) {
 			if (!child.killed) {
 				child.kill('SIGINT')

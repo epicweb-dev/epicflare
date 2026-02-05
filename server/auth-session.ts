@@ -10,7 +10,7 @@ export type AuthSession = {
 let sessionCookie: ReturnType<typeof createCookie> | null = null
 let sessionSecret: string | null = null
 
-export const setAuthSessionSecret = (secret: string) => {
+export function setAuthSessionSecret(secret: string) {
 	if (!secret) {
 		throw new Error('Missing COOKIE_SECRET for session signing.')
 	}
@@ -29,7 +29,7 @@ export const setAuthSessionSecret = (secret: string) => {
 	})
 }
 
-const getSessionCookie = () => {
+function getSessionCookie() {
 	if (!sessionCookie) {
 		throw new Error('Session cookie not configured. Call setAuthSessionSecret.')
 	}
@@ -37,7 +37,7 @@ const getSessionCookie = () => {
 	return sessionCookie
 }
 
-const isAuthSession = (value: unknown): value is AuthSession => {
+function isAuthSession(value: unknown): value is AuthSession {
 	if (!value || typeof value !== 'object') return false
 	const record = value as Record<string, unknown>
 	return (

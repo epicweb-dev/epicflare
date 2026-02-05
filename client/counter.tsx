@@ -14,7 +14,7 @@ type CounterSetup = {
 export function Counter(handle: Handle, setup: CounterSetup = {}) {
 	let count = setup.initial ?? 0
 
-	const increment = () => {
+	function increment() {
 		count += 1
 		handle.update()
 	}

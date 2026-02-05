@@ -5,16 +5,17 @@ import { Layout } from '../layout.ts'
 import { render } from '../render.ts'
 import type routes from '../routes.ts'
 
-const escapeHtml = (value: string) =>
-	value
+function escapeHtml(value: string) {
+	return value
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
 		.replace(/"/g, '&quot;')
 		.replace(/'/g, '&#39;')
+}
 
-const renderAccount = (email: string) =>
-	html`<main
+function renderAccount(email: string) {
+	return html`<main
 		style="max-width: 52rem; margin: 0 auto; padding: var(--spacing-page); font-family: var(--font-family);"
 	>
 		<section style="display: grid; gap: var(--spacing-md);">
@@ -34,6 +35,7 @@ const renderAccount = (email: string) =>
 			</a>
 		</section>
 	</main>`
+}
 
 export default {
 	middleware: [],

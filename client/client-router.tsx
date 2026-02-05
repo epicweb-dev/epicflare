@@ -15,11 +15,11 @@ type RouterSetup = {
 const routerEvents = new EventTarget()
 let routerInitialized = false
 
-const notify = () => {
+function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
 }
 
-const compileRoutePattern = (pattern: string) => {
+function compileRoutePattern(pattern: string) {
 	const paramNames: Array<string> = []
 	const regexPattern = pattern
 		.replace(/:([^/]+)/g, (_, name) => {
@@ -34,10 +34,10 @@ const compileRoutePattern = (pattern: string) => {
 	}
 }
 
-const matchRoute = (
+function matchRoute(
 	path: string,
 	routes: Record<string, RouteView>,
-): { view: RouteView; match: RouteMatch } | null => {
+): { view: RouteView; match: RouteMatch } | null {
 	for (const [pattern, view] of Object.entries(routes)) {
 		const { pattern: compiled, paramNames } = compileRoutePattern(pattern)
 		const result = compiled.exec(path)
@@ -58,7 +58,7 @@ const matchRoute = (
 	return null
 }
 
-const shouldHandleClick = (event: MouseEvent, anchor: HTMLAnchorElement) => {
+function shouldHandleClick(event: MouseEvent, anchor: HTMLAnchorElement) {
 	if (event.defaultPrevented) return false
 	if (event.button !== 0) return false
 	if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
@@ -74,7 +74,7 @@ const shouldHandleClick = (event: MouseEvent, anchor: HTMLAnchorElement) => {
 	return true
 }
 
-const handleDocumentClick = (event: MouseEvent) => {
+function handleDocumentClick(event: MouseEvent) {
 	const target = event.target as Element | null
 	const anchor = target?.closest('a') as HTMLAnchorElement | null
 	if (!anchor || typeof window === 'undefined') return
@@ -85,19 +85,19 @@ const handleDocumentClick = (event: MouseEvent) => {
 	navigate(`${destination.pathname}${destination.search}${destination.hash}`)
 }
 
-const ensureRouter = () => {
+function ensureRouter() {
 	if (routerInitialized) return
 	routerInitialized = true
 	window.addEventListener('popstate', notify)
 	document.addEventListener('click', handleDocumentClick)
 }
 
-export const getPathname = () => {
+export function getPathname() {
 	if (typeof window === 'undefined') return '/'
 	return window.location.pathname
 }
 
-export const navigate = (to: string) => {
+export function navigate(to: string) {
 	if (typeof window === 'undefined') return
 	if (window.location.pathname === to) {
 		notify()

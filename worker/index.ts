@@ -20,12 +20,14 @@ import { withCors } from './utils.ts'
 export { MCP }
 
 const appHandler = withCors({
-	getCorsHeaders: () => ({
-		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-		'Access-Control-Allow-Headers': 'content-type, authorization',
-	}),
-	handler: async (request: Request, env, ctx) => {
+	getCorsHeaders() {
+		return {
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+			'Access-Control-Allow-Headers': 'content-type, authorization',
+		}
+	},
+	async handler(request: Request, env, ctx) {
 		const url = new URL(request.url)
 
 		if (url.pathname === oauthPaths.authorize) {
@@ -82,6 +84,7 @@ const oauthProvider = new OAuthProvider({
 })
 
 export default {
-	fetch: (request: Request, env: Env, ctx: ExecutionContext) =>
-		oauthProvider.fetch(request, env, ctx),
+	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+		return oauthProvider.fetch(request, env, ctx)
+	},
 }

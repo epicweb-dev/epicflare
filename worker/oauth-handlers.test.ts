@@ -28,37 +28,38 @@ const baseClient: ClientInfo = {
 	tokenEndpointAuthMethod: 'client_secret_basic',
 }
 
-const createHelpers = (
-	overrides: Partial<OAuthHelpers> = {},
-): OAuthHelpers => ({
-	parseAuthRequest: async () => baseAuthRequest,
-	lookupClient: async () => baseClient,
-	completeAuthorization: async () => ({
-		redirectTo: 'https://example.com/callback?code=demo',
-	}),
-	createClient: async () => {
-		throw new Error('Not implemented')
-	},
-	listClients: async () => ({ items: [] }),
-	updateClient: async () => null,
-	deleteClient: async () => undefined,
-	listUserGrants: async () => ({ items: [] }),
-	revokeGrant: async () => undefined,
-	unwrapToken: async () => null,
-	...overrides,
-})
+function createHelpers(overrides: Partial<OAuthHelpers> = {}): OAuthHelpers {
+	return {
+		parseAuthRequest: async () => baseAuthRequest,
+		lookupClient: async () => baseClient,
+		completeAuthorization: async () => ({
+			redirectTo: 'https://example.com/callback?code=demo',
+		}),
+		async createClient() {
+			throw new Error('Not implemented')
+		},
+		listClients: async () => ({ items: [] }),
+		updateClient: async () => null,
+		deleteClient: async () => undefined,
+		listUserGrants: async () => ({ items: [] }),
+		revokeGrant: async () => undefined,
+		unwrapToken: async () => null,
+		...overrides,
+	}
+}
 
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const passwordHashIterations = 120_000
 
-const toHex = (bytes: Uint8Array) =>
-	Array.from(bytes)
+function toHex(bytes: Uint8Array) {
+	return Array.from(bytes)
 		.map((value) => value.toString(16).padStart(2, '0'))
 		.join('')
+}
 
-const createPasswordHash = async (password: string) => {
+async function createPasswordHash(password: string) {
 	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
 	const key = await crypto.subtle.importKey(
 		'raw',
@@ -83,26 +84,35 @@ const createPasswordHash = async (password: string) => {
 	)}`
 }
 
-const createDatabase = async (password: string) => {
+async function createDatabase(password: string) {
 	const passwordHash = await createPasswordHash(password)
 	return {
-		prepare: () => ({
-			bind: () => ({
-				first: async () => ({ password_hash: passwordHash }),
-				run: async () => ({ success: true }),
-			}),
-		}),
+		prepare() {
+			return {
+				bind() {
+					return {
+						async first() {
+							return { password_hash: passwordHash }
+						},
+						async run() {
+							return { success: true }
+						},
+					}
+				},
+			}
+		},
 	} as unknown as D1Database
 }
 
-const createEnv = (helpers: OAuthHelpers, appDb?: D1Database) =>
-	({ OAUTH_PROVIDER: helpers, APP_DB: appDb }) as unknown as Env
+function createEnv(helpers: OAuthHelpers, appDb?: D1Database) {
+	return { OAUTH_PROVIDER: helpers, APP_DB: appDb } as unknown as Env
+}
 
-const createFormRequest = (
+function createFormRequest(
 	data: Record<string, string>,
 	headers: Record<string, string> = {},
-) =>
-	new Request('https://example.com/oauth/authorize', {
+) {
+	return new Request('https://example.com/oauth/authorize', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
@@ -110,6 +120,7 @@ const createFormRequest = (
 		},
 		body: new URLSearchParams(data),
 	})
+}
 
 test('authorize page returns SPA shell', async () => {
 	const response = await handleAuthorizeRequest(
@@ -182,7 +193,7 @@ test('authorize uses default scopes when none requested', async () => {
 			...baseAuthRequest,
 			scope: [],
 		}),
-		completeAuthorization: async (options) => {
+		async completeAuthorization(options) {
 			capturedOptions = options
 			return { redirectTo: 'https://example.com/callback?code=ok' }
 		},

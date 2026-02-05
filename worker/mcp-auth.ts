@@ -21,17 +21,22 @@ type OAuthExecutionContext = ExecutionContext & {
 	props?: OAuthContextProps
 }
 
-export const buildProtectedResourceMetadata = (origin: string) => ({
-	resource: `${origin}${mcpResourcePath}`,
-	authorization_servers: [origin],
-	scopes_supported: oauthScopes,
-})
+export function buildProtectedResourceMetadata(origin: string) {
+	return {
+		resource: `${origin}${mcpResourcePath}`,
+		authorization_servers: [origin],
+		scopes_supported: oauthScopes,
+	}
+}
 
-export const isProtectedResourceMetadataRequest = (pathname: string) =>
-	pathname === protectedResourceMetadataPath ||
-	pathname === `${protectedResourceMetadataPath}${mcpResourcePath}`
+export function isProtectedResourceMetadataRequest(pathname: string) {
+	return (
+		pathname === protectedResourceMetadataPath ||
+		pathname === `${protectedResourceMetadataPath}${mcpResourcePath}`
+	)
+}
 
-export const handleProtectedResourceMetadata = (request: Request) => {
+export function handleProtectedResourceMetadata(request: Request) {
 	const url = new URL(request.url)
 	return new Response(
 		JSON.stringify(buildProtectedResourceMetadata(url.origin)),
@@ -41,25 +46,26 @@ export const handleProtectedResourceMetadata = (request: Request) => {
 	)
 }
 
-const buildWwwAuthenticateHeader = (origin: string) => {
+function buildWwwAuthenticateHeader(origin: string) {
 	const resourceMetadata = `${origin}${protectedResourceMetadataPath}`
 	const scope =
 		oauthScopes.length > 0 ? ` scope="${oauthScopes.join(' ')}"` : ''
 	return `Bearer resource_metadata="${resourceMetadata}"${scope}`
 }
 
-const createUnauthorizedResponse = (requestUrl: URL) =>
-	new Response(null, {
+function createUnauthorizedResponse(requestUrl: URL) {
+	return new Response(null, {
 		status: 401,
 		headers: {
 			'WWW-Authenticate': buildWwwAuthenticateHeader(requestUrl.origin),
 		},
 	})
+}
 
-const audienceMatches = (
-	audience: string | string[] | undefined,
+function audienceMatches(
+	audience: string | Array<string> | undefined,
 	requestUrl: URL,
-) => {
+) {
 	if (!audience) return false
 	const allowed = Array.isArray(audience) ? audience : [audience]
 	const origin = requestUrl.origin

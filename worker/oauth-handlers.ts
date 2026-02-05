@@ -16,7 +16,7 @@ export const oauthPaths = {
 	apiPrefix: '/api/',
 }
 
-export const oauthScopes = ['profile', 'email']
+export const oauthScopes: Array<string> = ['profile', 'email']
 
 type OAuthProps = {
 	userId: string
@@ -32,7 +32,9 @@ type OAuthContext = ExecutionContext & {
 	props?: OAuthProps
 }
 
-const renderSpaShell = (status = 200) => render(Layout({}), { status })
+function renderSpaShell(status = 200) {
+	return render(Layout({}), { status })
+}
 
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
@@ -41,12 +43,13 @@ const passwordHashIterations = 120_000
 const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
 const userRecordSchema = z.object({ password_hash: z.string() })
 
-const toHex = (bytes: Uint8Array) =>
-	Array.from(bytes)
+function toHex(bytes: Uint8Array) {
+	return Array.from(bytes)
 		.map((value) => value.toString(16).padStart(2, '0'))
 		.join('')
+}
 
-const fromHex = (value: string) => {
+function fromHex(value: string) {
 	const normalized = value.trim().toLowerCase()
 	if (!/^[0-9a-f]+$/.test(normalized) || normalized.length % 2 !== 0) {
 		return null
@@ -60,7 +63,7 @@ const fromHex = (value: string) => {
 	return bytes
 }
 
-const timingSafeEqual = (left: Uint8Array, right: Uint8Array) => {
+function timingSafeEqual(left: Uint8Array, right: Uint8Array) {
 	if (left.length !== right.length) return false
 	let result = 0
 	for (let index = 0; index < left.length; index += 1) {
@@ -69,19 +72,19 @@ const timingSafeEqual = (left: Uint8Array, right: Uint8Array) => {
 	return result === 0
 }
 
-const createUserId = async (email: string) => {
+async function createUserId(email: string) {
 	const normalized = email.trim().toLowerCase()
 	const data = new TextEncoder().encode(normalized)
 	const hash = await crypto.subtle.digest('SHA-256', data)
 	return toHex(new Uint8Array(hash))
 }
 
-const derivePasswordKey = async (
+async function derivePasswordKey(
 	password: string,
 	salt: Uint8Array,
 	iterations: number,
 	length: number,
-) => {
+) {
 	const key = await crypto.subtle.importKey(
 		'raw',
 		new TextEncoder().encode(password),
@@ -102,7 +105,7 @@ const derivePasswordKey = async (
 	return new Uint8Array(derivedBits)
 }
 
-const createPasswordHash = async (password: string) => {
+async function createPasswordHash(password: string) {
 	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
 	const hash = await derivePasswordKey(
 		password,
@@ -115,13 +118,13 @@ const createPasswordHash = async (password: string) => {
 	)}`
 }
 
-const hashLegacyPassword = async (password: string) => {
+async function hashLegacyPassword(password: string) {
 	const data = new TextEncoder().encode(password)
 	const hash = await crypto.subtle.digest('SHA-256', data)
 	return toHex(new Uint8Array(hash))
 }
 
-const verifyPassword = async (
+async function verifyPassword(
 	password: string,
 	storedHash: string,
 ): Promise<{ valid: boolean; upgradedHash?: string }> => {
@@ -164,16 +167,17 @@ const verifyPassword = async (
 	return { valid: false }
 }
 
-const jsonResponse = (data: unknown, init?: ResponseInit) =>
-	new Response(JSON.stringify(data), {
+function jsonResponse(data: unknown, init?: ResponseInit) {
+	return new Response(JSON.stringify(data), {
 		...init,
 		headers: {
 			'Content-Type': 'application/json',
 			...init?.headers,
 		},
 	})
+}
 
-const getOAuthHelpers = (env: Env) => {
+function getOAuthHelpers(env: Env) {
 	const helpers = (env as OAuthEnv).OAUTH_PROVIDER
 	if (!helpers) {
 		throw new Error('OAuth provider helpers are not available.')
@@ -181,7 +185,7 @@ const getOAuthHelpers = (env: Env) => {
 	return helpers
 }
 
-const resolveAuthRequest = async (helpers: OAuthHelpers, request: Request) => {
+async function resolveAuthRequest(helpers: OAuthHelpers, request: Request) {
 	try {
 		const authRequest = await helpers.parseAuthRequest(request)
 		if (!authRequest.clientId || !authRequest.redirectUri) {
@@ -202,7 +206,7 @@ const resolveAuthRequest = async (helpers: OAuthHelpers, request: Request) => {
 	}
 }
 
-const resolveScopes = (requestedScopes: string[]) => {
+function resolveScopes(requestedScopes: Array<string>) {
 	if (requestedScopes.length === 0) return oauthScopes
 	const invalidScopes = requestedScopes.filter(
 		(scope) => !oauthScopes.includes(scope),
@@ -215,7 +219,7 @@ const resolveScopes = (requestedScopes: string[]) => {
 	return requestedScopes
 }
 
-const createAccessDeniedRedirectUrl = (request: AuthRequest) => {
+function createAccessDeniedRedirectUrl(request: AuthRequest) {
 	if (!request.redirectUri) {
 		return null
 	}
@@ -225,29 +229,34 @@ const createAccessDeniedRedirectUrl = (request: AuthRequest) => {
 	return redirectUrl.toString()
 }
 
-const wantsJson = (request: Request) =>
-	request.headers.get('Accept')?.includes('application/json') ?? false
+function wantsJson(request: Request) {
+	return request.headers.get('Accept')?.includes('application/json') ?? false
+}
 
-const createAuthorizeErrorRedirect = (
+function createAuthorizeErrorRedirect(
 	request: Request,
 	error: string,
 	description: string,
-) => {
+) {
 	const redirectUrl = new URL(request.url)
 	redirectUrl.searchParams.set('error', error)
 	redirectUrl.searchParams.set('error_description', description)
 	return Response.redirect(redirectUrl.toString(), 303)
 }
 
-const respondAuthorizeError = (
+function respondAuthorizeError(
 	request: Request,
 	message: string,
 	status = 400,
 	errorCode = 'invalid_request',
-) =>
-	wantsJson(request)
-		? jsonResponse({ ok: false, error: message, code: errorCode }, { status })
+) {
+	return wantsJson(request)
+		? jsonResponse(
+				{ ok: false, error: message, code: errorCode },
+				{ status },
+			)
 		: createAuthorizeErrorRedirect(request, errorCode, message)
+}
 
 export async function handleAuthorizeInfo(
 	request: Request,

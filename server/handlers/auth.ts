@@ -4,17 +4,19 @@ import type routes from '../routes.ts'
 
 type AuthMode = 'login' | 'signup'
 
-const isAuthMode = (value: string): value is AuthMode =>
-	value === 'login' || value === 'signup'
+function isAuthMode(value: string): value is AuthMode {
+	return value === 'login' || value === 'signup'
+}
 
-const jsonResponse = (data: unknown, init?: ResponseInit) =>
-	new Response(JSON.stringify(data), {
+function jsonResponse(data: unknown, init?: ResponseInit) {
+	return new Response(JSON.stringify(data), {
 		...init,
 		headers: {
 			'Content-Type': 'application/json',
 			...init?.headers,
 		},
 	})
+}
 
 export default {
 	middleware: [],

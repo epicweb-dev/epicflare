@@ -119,16 +119,13 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
 
-	const setState = (
-		nextStatus: AuthStatus,
-		nextMessage: string | null = null,
-	) => {
+	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
 		message = nextMessage
 		handle.update()
 	}
 
-	const switchMode = (nextMode: AuthMode) => {
+	function switchMode(nextMode: AuthMode) {
 		if (mode === nextMode) return
 		mode = nextMode
 		status = 'idle'
@@ -137,7 +134,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 		handle.update()
 	}
 
-	const handleSubmit = async (event: SubmitEvent) => {
+	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		if (!(event.currentTarget instanceof HTMLFormElement)) return
 
@@ -369,7 +366,7 @@ export function LoginRoute(initialMode: AuthMode = 'login') {
 
 type OAuthAuthorizeInfo = {
 	client: { id: string; name: string }
-	scopes: string[]
+	scopes: Array<string>
 }
 
 type OAuthAuthorizeStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -382,17 +379,18 @@ function OAuthAuthorizeForm(handle: Handle) {
 	let submitting = false
 	let lastSearch = ''
 
-	const setMessage = (next: OAuthAuthorizeMessage | null) => {
+	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
 		handle.update()
 	}
 
-	const getSearchParams = () =>
-		typeof window === 'undefined'
+	function getSearchParams() {
+		return typeof window === 'undefined'
 			? new URLSearchParams()
 			: new URLSearchParams(window.location.search)
+	}
 
-	const readQueryError = () => {
+	function readQueryError() {
 		const params = getSearchParams()
 		const description = params.get('error_description')
 		if (description) return description
@@ -400,7 +398,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 		return error ? `Authorization error: ${error}` : null
 	}
 
-	const loadInfo = async () => {
+	async function loadInfo() {
 		status = 'loading'
 
 		const queryError = readQueryError()
@@ -446,10 +444,10 @@ function OAuthAuthorizeForm(handle: Handle) {
 		}
 	}
 
-	const submitDecision = async (
+	async function submitDecision(
 		decision: 'approve' | 'deny',
 		form?: HTMLFormElement,
-	) => {
+	) {
 		if (submitting) return
 		submitting = true
 		handle.update()
@@ -509,7 +507,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 		}
 	}
 
-	const handleSubmit = async (event: SubmitEvent) => {
+	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		if (!(event.currentTarget instanceof HTMLFormElement)) return
 		await submitDecision('approve', event.currentTarget)

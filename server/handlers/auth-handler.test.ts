@@ -4,7 +4,7 @@ import { RequestContext } from 'remix/fetch-router'
 import { setAuthSessionSecret } from '../auth-session.ts'
 import auth from './auth.ts'
 
-const createAuthRequest = (body: unknown, url: string) => {
+function createAuthRequest(body: unknown, url: string) {
 	const request = new Request(url, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },

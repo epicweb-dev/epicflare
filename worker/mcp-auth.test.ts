@@ -13,35 +13,37 @@ import {
 } from './mcp-auth.ts'
 import { oauthScopes } from './oauth-handlers.ts'
 
-const createHelpers = (
-	overrides: Partial<OAuthHelpers> = {},
-): OAuthHelpers => ({
-	parseAuthRequest: async () => {
-		throw new Error('Not implemented')
-	},
-	lookupClient: async () => null,
-	completeAuthorization: async () => ({ redirectTo: 'https://example.com' }),
-	createClient: async () => {
-		throw new Error('Not implemented')
-	},
-	listClients: async () => ({ items: [] }),
-	updateClient: async () => null,
-	deleteClient: async () => undefined,
-	listUserGrants: async () => ({ items: [] }),
-	revokeGrant: async () => undefined,
-	unwrapToken: async () => null,
-	...overrides,
-})
+function createHelpers(overrides: Partial<OAuthHelpers> = {}): OAuthHelpers {
+	return {
+		async parseAuthRequest() {
+			throw new Error('Not implemented')
+		},
+		lookupClient: async () => null,
+		completeAuthorization: async () => ({ redirectTo: 'https://example.com' }),
+		async createClient() {
+			throw new Error('Not implemented')
+		},
+		listClients: async () => ({ items: [] }),
+		updateClient: async () => null,
+		deleteClient: async () => undefined,
+		listUserGrants: async () => ({ items: [] }),
+		revokeGrant: async () => undefined,
+		unwrapToken: async () => null,
+		...overrides,
+	}
+}
 
-const createEnv = (helpers: OAuthHelpers) =>
-	({ OAUTH_PROVIDER: helpers }) as unknown as Env
+function createEnv(helpers: OAuthHelpers) {
+	return { OAUTH_PROVIDER: helpers } as unknown as Env
+}
 
-const createContext = () =>
-	({
+function createContext() {
+	return {
 		props: {},
 		waitUntil: () => undefined,
 		passThroughOnException: () => undefined,
-	}) as unknown as ExecutionContext
+	} as unknown as ExecutionContext
+}
 
 test('protected resource metadata describes MCP server', async () => {
 	const request = new Request(
