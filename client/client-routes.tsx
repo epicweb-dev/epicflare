@@ -402,7 +402,6 @@ function OAuthAuthorizeForm(handle: Handle) {
 
 	const loadInfo = async () => {
 		status = 'loading'
-		handle.update()
 
 		const queryError = readQueryError()
 		if (queryError) {
@@ -423,7 +422,8 @@ function OAuthAuthorizeForm(handle: Handle) {
 						: 'Unable to load authorization details.'
 				info = null
 				status = 'error'
-				setMessage({ type: 'error', text: errorText })
+				message = { type: 'error', text: errorText }
+				handle.update()
 				return
 			}
 			info = {
@@ -432,17 +432,17 @@ function OAuthAuthorizeForm(handle: Handle) {
 			}
 			status = 'ready'
 			if (!queryError) {
-				setMessage(null)
-			} else {
-				handle.update()
+				message = null
 			}
+			handle.update()
 		} catch {
 			info = null
 			status = 'error'
-			setMessage({
+			message = {
 				type: 'error',
 				text: 'Unable to load authorization details.',
-			})
+			}
+			handle.update()
 		}
 	}
 
