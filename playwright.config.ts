@@ -15,7 +15,7 @@ export default defineConfig({
 	},
 	webServer: {
 		command:
-			'WRANGLER_LOG_PATH=. WRANGLER_DISABLE_REQUEST_BODY_DRAINING=true bun run preview',
+			'bun run build:client && WRANGLER_LOG_PATH=. WRANGLER_DISABLE_REQUEST_BODY_DRAINING=true bun run preview',
 		url: baseURL,
 		reuseExistingServer: true,
 	},
