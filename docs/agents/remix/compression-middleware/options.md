@@ -1,45 +1,8 @@
-# compression-middleware
+# Compression options
 
-Source:
-https://github.com/remix-run/remix/tree/main/packages/compression-middleware
+Source: https://github.com/remix-run/remix/tree/main/packages/compression-middleware
 
-## README
-
-Middleware for compressing HTTP responses for use with
-[`@remix-run/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router).
-
-Automatically compresses responses using `gzip`, `brotli`, or `deflate` based on
-the client's `Accept-Encoding` header, with intelligent defaults for media type
-filtering and threshold-based compression.
-
-## Installation
-
-```sh
-npm install @remix-run/compression-middleware
-```
-
-## Usage
-
-```ts
-import { createRouter } from '@remix-run/fetch-router'
-import { compression } from '@remix-run/compression-middleware'
-
-let router = createRouter({
-	middleware: [compression()],
-})
-```
-
-The middleware will automatically compress responses for compressible MIME types
-when:
-
-- The client supports compression (`Accept-Encoding` header with a supported
-  encoding)
-- The response is large enough to benefit from compression (>=1024 bytes if
-  `Content-Length` is present, by default)
-- The response hasn't already been compressed
-- The response doesn't advertise range support (`Accept-Ranges: bytes`)
-
-### Threshold
+## Threshold
 
 **Default:** `1024` (only enforced if `Content-Length` is present)
 
@@ -58,7 +21,7 @@ let router = createRouter({
 })
 ```
 
-### Encodings
+## Encodings
 
 **Default:** `['br', 'gzip', 'deflate']`
 
@@ -98,7 +61,7 @@ let router = createRouter({
 })
 ```
 
-### Filter Media Type
+## Filter media type
 
 **Default:** Uses `isCompressibleMimeType()` from
 [`@remix-run/mime`](https://github.com/remix-run/remix/tree/main/packages/mime)
@@ -125,7 +88,7 @@ let router = createRouter({
 })
 ```
 
-### Compression Options
+## Compression options
 
 **Default:** Uses Node.js defaults for
 [zlib](https://nodejs.org/api/zlib.html#class-options) and
@@ -184,7 +147,7 @@ let router = createRouter({
 })
 ```
 
-## Related Packages
+## Related packages
 
 - [`@remix-run/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
   Router for the web Fetch API
@@ -199,4 +162,5 @@ MIT
 
 ## Navigation
 
-- [Remix package index](./index.md)
+- [Compression middleware overview](./index.md)
+- [Remix package index](../index.md)
