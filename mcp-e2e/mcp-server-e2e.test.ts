@@ -5,8 +5,8 @@ import {
 	auth,
 	type OAuthClientProvider,
 } from '@modelcontextprotocol/sdk/client/auth.js'
+import getPort from 'get-port'
 import { mkdtemp, rm } from 'node:fs/promises'
-import { createServer, type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -129,17 +129,6 @@ async function createTestDatabase() {
 	}
 }
 
-async function getAvailablePort() {
-	return new Promise<number>((resolve, reject) => {
-		const server = createServer()
-		server.once('error', reject)
-		server.listen(0, '127.0.0.1', () => {
-			const address = server.address() as AddressInfo
-			server.close(() => resolve(address.port))
-		})
-	})
-}
-
 function captureOutput(stream: ReadableStream<Uint8Array> | null) {
 	let output = ''
 	if (!stream) {
@@ -240,7 +229,7 @@ async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
 }
 
 async function startDevServer(persistDir: string) {
-	const port = await getAvailablePort()
+	const port = await getPort({ host: '127.0.0.1' })
 	const origin = `http://127.0.0.1:${port}`
 	const proc = Bun.spawn({
 		cmd: [
