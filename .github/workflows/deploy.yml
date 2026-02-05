@@ -47,6 +47,25 @@ jobs:
       - name: 🧪 Typecheck
         run: bun run typecheck
 
+  test:
+    runs-on: ubuntu-latest
+    name: ✅ Bun Tests
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          cache: true
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: ✅ Run Bun Tests
+        run: bun test server
+
   e2e:
     runs-on: ubuntu-latest
     name: 🎭 E2E
@@ -83,6 +102,7 @@ jobs:
     needs:
       - lint
       - typecheck
+      - test
       - e2e
     steps:
       - name: 📦 Checkout
