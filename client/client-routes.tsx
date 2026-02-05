@@ -366,3 +366,423 @@ export function LoginRoute(initialMode: AuthMode = 'login') {
 		<LoginForm setup={{ initialMode }} />
 	)
 }
+
+type OAuthAuthorizeInfo = {
+	client: { id: string; name: string }
+	scopes: string[]
+}
+
+type OAuthAuthorizeStatus = 'idle' | 'loading' | 'ready' | 'error'
+type OAuthAuthorizeMessage = { type: 'error' | 'info'; text: string }
+
+function OAuthAuthorizeForm(handle: Handle) {
+	let info: OAuthAuthorizeInfo | null = null
+	let status: OAuthAuthorizeStatus = 'idle'
+	let message: OAuthAuthorizeMessage | null = null
+	let submitting = false
+	let lastSearch = ''
+
+	const setMessage = (next: OAuthAuthorizeMessage | null) => {
+		message = next
+		handle.update()
+	}
+
+	const getSearchParams = () =>
+		typeof window === 'undefined'
+			? new URLSearchParams()
+			: new URLSearchParams(window.location.search)
+
+	const readQueryError = () => {
+		const params = getSearchParams()
+		const description = params.get('error_description')
+		if (description) return description
+		const error = params.get('error')
+		return error ? `Authorization error: ${error}` : null
+	}
+
+	const loadInfo = async () => {
+		status = 'loading'
+
+		const queryError = readQueryError()
+		if (queryError) {
+			message = { type: 'error', text: queryError }
+		}
+
+		try {
+			const query = typeof window === 'undefined' ? '' : window.location.search
+			const response = await fetch(`/oauth/authorize-info${query}`, {
+				headers: { Accept: 'application/json' },
+				credentials: 'include',
+			})
+			const payload = await response.json().catch(() => null)
+			if (!response.ok || !payload?.ok) {
+				const errorText =
+					typeof payload?.error === 'string'
+						? payload.error
+						: 'Unable to load authorization details.'
+				info = null
+				status = 'error'
+				message = { type: 'error', text: errorText }
+				handle.update()
+				return
+			}
+			info = {
+				client: payload.client,
+				scopes: payload.scopes,
+			}
+			status = 'ready'
+			if (!queryError) {
+				message = null
+			}
+			handle.update()
+		} catch {
+			info = null
+			status = 'error'
+			message = {
+				type: 'error',
+				text: 'Unable to load authorization details.',
+			}
+			handle.update()
+		}
+	}
+
+	const submitDecision = async (
+		decision: 'approve' | 'deny',
+		form?: HTMLFormElement,
+	) => {
+		if (submitting) return
+		submitting = true
+		handle.update()
+
+		try {
+			const body = new URLSearchParams()
+			body.set('decision', decision)
+			if (decision === 'approve' && form) {
+				const formData = new FormData(form)
+				const email = String(formData.get('email') ?? '').trim()
+				const password = String(formData.get('password') ?? '')
+				if (!email || !password) {
+					setMessage({
+						type: 'error',
+						text: 'Email and password are required.',
+					})
+					submitting = false
+					handle.update()
+					return
+				}
+				body.set('email', email)
+				body.set('password', password)
+			}
+			const response = await fetch(window.location.href, {
+				method: 'POST',
+				headers: {
+					Accept: 'application/json',
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				credentials: 'include',
+				body,
+			})
+			const payload = await response.json().catch(() => null)
+			if (!response.ok) {
+				const errorText =
+					typeof payload?.error === 'string'
+						? payload.error
+						: 'Unable to complete authorization.'
+				setMessage({ type: 'error', text: errorText })
+				submitting = false
+				handle.update()
+				return
+			}
+			if (payload?.redirectTo) {
+				window.location.assign(payload.redirectTo)
+				return
+			}
+			setMessage({ type: 'error', text: 'Missing redirect response.' })
+		} catch {
+			setMessage({
+				type: 'error',
+				text: 'Network error. Please try again.',
+			})
+		} finally {
+			submitting = false
+			handle.update()
+		}
+	}
+
+	const handleSubmit = async (event: SubmitEvent) => {
+		event.preventDefault()
+		if (!(event.currentTarget instanceof HTMLFormElement)) return
+		await submitDecision('approve', event.currentTarget)
+	}
+
+	return () => {
+		const currentSearch =
+			typeof window === 'undefined' ? '' : window.location.search
+		if (currentSearch !== lastSearch) {
+			lastSearch = currentSearch
+			void loadInfo()
+		}
+
+		const clientLabel = info?.client?.name ?? 'Unknown client'
+		const scopes = info?.scopes ?? []
+		const scopeLabel =
+			scopes.length > 0 ? scopes.join(', ') : 'No scopes requested.'
+
+		return (
+			<section
+				css={{
+					maxWidth: '28rem',
+					margin: '0 auto',
+					display: 'grid',
+					gap: spacing.lg,
+				}}
+			>
+				<header css={{ display: 'grid', gap: spacing.xs }}>
+					<h2
+						css={{
+							fontSize: typography.fontSize.xl,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+						}}
+					>
+						Authorize access
+					</h2>
+					<p css={{ color: colors.textMuted }}>
+						{clientLabel} wants to access your Epicflare account.
+					</p>
+				</header>
+				<section
+					css={{
+						padding: spacing.lg,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+						backgroundColor: colors.surface,
+						boxShadow: shadows.sm,
+						display: 'grid',
+						gap: spacing.sm,
+					}}
+				>
+					<p
+						css={{
+							margin: 0,
+							fontWeight: typography.fontWeight.medium,
+							color: colors.text,
+						}}
+					>
+						Requested scopes
+					</p>
+					<p css={{ margin: 0, color: colors.textMuted }}>{scopeLabel}</p>
+				</section>
+				{status === 'loading' ? (
+					<p css={{ color: colors.textMuted }}>
+						Loading authorization details…
+					</p>
+				) : null}
+				{message ? (
+					<p
+						css={{
+							color: message.type === 'error' ? colors.error : colors.text,
+							fontSize: typography.fontSize.sm,
+						}}
+						role={message.type === 'error' ? 'alert' : undefined}
+					>
+						{message.text}
+					</p>
+				) : null}
+				<form
+					css={{
+						display: 'grid',
+						gap: spacing.md,
+						padding: spacing.lg,
+						borderRadius: radius.lg,
+						border: `1px solid ${colors.border}`,
+						backgroundColor: colors.surface,
+						boxShadow: shadows.sm,
+						opacity: status === 'ready' ? 1 : 0.7,
+					}}
+					on={{ submit: handleSubmit }}
+				>
+					<label css={{ display: 'grid', gap: spacing.xs }}>
+						<span
+							css={{
+								color: colors.text,
+								fontWeight: typography.fontWeight.medium,
+								fontSize: typography.fontSize.sm,
+							}}
+						>
+							Email
+						</span>
+						<input
+							type="email"
+							name="email"
+							required
+							autoComplete="email"
+							placeholder="you@example.com"
+							disabled={status !== 'ready' || submitting}
+							css={{
+								padding: spacing.sm,
+								borderRadius: radius.md,
+								border: `1px solid ${colors.border}`,
+								fontSize: typography.fontSize.base,
+								fontFamily: typography.fontFamily,
+							}}
+						/>
+					</label>
+					<label css={{ display: 'grid', gap: spacing.xs }}>
+						<span
+							css={{
+								color: colors.text,
+								fontWeight: typography.fontWeight.medium,
+								fontSize: typography.fontSize.sm,
+							}}
+						>
+							Password
+						</span>
+						<input
+							type="password"
+							name="password"
+							required
+							autoComplete="current-password"
+							placeholder="Enter your password"
+							disabled={status !== 'ready' || submitting}
+							css={{
+								padding: spacing.sm,
+								borderRadius: radius.md,
+								border: `1px solid ${colors.border}`,
+								fontSize: typography.fontSize.base,
+								fontFamily: typography.fontFamily,
+							}}
+						/>
+					</label>
+					<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
+						<button
+							type="submit"
+							disabled={status !== 'ready' || submitting}
+							css={{
+								padding: `${spacing.sm} ${spacing.lg}`,
+								borderRadius: radius.full,
+								border: 'none',
+								backgroundColor: colors.primary,
+								color: colors.onPrimary,
+								fontSize: typography.fontSize.base,
+								fontWeight: typography.fontWeight.semibold,
+								cursor: submitting ? 'not-allowed' : 'pointer',
+								opacity: submitting ? 0.7 : 1,
+							}}
+						>
+							{submitting ? 'Submitting...' : 'Authorize'}
+						</button>
+						<button
+							type="button"
+							disabled={submitting}
+							on={{ click: () => submitDecision('deny') }}
+							css={{
+								padding: `${spacing.sm} ${spacing.lg}`,
+								borderRadius: radius.full,
+								border: `1px solid ${colors.border}`,
+								backgroundColor: 'transparent',
+								color: colors.text,
+								fontSize: typography.fontSize.base,
+								fontWeight: typography.fontWeight.medium,
+								cursor: submitting ? 'not-allowed' : 'pointer',
+								opacity: submitting ? 0.7 : 1,
+							}}
+						>
+							Deny
+						</button>
+					</div>
+				</form>
+				<a
+					href="/"
+					css={{
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Back home
+				</a>
+			</section>
+		)
+	}
+}
+
+export function OAuthAuthorizeRoute() {
+	return (_match: { path: string; params: Record<string, string> }) => (
+		<OAuthAuthorizeForm />
+	)
+}
+
+export function OAuthCallbackRoute() {
+	return (_match: { path: string; params: Record<string, string> }) => {
+		const params =
+			typeof window === 'undefined'
+				? new URLSearchParams()
+				: new URLSearchParams(window.location.search)
+		const error = params.get('error')
+		const description = params.get('error_description')
+		const code = params.get('code')
+		const state = params.get('state')
+		const isError = Boolean(error || description)
+		const title = isError ? 'Authorization failed' : 'Authorization completed'
+		const message = description || error
+		const detail = isError ? message : code
+
+		return (
+			<section
+				css={{
+					maxWidth: '32rem',
+					margin: '0 auto',
+					display: 'grid',
+					gap: spacing.lg,
+				}}
+			>
+				<header css={{ display: 'grid', gap: spacing.xs }}>
+					<h2
+						css={{
+							fontSize: typography.fontSize.xl,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+						}}
+					>
+						OAuth callback
+					</h2>
+					<p css={{ color: colors.textMuted }}>{title}.</p>
+				</header>
+				{detail ? (
+					<pre
+						css={{
+							margin: 0,
+							padding: spacing.md,
+							borderRadius: radius.md,
+							border: `1px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							whiteSpace: 'pre-wrap',
+						}}
+					>
+						{detail}
+					</pre>
+				) : null}
+				{state ? (
+					<p css={{ color: colors.textMuted, margin: 0 }}>State: {state}</p>
+				) : null}
+				<a
+					href="/"
+					css={{
+						color: colors.textMuted,
+						fontSize: typography.fontSize.sm,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Back home
+				</a>
+			</section>
+		)
+	}
+}

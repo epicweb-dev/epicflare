@@ -2,10 +2,7 @@ import { setAuthSessionSecret } from './auth-session.ts'
 import router from './router.ts'
 
 const resolveCookieSecret = (env: Env) => {
-	const secret =
-		env.COOKIE_SECRET ??
-		(globalThis as { process?: { env?: { COOKIE_SECRET?: string } } }).process
-			?.env?.COOKIE_SECRET
+	const secret = env.COOKIE_SECRET
 
 	if (!secret) {
 		throw new Error('Missing COOKIE_SECRET for session signing.')

@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8787'
+const playwrightPort = process.env.PLAYWRIGHT_PORT ?? '8788'
+const baseURL =
+	process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${playwrightPort}`
 
 export default defineConfig({
 	testDir: './e2e',
@@ -14,11 +16,11 @@ export default defineConfig({
 		trace: 'on-first-retry',
 	},
 	webServer: {
-		command: `bun run build:client && bun run preview`,
+		command: `bun run build:client && bun run preview -- --port ${playwrightPort}`,
 		url: baseURL,
 		reuseExistingServer: true,
 		env: {
-			COOKIE_SECRET: 'playwright-cookie-secret',
+			CLOUDFLARE_ENV: 'test',
 			WRANGLER_LOG_PATH: './logs.local',
 			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
 		},

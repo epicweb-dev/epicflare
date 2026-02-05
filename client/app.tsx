@@ -3,6 +3,8 @@ import {
 	ClientRoute,
 	HomeRoute,
 	LoginRoute,
+	OAuthAuthorizeRoute,
+	OAuthCallbackRoute,
 } from './client-routes.tsx'
 import { Router } from './client-router.tsx'
 import { colors, spacing, typography } from './styles/tokens.ts'
@@ -99,6 +101,8 @@ export function App() {
 						'/client/:id': ClientParamRoute(),
 						'/login': LoginRoute('login'),
 						'/signup': LoginRoute('signup'),
+						'/oauth/authorize': OAuthAuthorizeRoute(),
+						'/oauth/callback': OAuthCallbackRoute(),
 					},
 					fallback: () => (
 						<section>
