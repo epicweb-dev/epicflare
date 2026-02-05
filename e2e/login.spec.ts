@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test('logs in with email and password', async ({ page }) => {
-	await page.goto('/signup')
+	await page.goto('/login')
 
 	await page.getByLabel('Email').fill('user@example.com')
 	await page.getByLabel('Password').fill('password123')
@@ -13,7 +13,6 @@ test('logs in with email and password', async ({ page }) => {
 test('signs up with email and password', async ({ page }) => {
 	await page.goto('/signup')
 
-	await page.getByRole('button', { name: /sign up instead/i }).click()
 	await page.getByLabel('Email').fill('new-user@example.com')
 	await page.getByLabel('Password').fill('password123')
 	await page.getByRole('button', { name: 'Create account' }).click()

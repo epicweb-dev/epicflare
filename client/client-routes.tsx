@@ -1,3 +1,5 @@
+import { type Handle } from 'remix/component'
+import { navigate } from './client-router.tsx'
 import { Counter } from './counter.tsx'
 import {
 	colors,
@@ -108,8 +110,12 @@ export function ClientParamRoute() {
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 
-function LoginForm(handle: { update: () => void }) {
-	let mode: AuthMode = 'login'
+type LoginFormSetup = {
+	initialMode?: AuthMode
+}
+
+function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
+	let mode: AuthMode = setup.initialMode ?? 'login'
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
 
@@ -127,6 +133,7 @@ function LoginForm(handle: { update: () => void }) {
 		mode = nextMode
 		status = 'idle'
 		message = null
+		navigate(nextMode === 'signup' ? '/signup' : '/login')
 		handle.update()
 	}
 
@@ -312,10 +319,13 @@ function LoginForm(handle: { update: () => void }) {
 					) : null}
 				</form>
 				<div css={{ display: 'grid', gap: spacing.sm }}>
-					<button
-						type="button"
+					<a
+						href={isSignup ? '/login' : '/signup'}
 						on={{
-							click: () => switchMode(isSignup ? 'login' : 'signup'),
+							click: (event) => {
+								if (event.defaultPrevented) return
+								switchMode(isSignup ? 'login' : 'signup')
+							},
 						}}
 						css={{
 							background: 'none',
@@ -325,11 +335,15 @@ function LoginForm(handle: { update: () => void }) {
 							fontSize: typography.fontSize.sm,
 							cursor: 'pointer',
 							textAlign: 'left',
+							textDecoration: 'none',
+							'&:hover': {
+								textDecoration: 'underline',
+							},
 						}}
 						aria-pressed={isSignup}
 					>
 						{toggleLabel} {toggleAction}
-					</button>
+					</a>
 					<a
 						href="/"
 						css={{
@@ -349,8 +363,8 @@ function LoginForm(handle: { update: () => void }) {
 	}
 }
 
-export function LoginRoute() {
+export function LoginRoute(initialMode: AuthMode = 'login') {
 	return (_match: { path: string; params: Record<string, string> }) => (
-		<LoginForm />
+		<LoginForm setup={{ initialMode }} />
 	)
 }

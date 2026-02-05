@@ -65,6 +65,19 @@ export function App() {
 					Client Param
 				</a>
 				<a
+					href="/login"
+					css={{
+						color: colors.primary,
+						fontWeight: typography.fontWeight.medium,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Login
+				</a>
+				<a
 					href="/signup"
 					css={{
 						color: colors.primary,
@@ -84,7 +97,8 @@ export function App() {
 						'/': HomeRoute(),
 						'/client-route': ClientRoute(),
 						'/client/:id': ClientParamRoute(),
-						'/signup': LoginRoute(),
+						'/login': LoginRoute('login'),
+						'/signup': LoginRoute('signup'),
 					},
 					fallback: () => (
 						<section>
