@@ -25,7 +25,7 @@ function renderAccount(email: string) {
 				Welcome, ${escapeHtml(email)}
 			</h1>
 			<p style="margin: 0; color: var(--color-text-muted);">
-				You are signed in to Epicflare.
+				You are signed in to epicflare.
 			</p>
 			<a
 				href="/"

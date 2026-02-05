@@ -1,6 +1,6 @@
 # Setup manifest
 
-This document describes the infrastructure and secrets that Epicflare expects.
+This document describes the infrastructure and secrets that epicflare expects.
 
 ## Cloudflare resources
 

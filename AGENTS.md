@@ -1,4 +1,4 @@
-# Epicflare
+# epicflare
 
 We use bun for installing dependencies and running scripts. Do not use npm.
 

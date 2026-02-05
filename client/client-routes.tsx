@@ -12,26 +12,54 @@ import {
 
 export function HomeRoute() {
 	return (_match: { path: string; params: Record<string, string> }) => (
-		<section>
-			<h1
+		<section css={{ display: 'grid', gap: spacing.lg }}>
+			<div
 				css={{
-					fontSize: typography.fontSize.xl,
-					fontWeight: typography.fontWeight.semibold,
-					marginBottom: spacing.md,
-					color: colors.text,
+					display: 'grid',
+					gap: spacing.lg,
+					padding: spacing.lg,
+					borderRadius: radius.lg,
+					border: `1px solid ${colors.border}`,
+					background: `linear-gradient(135deg, ${colors.primarySoftStrong}, ${colors.primarySoftest})`,
+					boxShadow: shadows.sm,
 				}}
 			>
-				Epicflare Remix 3
-			</h1>
-			<p
-				css={{
-					marginBottom: spacing.lg,
-					color: colors.textMuted,
-				}}
-			>
-				Remix 3 components running on the client, backed by Remix 3 routing in
-				the worker.
-			</p>
+				<div
+					css={{
+						display: 'flex',
+						flexWrap: 'wrap',
+						gap: spacing.lg,
+						alignItems: 'center',
+					}}
+				>
+					<img
+						src="/logo.png"
+						alt="epicflare logo"
+						css={{
+							width: '240px',
+							maxWidth: '100%',
+							height: 'auto',
+							flex: '0 0 auto',
+						}}
+					/>
+					<div css={{ display: 'grid', gap: spacing.sm, minWidth: '16rem' }}>
+						<h1
+							css={{
+								fontSize: typography.fontSize['2xl'],
+								fontWeight: typography.fontWeight.semibold,
+								margin: 0,
+								color: colors.text,
+							}}
+						>
+							epicflare <span css={{ color: colors.primary }}>Remix 3</span>
+						</h1>
+						<p css={{ margin: 0, color: colors.textMuted }}>
+							Remix 3 components running on the client, backed by Remix 3
+							routing in the worker.
+						</p>
+					</div>
+				</div>
+			</div>
 			<Counter setup={{ initial: 1 }} />
 		</section>
 	)
@@ -180,8 +208,8 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 		const isSubmitting = status === 'submitting'
 		const title = isSignup ? 'Create your account' : 'Welcome back'
 		const description = isSignup
-			? 'Sign up to start using Epicflare.'
-			: 'Log in to continue to Epicflare.'
+			? 'Sign up to start using epicflare.'
+			: 'Log in to continue to epicflare.'
 		const submitLabel = isSignup ? 'Create account' : 'Sign in'
 		const toggleLabel = isSignup
 			? 'Already have an account?'
@@ -547,7 +575,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 						Authorize access
 					</h2>
 					<p css={{ color: colors.textMuted }}>
-						{clientLabel} wants to access your Epicflare account.
+						{clientLabel} wants to access your epicflare account.
 					</p>
 				</header>
 				<section

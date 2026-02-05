@@ -479,7 +479,7 @@ function createKvNamespace({
 }
 
 async function run() {
-	console.log(paint('✨ Epicflare post-download setup', 'bold'))
+	console.log(paint('✨ epicflare post-download setup', 'bold'))
 	console.log(`${paint('Tip:', 'dim')} Press Enter to accept defaults.\n`)
 
 	const args = parseArgs(process.argv.slice(2))

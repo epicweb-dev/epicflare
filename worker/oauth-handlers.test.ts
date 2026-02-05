@@ -24,7 +24,7 @@ const baseAuthRequest: AuthRequest = {
 const baseClient: ClientInfo = {
 	clientId: 'client-123',
 	redirectUris: ['https://example.com/callback'],
-	clientName: 'Epicflare Demo',
+	clientName: 'epicflare Demo',
 	tokenEndpointAuthMethod: 'client_secret_basic',
 }
 

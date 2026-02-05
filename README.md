@@ -1,6 +1,8 @@
-# Epicflare
+# epicflare
 
-Epicflare is a starter and reference project for building full stack web
+![epicflare logo](./public/logo.png)
+
+epicflare is a starter and reference project for building full stack web
 applications on Cloudflare Workers. It ships a Remix-powered UI, server routing,
 and OAuth-protected MCP endpoints so you can build both a user-facing app and
 tooling APIs on the same Worker.

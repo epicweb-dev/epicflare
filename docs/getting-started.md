@@ -1,4 +1,4 @@
-# Epicflare Template Setup
+# epicflare Template Setup
 
 <!--
 If you're an agent reading this, do as much as you can yourself and then

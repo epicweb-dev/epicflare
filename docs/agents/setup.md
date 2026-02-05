@@ -1,6 +1,6 @@
 # Setup
 
-Quick notes for getting a local Epicflare environment running.
+Quick notes for getting a local epicflare environment running.
 
 ## Prerequisites
 

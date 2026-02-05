@@ -1,4 +1,4 @@
-# Epicflare Cloud Agent Guide
+# epicflare Cloud Agent Guide
 
 A full-stack web application starter built on Cloudflare Workers with Remix 3
 (alpha).
