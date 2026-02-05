@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "cloudflare-remix-vite-mcp",
+	"name": "epicflare",
 	"compatibility_date": "2026-01-31",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "./worker/index.ts",

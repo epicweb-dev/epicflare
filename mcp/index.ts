@@ -10,7 +10,7 @@ export type Props = {
 export class MCP extends McpAgent<Env, State, Props> {
 	server: any = new McpServer(
 		{
-			name: 'MathMCP',
+			name: 'MCP',
 			version: '1.0.0',
 		},
 		{

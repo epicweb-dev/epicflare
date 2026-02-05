@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "description": "A starter and reference for building full stack web applications",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/epicweb-dev/epicflare.git"
+  },
   "scripts": {
     "dev": "bun cli.ts dev",
     "cli": "bun cli.ts",
