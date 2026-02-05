@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
+import {
+	auth,
+	type OAuthClientProvider,
+} from '@modelcontextprotocol/sdk/client/auth.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer, type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -17,14 +20,17 @@ const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const passwordHashIterations = 120_000
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+function delay(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
-const toHex = (bytes: Uint8Array) =>
-	Array.from(bytes)
+function toHex(bytes: Uint8Array) {
+	return Array.from(bytes)
 		.map((value) => value.toString(16).padStart(2, '0'))
 		.join('')
+}
 
-const createPasswordHash = async (password: string) => {
+async function createPasswordHash(password: string) {
 	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
 	const key = await crypto.subtle.importKey(
 		'raw',
@@ -48,9 +54,11 @@ const createPasswordHash = async (password: string) => {
 	)}`
 }
 
-const escapeSql = (value: string) => value.replace(/'/g, "''")
+function escapeSql(value: string) {
+	return value.replace(/'/g, "''")
+}
 
-const runWrangler = async (args: string[]) => {
+async function runWrangler(args: Array<string>) {
 	const proc = Bun.spawn({
 		cmd: [bunBin, 'x', 'wrangler', ...args],
 		cwd: projectRoot,
@@ -73,7 +81,7 @@ const runWrangler = async (args: string[]) => {
 	return { stdout, stderr }
 }
 
-const createTestDatabase = async () => {
+async function createTestDatabase() {
 	const persistDir = await mkdtemp(join(tmpdir(), 'epicflare-mcp-e2e-'))
 	const user = {
 		email: `mcp-${crypto.randomUUID()}@example.com`,
@@ -121,8 +129,8 @@ const createTestDatabase = async () => {
 	}
 }
 
-const getAvailablePort = async () =>
-	new Promise<number>((resolve, reject) => {
+async function getAvailablePort() {
+	return new Promise<number>((resolve, reject) => {
 		const server = createServer()
 		server.once('error', reject)
 		server.listen(0, '127.0.0.1', () => {
@@ -130,8 +138,9 @@ const getAvailablePort = async () =>
 			server.close(() => resolve(address.port))
 		})
 	})
+}
 
-const captureOutput = (stream: ReadableStream<Uint8Array> | null) => {
+function captureOutput(stream: ReadableStream<Uint8Array> | null) {
 	let output = ''
 	if (!stream) {
 		return () => output
@@ -158,8 +167,8 @@ const captureOutput = (stream: ReadableStream<Uint8Array> | null) => {
 	return () => output
 }
 
-const formatOutput = (stdout: string, stderr: string) => {
-	const snippets: string[] = []
+function formatOutput(stdout: string, stderr: string) {
+	const snippets: Array<string> = []
 	if (stdout.trim()) {
 		snippets.push(`stdout: ${stdout.trim().slice(-2000)}`)
 	}
@@ -169,12 +178,12 @@ const formatOutput = (stdout: string, stderr: string) => {
 	return snippets.length > 0 ? ` Output:\n${snippets.join('\n')}` : ''
 }
 
-const waitForServer = async (
+async function waitForServer(
 	origin: string,
 	proc: ReturnType<typeof Bun.spawn>,
 	getStdout: () => string,
 	getStderr: () => string,
-) => {
+) {
 	let exited = false
 	let exitCode: number | null = null
 	void proc.exited
@@ -217,7 +226,7 @@ const waitForServer = async (
 	)
 }
 
-const stopProcess = async (proc: ReturnType<typeof Bun.spawn>) => {
+async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
 	let exited = false
 	void proc.exited.then(() => {
 		exited = true
@@ -230,7 +239,7 @@ const stopProcess = async (proc: ReturnType<typeof Bun.spawn>) => {
 	}
 }
 
-const startDevServer = async (persistDir: string) => {
+async function startDevServer(persistDir: string) {
 	const port = await getAvailablePort()
 	const origin = `http://127.0.0.1:${port}`
 	const proc = Bun.spawn({
@@ -274,10 +283,10 @@ const startDevServer = async (persistDir: string) => {
 	}
 }
 
-const authorizeWithPassword = async (
+async function authorizeWithPassword(
 	authorizationUrl: URL,
 	user: { email: string; password: string },
-) => {
+) {
 	const response = await fetch(authorizationUrl, {
 		method: 'POST',
 		headers: {
@@ -304,77 +313,65 @@ const authorizeWithPassword = async (
 	return code
 }
 
-class E2EOAuthClientProvider {
-	_redirectUrl: URL
-	_clientMetadata: Record<string, unknown>
-	_authorize: (authorizationUrl: URL) => Promise<string>
-	_clientInformation?: Record<string, unknown>
-	_tokens?: Record<string, unknown>
-	_codeVerifier?: string
-	_authorizationCode?: Promise<string>
+type TestOAuthProvider = OAuthClientProvider & {
+	waitForAuthorizationCode: () => Promise<string>
+}
 
-	constructor(
-		redirectUrl: URL,
-		clientMetadata: Record<string, unknown>,
-		authorize: (authorizationUrl: URL) => Promise<string>,
-	) {
-		this._redirectUrl = redirectUrl
-		this._clientMetadata = clientMetadata
-		this._authorize = authorize
-	}
+function createOAuthProvider({
+	redirectUrl,
+	clientMetadata,
+	authorize,
+}: {
+	redirectUrl: URL
+	clientMetadata: OAuthClientProvider['clientMetadata']
+	authorize: (authorizationUrl: URL) => Promise<string>
+}): TestOAuthProvider {
+	let clientInformation: Record<string, unknown> | undefined
+	let tokens: Record<string, unknown> | undefined
+	let codeVerifier: string | undefined
+	let authorizationCode: Promise<string> | undefined
 
-	get redirectUrl() {
-		return this._redirectUrl
-	}
-
-	get clientMetadata() {
-		return this._clientMetadata
-	}
-
-	clientInformation() {
-		return this._clientInformation
-	}
-
-	saveClientInformation(clientInformation: Record<string, unknown>) {
-		this._clientInformation = clientInformation
-	}
-
-	tokens() {
-		return this._tokens
-	}
-
-	saveTokens(tokens: Record<string, unknown>) {
-		this._tokens = tokens
-	}
-
-	redirectToAuthorization(authorizationUrl: URL) {
-		this._authorizationCode = this._authorize(authorizationUrl)
-	}
-
-	saveCodeVerifier(codeVerifier: string) {
-		this._codeVerifier = codeVerifier
-	}
-
-	codeVerifier() {
-		if (!this._codeVerifier) {
-			throw new Error('No code verifier saved')
-		}
-		return this._codeVerifier
-	}
-
-	async waitForAuthorizationCode() {
-		if (!this._authorizationCode) {
-			throw new Error('Authorization flow was not started')
-		}
-		return this._authorizationCode
+	return {
+		redirectUrl,
+		clientMetadata,
+		clientInformation() {
+			return clientInformation
+		},
+		saveClientInformation(nextClientInfo) {
+			clientInformation = nextClientInfo
+		},
+		tokens() {
+			return tokens
+		},
+		saveTokens(nextTokens) {
+			tokens = nextTokens
+		},
+		redirectToAuthorization(authorizationUrl) {
+			authorizationCode = authorize(authorizationUrl)
+		},
+		saveCodeVerifier(nextCodeVerifier) {
+			codeVerifier = nextCodeVerifier
+		},
+		codeVerifier() {
+			if (!codeVerifier) {
+				throw new Error('No code verifier saved')
+			}
+			return codeVerifier
+		},
+		async waitForAuthorizationCode() {
+			if (!authorizationCode) {
+				throw new Error('Authorization flow was not started')
+			}
+			return authorizationCode
+		},
 	}
 }
 
-const ensureAuthorized = async (
+async function ensureAuthorized(
 	serverUrl: URL,
 	transport: StreamableHTTPClientTransport,
-	provider: E2EOAuthClientProvider,
-) => {
+	provider: TestOAuthProvider,
+) {
 	const result = await auth(provider, { serverUrl })
 	if (result === 'AUTHORIZED') {
 		return
@@ -383,22 +380,23 @@ const ensureAuthorized = async (
 	await transport.finishAuth(authorizationCode)
 }
 
-const createMcpClient = async (
+async function createMcpClient(
 	origin: string,
 	user: { email: string; password: string },
-) => {
+) {
 	const redirectUrl = new URL('/oauth/callback', origin)
-	const provider = new E2EOAuthClientProvider(
+	const provider = createOAuthProvider({
 		redirectUrl,
-		{
+		clientMetadata: {
 			client_name: 'mcp-e2e-client',
 			redirect_uris: [redirectUrl.toString()],
 			grant_types: ['authorization_code', 'refresh_token'],
 			response_types: ['code'],
 			token_endpoint_auth_method: 'client_secret_post',
 		},
-		(authorizationUrl) => authorizeWithPassword(authorizationUrl, user),
-	)
+		authorize: (authorizationUrl) =>
+			authorizeWithPassword(authorizationUrl, user),
+	})
 	const serverUrl = new URL('/mcp', origin)
 	const transport = new StreamableHTTPClientTransport(serverUrl, {
 		authProvider: provider,
