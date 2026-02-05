@@ -8,6 +8,12 @@ import {
 	oauthPaths,
 	oauthScopes,
 } from './oauth-handlers.ts'
+import {
+	handleMcpRequest,
+	handleProtectedResourceMetadata,
+	isProtectedResourceMetadataRequest,
+	mcpResourcePath,
+} from './mcp-auth.ts'
 import { withCors } from './utils.ts'
 
 export { MCP }
@@ -33,12 +39,19 @@ const appHandler = withCors({
 			return new Response(null, { status: 204 })
 		}
 
-		if (url.pathname === '/mcp') {
-			ctx.props.baseUrl = url.origin
+		if (isProtectedResourceMetadataRequest(url.pathname)) {
+			return handleProtectedResourceMetadata(request)
+		}
 
-			return MCP.serve('/mcp', {
-				binding: 'MCP_OBJECT',
-			}).fetch(request, env, ctx)
+		if (url.pathname === mcpResourcePath) {
+			return handleMcpRequest({
+				request,
+				env,
+				ctx,
+				fetchMcp: MCP.serve(mcpResourcePath, {
+					binding: 'MCP_OBJECT',
+				}).fetch,
+			})
 		}
 
 		// Try to serve static assets for safe methods only
