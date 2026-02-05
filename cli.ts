@@ -45,6 +45,8 @@ const outputFilters: Record<OutputFilterKey, Array<RegExp>> = {
 const command = (process.argv[2] as Command | undefined) ?? 'dev'
 const extraArgs = process.argv.slice(3)
 let shutdown: (() => void) | null = null
+let devChildren: Array<ChildProcess> = []
+let workerOrigin = ''
 
 if (!(command in commands)) {
 	showHelp(`Unknown command: ${command}`)
@@ -66,34 +68,12 @@ if (command === 'dev') {
 }
 
 async function startDev() {
-	const desiredPort = Number.parseInt(
-		process.env.PORT ?? String(defaultWorkerPort),
-		10,
-	)
-	const portRange = Array.from(
-		{ length: 10 },
-		(_, index) => desiredPort + index,
-	)
-	const workerPort = await getPort({ port: portRange })
-	const workerOrigin = resolveWorkerOrigin(workerPort)
-
-	const client = runBunScript(
-		'dev:client',
-		[],
-		{},
-		{
-			outputFilter: 'client',
-		},
-	)
-	const worker = runBunScript(
-		'dev:worker',
-		extraArgs,
-		{ PORT: String(workerPort) },
-		{ outputFilter: 'worker' },
-	)
-
-	setupInteractiveCli(workerOrigin)
-	shutdown = setupShutdown([client, worker])
+	await restartDev({ announce: false })
+	setupInteractiveCli({
+		getWorkerOrigin: () => workerOrigin,
+		restart: restartDev,
+	})
+	shutdown = setupShutdown(() => devChildren)
 }
 
 function resolveWorkerOrigin(port: number) {
@@ -153,10 +133,10 @@ function pipeStream(
 	})
 }
 
-function setupShutdown(children: Array<ChildProcess>) {
+function setupShutdown(getChildren: () => Array<ChildProcess>) {
 	function doShutdown() {
 		console.log(dim('\nShutting down...'))
-		for (const child of children) {
+		for (const child of getChildren()) {
 			if (!child.killed) {
 				child.kill('SIGINT')
 			}
@@ -172,12 +152,15 @@ function setupShutdown(children: Array<ChildProcess>) {
 	return doShutdown
 }
 
-function setupInteractiveCli(workerOrigin: string) {
+function setupInteractiveCli(options: {
+	getWorkerOrigin: () => string
+	restart: () => Promise<void>
+}) {
 	const stdin = process.stdin
 	if (!stdin.isTTY || typeof stdin.setRawMode !== 'function') return
 
 	showHelp()
-	console.log(`\n${dim('App running at')} ${bright(workerOrigin)}`)
+	logAppRunning(options.getWorkerOrigin)
 
 	readline.emitKeypressEvents(stdin)
 	stdin.setRawMode(true)
@@ -189,19 +172,28 @@ function setupInteractiveCli(workerOrigin: string) {
 			return
 		}
 
+		if (key?.name === 'return') {
+			process.stdout.write('\n')
+			return
+		}
+
 		switch (key?.name) {
 			case 'o': {
-				openInBrowser(workerOrigin)
+				openInBrowser(options.getWorkerOrigin())
 				break
 			}
 			case 'u': {
-				copyToClipboard(workerOrigin)
+				copyToClipboard(options.getWorkerOrigin())
 				break
 			}
 			case 'c': {
 				console.clear()
 				showHelp()
-				console.log(`\nApp running at ${workerOrigin}`)
+				logAppRunning(options.getWorkerOrigin)
+				break
+			}
+			case 'r': {
+				void options.restart()
 				break
 			}
 			case 'h':
@@ -229,12 +221,62 @@ function showHelp(header?: string) {
 	console.log(
 		`  ${colorize('c', 'cyan')} - ${colorize('clear console', 'yellow')}`,
 	)
+	console.log(`  ${colorize('r', 'cyan')} - ${colorize('restart', 'orange')}`)
 	console.log(`  ${colorize('h', 'cyan')} - ${colorize('help', 'magenta')}`)
 	console.log(`  ${colorize('q', 'cyan')} - ${colorize('quit', 'firebrick')}`)
 	console.log(`\n${bright('Commands:')}`)
 	for (const [name, description] of Object.entries(commands)) {
 		console.log(`  ${colorize(name.padEnd(8), 'cyan')} ${description}`)
 	}
+}
+
+async function restartDev(
+	{ announce }: { announce: boolean } = { announce: true },
+) {
+	const desiredPort = Number.parseInt(
+		process.env.PORT ?? String(defaultWorkerPort),
+		10,
+	)
+	const portRange = Array.from(
+		{ length: 10 },
+		(_, index) => desiredPort + index,
+	)
+	const workerPort = await getPort({ port: portRange })
+	workerOrigin = resolveWorkerOrigin(workerPort)
+
+	stopChildren(devChildren)
+	const client = runBunScript(
+		'dev:client',
+		[],
+		{},
+		{
+			outputFilter: 'client',
+		},
+	)
+	const worker = runBunScript(
+		'dev:worker',
+		extraArgs,
+		{ PORT: String(workerPort) },
+		{ outputFilter: 'worker' },
+	)
+	devChildren = [client, worker]
+
+	if (announce) {
+		console.log(dim('\nRestarted dev servers.'))
+		logAppRunning(() => workerOrigin)
+	}
+}
+
+function stopChildren(children: Array<ChildProcess>) {
+	for (const child of children) {
+		if (!child.killed) {
+			child.kill('SIGINT')
+		}
+	}
+}
+
+function logAppRunning(getOrigin: () => string) {
+	console.log(`\n${dim('App running at')} ${bright(getOrigin())}`)
 }
 
 function openInBrowser(url: string) {
