@@ -31,6 +31,14 @@ type OAuthContext = ExecutionContext & {
 	props?: OAuthProps
 }
 
+const escapeHtml = (value: string) =>
+	value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;')
+
 const createUserId = async (email: string) => {
 	const normalized = email.trim().toLowerCase()
 	const data = new TextEncoder().encode(normalized)
@@ -210,11 +218,7 @@ const renderCallbackPage = ({
 		? (description ?? 'No description provided.')
 		: (code ?? '')
 	const detailsMarkup = details
-		? html`<pre
-				style="margin: 0; padding: var(--spacing-md); border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); white-space: pre-wrap;"
-			>
-${details}</pre
-			>`
+		? html.raw`<pre style="margin: 0; padding: var(--spacing-md); border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); white-space: pre-wrap;">${escapeHtml(details)}</pre>`
 		: html``
 	return renderPage(
 		'OAuth callback',
