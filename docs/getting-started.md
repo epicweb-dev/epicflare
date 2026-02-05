@@ -11,7 +11,7 @@ Cloudflare Workers.
 ## Create the project with degit
 
 ```
-npx degit epicweb-dev/epicflare my-epicflare-app
+bunx degit epicweb-dev/epicflare my-epicflare-app
 cd my-epicflare-app
 ```
 
