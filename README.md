@@ -1,22 +1,28 @@
 # Epicflare
 
-A starter and reference for building full stack web applications.
+Epicflare is a starter and reference project for building full stack web
+applications on Cloudflare Workers. It ships a Remix-powered UI, server routing,
+and OAuth-protected MCP endpoints so you can build both a user-facing app and
+tooling APIs on the same Worker.
 
-## GitHub Actions secrets
+## Tech stack and infrastructure
 
-Set these repository secrets for the deploy workflow:
+- Cloudflare Workers with Wrangler for local dev, builds, and deploys.
+- Remix 3 components for the client UI and server rendering.
+- Bun for installs and scripts; esbuild for client bundling.
+- D1 for application data, KV for OAuth/session storage, and Durable Objects for
+  MCP state.
+- MCP server endpoints with OAuth and CORS support.
+- Playwright for end-to-end testing.
 
-- `CLOUDFLARE_API_TOKEN`: Cloudflare API token with Workers deploy access.
-- `COOKIE_SECRET`: Random secret used to sign the `epicflare_session` cookie and
-  synced to Cloudflare as the `COOKIE_SECRET` worker secret.
+## How it works
 
-## Local development
+- `worker/index.ts` is the entrypoint for Cloudflare Workers.
+- OAuth requests are handled first, then MCP requests, then static assets.
+- Non-asset requests fall through to the server handler and router.
+- Client assets are bundled into `public/` and served via the `ASSETS` binding.
 
-Copy `.env.example` to `.env` for Wrangler to load local env vars:
+## Docs
 
-```
-COOKIE_SECRET=dev-cookie-secret
-```
-
-Keep `.env` local (do not commit it). Wrangler reads it automatically when
-running `wrangler dev` (including `bun run dev:worker`).
+- `getting-started.md` for degit setup, environment variables, and deployment.
+- `docs/agents/setup.md` for local development and verification commands.
