@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js'
+import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer, type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -370,22 +370,17 @@ class E2EOAuthClientProvider {
 	}
 }
 
-const connectWithOAuth = async (
-	client: Client,
+const ensureAuthorized = async (
+	serverUrl: URL,
 	transport: StreamableHTTPClientTransport,
 	provider: E2EOAuthClientProvider,
 ) => {
-	try {
-		await client.connect(transport)
+	const result = await auth(provider, { serverUrl })
+	if (result === 'AUTHORIZED') {
 		return
-	} catch (error) {
-		if (!(error instanceof UnauthorizedError)) {
-			throw error
-		}
 	}
 	const authorizationCode = await provider.waitForAuthorizationCode()
 	await transport.finishAuth(authorizationCode)
-	await client.connect(transport)
 }
 
 const createMcpClient = async (
@@ -404,7 +399,8 @@ const createMcpClient = async (
 		},
 		(authorizationUrl) => authorizeWithPassword(authorizationUrl, user),
 	)
-	const transport = new StreamableHTTPClientTransport(new URL('/mcp', origin), {
+	const serverUrl = new URL('/mcp', origin)
+	const transport = new StreamableHTTPClientTransport(serverUrl, {
 		authProvider: provider,
 	})
 	const client = new Client(
@@ -412,12 +408,13 @@ const createMcpClient = async (
 		{ capabilities: {} },
 	)
 
-	await connectWithOAuth(client, transport, provider)
+	await ensureAuthorized(serverUrl, transport, provider)
+	await client.connect(transport)
 
 	return {
 		client,
 		[Symbol.asyncDispose]: async () => {
-			await transport.close()
+			await client.close()
 		},
 	}
 }
