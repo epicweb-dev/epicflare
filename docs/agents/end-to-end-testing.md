@@ -41,9 +41,9 @@ Avoid `page.locator('css')` unless no accessible alternative exists.
   colliding with the dev server. Override with `PLAYWRIGHT_BASE_URL` or
   `PLAYWRIGHT_PORT`.
 - Playwright sets `CLOUDFLARE_ENV=test` so Wrangler uses `.env.test`.
-- Ensure `env.test` includes assets, KV, and durable objects since these are not
-  inherited from top-level Wrangler config.
-- The `env.test` config supplies a `COOKIE_SECRET` var for local sessions.
+- Ensure the `env.test` section in `wrangler.jsonc` includes assets, KV, and
+  durable objects since these are not inherited from top-level Wrangler config.
+- `.env.test` supplies a `COOKIE_SECRET` var for local sessions.
 - Client routes live in `client/app.tsx` and `client/client-routes.tsx`.
 - API endpoints are defined in `server/routes.ts` and mapped in
   `server/router.ts`.
@@ -66,7 +66,7 @@ handled by the static asset fetcher in `worker/index.ts`.
 
 Common commands:
 
-- `bunx playwright test`
-- `bunx playwright test e2e/login.spec.ts`
+- `bun run test:e2e`
+- `bun run test:e2e e2e/login.spec.ts`
 
-These tests are executed by the `validate` gate.
+These tests are executed by the `validate` gate, which also runs `lint:fix`.

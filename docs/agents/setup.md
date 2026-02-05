@@ -23,6 +23,7 @@ Quick notes for getting a local Epicflare environment running.
 
 ## Checks
 
-- `bun run validate` runs format, lint, build, typecheck, and Playwright tests.
+- `bun run validate` runs format check, lint fix, build, typecheck, and
+  Playwright tests.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
