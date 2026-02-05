@@ -28,8 +28,11 @@ export default {
 				}).fetch(request, env, ctx)
 			}
 
-			// Try to serve static assets
-			if (env.ASSETS) {
+			// Try to serve static assets for safe methods only
+			if (
+				env.ASSETS &&
+				(request.method === 'GET' || request.method === 'HEAD')
+			) {
 				const response = await env.ASSETS.fetch(request)
 				if (response.ok) {
 					return response

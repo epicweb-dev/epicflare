@@ -1,4 +1,9 @@
-import { ClientParamRoute, ClientRoute, HomeRoute } from './client-routes.tsx'
+import {
+	ClientParamRoute,
+	ClientRoute,
+	HomeRoute,
+	LoginRoute,
+} from './client-routes.tsx'
 import { Router } from './client-router.tsx'
 import { colors, spacing, typography } from './styles/tokens.ts'
 
@@ -59,6 +64,19 @@ export function App() {
 				>
 					Client Param
 				</a>
+				<a
+					href="/signup"
+					css={{
+						color: colors.primary,
+						fontWeight: typography.fontWeight.medium,
+						textDecoration: 'none',
+						'&:hover': {
+							textDecoration: 'underline',
+						},
+					}}
+				>
+					Signup
+				</a>
 			</nav>
 			<Router
 				setup={{
@@ -66,6 +84,7 @@ export function App() {
 						'/': HomeRoute(),
 						'/client-route': ClientRoute(),
 						'/client/:id': ClientParamRoute(),
+						'/signup': LoginRoute(),
 					},
 					fallback: () => (
 						<section>

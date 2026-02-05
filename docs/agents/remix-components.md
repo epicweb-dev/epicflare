@@ -267,7 +267,9 @@ Full example with multiple consumers:
 ```tsx
 import type { Handle } from 'remix/component'
 
-function UserProvider(handle: Handle<{ user: { name: string; role: string } }>) {
+function UserProvider(
+	handle: Handle<{ user: { name: string; role: string } }>,
+) {
 	handle.context.set({ user: { name: 'Alice', role: 'admin' } })
 
 	return () => (
