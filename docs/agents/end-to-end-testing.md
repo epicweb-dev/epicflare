@@ -43,6 +43,8 @@ Avoid `page.locator('css')` unless no accessible alternative exists.
 - Playwright sets `CLOUDFLARE_ENV=preview` so Wrangler uses the preview env.
 - Ensure `env.preview` includes assets, KV, and durable objects since these are
   not inherited from top-level Wrangler config.
+- Playwright sets `COOKIE_SECRET` for local session signing in the web server
+  environment.
 - Client routes live in `client/app.tsx` and `client/client-routes.tsx`.
 - API endpoints are defined in `server/routes.ts` and mapped in
   `server/router.ts`.

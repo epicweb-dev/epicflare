@@ -21,6 +21,7 @@ export default defineConfig({
 		reuseExistingServer: true,
 		env: {
 			CLOUDFLARE_ENV: 'preview',
+			COOKIE_SECRET: 'playwright-secret',
 			WRANGLER_LOG_PATH: './logs.local',
 			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
 		},
