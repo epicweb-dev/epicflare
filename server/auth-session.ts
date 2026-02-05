@@ -7,17 +7,25 @@ export type AuthSession = {
 	email: string
 }
 
-const cookieSecret =
-	(globalThis as { process?: { env?: { COOKIE_SECRET?: string } } }).process
-		?.env?.COOKIE_SECRET ?? crypto.randomUUID()
+let sessionCookie: ReturnType<typeof createCookie> | null = null
 
-const sessionCookie = createCookie('epicflare_session', {
-	httpOnly: true,
-	sameSite: 'Lax',
-	path: '/',
-	maxAge: sessionMaxAgeSeconds,
-	secrets: [cookieSecret],
-})
+const getSessionCookie = () => {
+	if (sessionCookie) return sessionCookie
+
+	const cookieSecret =
+		(globalThis as { process?: { env?: { COOKIE_SECRET?: string } } }).process
+			?.env?.COOKIE_SECRET ?? crypto.randomUUID()
+
+	sessionCookie = createCookie('epicflare_session', {
+		httpOnly: true,
+		sameSite: 'Lax',
+		path: '/',
+		maxAge: sessionMaxAgeSeconds,
+		secrets: [cookieSecret],
+	})
+
+	return sessionCookie
+}
 
 const isAuthSession = (value: unknown): value is AuthSession => {
 	if (!value || typeof value !== 'object') return false
@@ -31,14 +39,14 @@ const isAuthSession = (value: unknown): value is AuthSession => {
 }
 
 export async function createAuthCookie(session: AuthSession, secure: boolean) {
-	return sessionCookie.serialize(JSON.stringify(session), { secure })
+	return getSessionCookie().serialize(JSON.stringify(session), { secure })
 }
 
 export async function readAuthSession(request: Request) {
 	const cookieHeader = request.headers.get('Cookie')
 	if (!cookieHeader) return null
 
-	const stored = await sessionCookie.parse(cookieHeader)
+	const stored = await getSessionCookie().parse(cookieHeader)
 	if (!stored || typeof stored !== 'string') return null
 
 	try {
