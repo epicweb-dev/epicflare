@@ -47,8 +47,27 @@ const createHelpers = (
 	...overrides,
 })
 
-const createEnv = (helpers: OAuthHelpers) =>
-	({ OAUTH_PROVIDER: helpers }) as unknown as Env
+const hashPassword = async (password: string) => {
+	const data = new TextEncoder().encode(password)
+	const hash = await crypto.subtle.digest('SHA-256', data)
+	return Array.from(new Uint8Array(hash))
+		.map((value) => value.toString(16).padStart(2, '0'))
+		.join('')
+}
+
+const createDatabase = async (password: string) => {
+	const passwordHash = await hashPassword(password)
+	return {
+		prepare: () => ({
+			bind: () => ({
+				first: async () => ({ password_hash: passwordHash }),
+			}),
+		}),
+	} as unknown as D1Database
+}
+
+const createEnv = (helpers: OAuthHelpers, appDb?: D1Database) =>
+	({ OAUTH_PROVIDER: helpers, APP_DB: appDb }) as unknown as Env
 
 const createFormRequest = (data: Record<string, string>) =>
 	new Request('https://example.com/oauth/authorize', {
@@ -116,7 +135,7 @@ test('authorize uses default scopes when none requested', async () => {
 			email: 'user@example.com',
 			password: 'password123',
 		}),
-		createEnv(helpers),
+		createEnv(helpers, await createDatabase('password123')),
 	)
 
 	expect(response.status).toBe(302)
