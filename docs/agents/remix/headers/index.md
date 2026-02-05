@@ -7,9 +7,9 @@ Source: https://github.com/remix-run/remix/tree/main/packages/headers
 Utilities for parsing, manipulating and stringifying HTTP header values.
 
 HTTP headers contain critical information - from content negotiation and caching
-directives to authentication tokens and file metadata. While the native `Headers`
-API provides a basic string-based interface, it leaves the complexities of
-parsing specific header formats entirely up to you.
+directives to authentication tokens and file metadata. While the native
+`Headers` API provides a basic string-based interface, it leaves the
+complexities of parsing specific header formats entirely up to you.
 
 ## Installation
 

@@ -41,7 +41,8 @@ The low-level API provides:
 
 - `createRequest(req, res, options)` - Converts Node.js IncomingMessage to web
   Request
-- `sendResponse(res, response)` - Sends web Response using Node.js ServerResponse
+- `sendResponse(res, response)` - Sends web Response using Node.js
+  ServerResponse
 
 This is useful for:
 

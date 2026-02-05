@@ -92,7 +92,8 @@ on(drummer, {
 
 ## Demos
 
-The [`demos` directory](https://github.com/remix-run/remix/tree/main/packages/interaction/demos)
+The
+[`demos` directory](https://github.com/remix-run/remix/tree/main/packages/interaction/demos)
 contains working demos:
 
 - [`demos/async`](https://github.com/remix-run/remix/tree/main/packages/interaction/demos/async) -

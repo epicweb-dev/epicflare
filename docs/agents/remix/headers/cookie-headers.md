@@ -85,7 +85,11 @@ new SetCookie({
 // Use class for type safety when setting Headers values
 // via SetCookie's `.toString()` method
 let headers = new Headers({
-	'Set-Cookie': new SetCookie({ name: 'session_id', value: 'abc', httpOnly: true }),
+	'Set-Cookie': new SetCookie({
+		name: 'session_id',
+		value: 'abc',
+		httpOnly: true,
+	}),
 })
 headers.set(
 	'Set-Cookie',

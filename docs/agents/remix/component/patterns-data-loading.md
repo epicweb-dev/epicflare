@@ -112,8 +112,8 @@ function UserProfile(handle: Handle, setup: { userId: string }) {
 }
 ```
 
-Note that by fetching this data in the setup scope any parent updates that change
-`setup.userId` will have no effect.
+Note that by fetching this data in the setup scope any parent updates that
+change `setup.userId` will have no effect.
 
 ## See also
 

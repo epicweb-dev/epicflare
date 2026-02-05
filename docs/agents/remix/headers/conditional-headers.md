@@ -144,7 +144,10 @@ new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] })
 let headers = new Headers({
 	Range: new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }),
 })
-headers.set('Range', new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }))
+headers.set(
+	'Range',
+	new Range({ unit: 'bytes', ranges: [{ start: 0, end: 999 }] }),
+)
 ```
 
 ## Vary

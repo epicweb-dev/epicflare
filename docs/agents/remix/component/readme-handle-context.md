@@ -5,8 +5,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/component
 ## `handle.context`
 
 Context API for ancestor/descendant communication. All components are potential
-context providers and consumers. Use `handle.context.set()` to provide values and
-`handle.context.get()` to consume them.
+context providers and consumers. Use `handle.context.set()` to provide values
+and `handle.context.get()` to consume them.
 
 ```tsx
 function App(handle: Handle<{ theme: string }>) {

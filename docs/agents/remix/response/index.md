@@ -10,12 +10,14 @@ semantics.
 
 ## Features
 
-- **Web Standards Compliant:** Built on the standard `Response` API, works in any
-  JavaScript runtime (Node.js, Bun, Deno, Cloudflare Workers)
+- **Web Standards Compliant:** Built on the standard `Response` API, works in
+  any JavaScript runtime (Node.js, Bun, Deno, Cloudflare Workers)
 - **File Responses:** Full HTTP semantics including ETags, Last-Modified,
   conditional requests, and Range support
-- **HTML Responses:** Automatic DOCTYPE prepending and proper Content-Type headers
-- **Redirect Responses:** Simple redirect creation with customizable status codes
+- **HTML Responses:** Automatic DOCTYPE prepending and proper Content-Type
+  headers
+- **Redirect Responses:** Simple redirect creation with customizable status
+  codes
 - **Compress Responses:** Streaming compression based on Accept-Encoding header
 
 ## Installation

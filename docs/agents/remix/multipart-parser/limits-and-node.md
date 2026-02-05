@@ -44,12 +44,15 @@ interfaces was added to Node.js by the undici project in version 16.5.0.
 
 If you're building a server for Node.js that relies on node-specific APIs like
 `http.IncomingMessage`, `stream.Readable`, and `buffer.Buffer`,
-`multipart-parser` ships with an additional module that works directly with these
-APIs.
+`multipart-parser` ships with an additional module that works directly with
+these APIs.
 
 ```ts
 import * as http from 'node:http'
-import { MultipartParseError, parseMultipartRequest } from '@remix-run/multipart-parser/node'
+import {
+	MultipartParseError,
+	parseMultipartRequest,
+} from '@remix-run/multipart-parser/node'
 
 let server = http.createServer(async (req, res) => {
 	try {

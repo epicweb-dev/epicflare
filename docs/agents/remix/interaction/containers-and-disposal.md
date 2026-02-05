@@ -38,8 +38,8 @@ container.set({
 
 ## Disposing listeners
 
-`on` returns a dispose function. Containers expose `dispose()`. You can also pass
-an external `AbortSignal`.
+`on` returns a dispose function. Containers expose `dispose()`. You can also
+pass an external `AbortSignal`.
 
 ```ts
 import { on, createContainer } from '@remix-run/interaction'

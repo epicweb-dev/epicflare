@@ -31,11 +31,15 @@ npm install @remix-run/multipart-parser
 
 The most common use case is handling file uploads when you're building a web
 server. The `parseMultipartRequest` function validates the request, extracts the
-multipart boundary from the `Content-Type` header, parses all fields and files in
-the `request.body` stream, and gives each one to you as a `MultipartPart` object.
+multipart boundary from the `Content-Type` header, parses all fields and files
+in the `request.body` stream, and gives each one to you as a `MultipartPart`
+object.
 
 ```ts
-import { MultipartParseError, parseMultipartRequest } from '@remix-run/multipart-parser'
+import {
+	MultipartParseError,
+	parseMultipartRequest,
+} from '@remix-run/multipart-parser'
 
 async function handleRequest(request: Request): void {
 	try {

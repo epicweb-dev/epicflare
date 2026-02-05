@@ -26,8 +26,8 @@ server-rendered applications across any JavaScript runtime.
 
 ## Goals
 
-- **Simplicity**: A router should be simple to understand and use. The entire API
-  surface fits in your head.
+- **Simplicity**: A router should be simple to understand and use. The entire
+  API surface fits in your head.
 - **Composability**: Small routers combine to build large applications.
   Middleware and nested routers make organization natural.
 - **Standards-Based**: Built on web standards that work across runtimes. No

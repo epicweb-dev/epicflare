@@ -29,7 +29,8 @@ function TodoList(handle: Handle) {
 
 When you reorder, add, or remove items, keys ensure:
 
-- **DOM nodes are reused** - Elements with matching keys are moved, not recreated
+- **DOM nodes are reused** - Elements with matching keys are moved, not
+  recreated
 - **Component state is preserved** - Component instances persist across reorders
 - **Focus and selection are maintained** - Input focus stays with the same
   element

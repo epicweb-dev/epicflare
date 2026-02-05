@@ -4,8 +4,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/fetch-router
 
 ## Resource-based routes
 
-The router provides a `resources()` helper that creates a route map with a set of
-resource-based routes, useful when defining RESTful API routes or modeling
+The router provides a `resources()` helper that creates a route map with a set
+of resource-based routes, useful when defining RESTful API routes or modeling
 resources in a web application (similar to Rails' `resources` helper).
 
 ```ts
@@ -61,12 +61,19 @@ that is part of a collection). This is useful when defining operations on a
 singleton resource, like a user profile.
 
 ```tsx
-import { createRouter, route, resources, resource } from '@remix-run/fetch-router'
+import {
+	createRouter,
+	route,
+	resources,
+	resource,
+} from '@remix-run/fetch-router'
 
 let routes = route({
 	user: {
 		...resources('users', { only: ['index', 'show'] }),
-		profile: resource('users/:userId/profile', { only: ['show', 'edit', 'update'] }),
+		profile: resource('users/:userId/profile', {
+			only: ['show', 'edit', 'update'],
+		}),
 	},
 })
 
@@ -119,9 +126,9 @@ type Routes = typeof routes
 // }
 ```
 
-Resource route names may be customized using the `names` option when you'd prefer
-not to use the default `index`/`new`/`show`/`create`/`edit`/`update`/`destroy`
-route names.
+Resource route names may be customized using the `names` option when you'd
+prefer not to use the default
+`index`/`new`/`show`/`create`/`edit`/`update`/`destroy` route names.
 
 ```tsx
 import { createRouter, route, resources } from '@remix-run/fetch-router'

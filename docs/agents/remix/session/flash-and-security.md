@@ -81,8 +81,8 @@ need to resume the session using an old session ID.
 When a user logs out, you should destroy the session using `session.destroy()`.
 
 This will clear all session data from storage the next time it is saved. It also
-clears the session ID on the client in the next response, so it will start with a
-new session on the next request.
+clears the session ID on the client in the next response, so it will start with
+a new session on the next request.
 
 ## Navigation
 

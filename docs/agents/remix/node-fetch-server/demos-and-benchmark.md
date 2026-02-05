@@ -4,7 +4,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/node-fetch-server
 
 ## Demos
 
-The [`demos` directory](https://github.com/remix-run/remix/tree/main/packages/node-fetch-server/demos)
+The
+[`demos` directory](https://github.com/remix-run/remix/tree/main/packages/node-fetch-server/demos)
 contains working demos:
 
 - [`demos/http2`](https://github.com/remix-run/remix/tree/main/packages/node-fetch-server/demos/http2) -

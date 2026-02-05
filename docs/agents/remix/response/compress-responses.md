@@ -58,11 +58,12 @@ await compressResponse(response, request, {
 
 ## Range requests and compression
 
-Range requests and compression are mutually exclusive. When `Accept-Ranges:
-bytes` is present in the response headers, `compressResponse` will not compress
-the response. This is why the `createFileResponse` helper enables ranges only for
-non-compressible MIME types by default - to allow text-based assets to be
-compressed while still supporting resumable downloads for media files.
+Range requests and compression are mutually exclusive. When
+`Accept-Ranges: bytes` is present in the response headers, `compressResponse`
+will not compress the response. This is why the `createFileResponse` helper
+enables ranges only for non-compressible MIME types by default - to allow
+text-based assets to be compressed while still supporting resumable downloads
+for media files.
 
 ## Navigation
 

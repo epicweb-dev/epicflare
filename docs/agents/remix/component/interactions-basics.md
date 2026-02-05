@@ -133,7 +133,8 @@ The setup function receives an `Interaction` handle with:
 
 - **`handle.target`** - The element the interaction is attached to
 - **`handle.signal`** - AbortSignal for cleanup when the interaction is disposed
-- **`handle.on(target, listeners)`** - Add event listeners with automatic cleanup
+- **`handle.on(target, listeners)`** - Add event listeners with automatic
+  cleanup
 - **`handle.raise(error)`** - Report errors to the parent error handler
 
 ```ts

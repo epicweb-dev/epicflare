@@ -4,8 +4,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/fetch-router
 
 The main purpose of the router is to map incoming requests to request handlers
 and middleware. The router uses the `fetch()` API to accept a
-[`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and return a
-[`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response).
+[`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and return
+a [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response).
 
 The example below is a small site with a home page, an "about" page, and a blog.
 
@@ -54,9 +54,9 @@ let response = await router.fetch('https://remix.run/blog/hello-remix')
 console.log(await response.text()) // "Post hello-remix"
 ```
 
-The route map is an object of the same shape as the object passed into `route()`,
-including nested objects. The leaves of the map are `Route` objects, which you
-can see if you inspect the type of the `routes` variable in your IDE.
+The route map is an object of the same shape as the object passed into
+`route()`, including nested objects. The leaves of the map are `Route` objects,
+which you can see if you inspect the type of the `routes` variable in your IDE.
 
 ```ts
 type Routes = typeof routes
@@ -142,20 +142,20 @@ router.post(routes.contact, ({ formData }) => {
 	// parsed from the request body and available in all POST actions.
 	let message = formData.get('message') as string
 	let body = html`
-    <html>
-      <body>
-        <h1>Thanks!</h1>
-        <div>
-          <p>You said: ${message}</p>
-        </div>
-        <footer>
-          <p>
-            <a href="${routes.home.href()}">Home</a>
-          </p>
-        </footer>
-      </body>
-    </html>
-  `
+		<html>
+			<body>
+				<h1>Thanks!</h1>
+				<div>
+					<p>You said: ${message}</p>
+				</div>
+				<footer>
+					<p>
+						<a href="${routes.home.href()}">Home</a>
+					</p>
+				</footer>
+			</body>
+		</html>
+	`
 
 	return createHtmlResponse(body)
 })

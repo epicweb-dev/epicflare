@@ -4,7 +4,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/multipart-parser
 
 ## Demos
 
-The [`demos` directory](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos)
+The
+[`demos` directory](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos)
 contains working demos:
 
 - [`demos/bun`](https://github.com/remix-run/remix/tree/main/packages/multipart-parser/demos/bun) -
@@ -72,8 +73,8 @@ busboy | "0.05 ms +/- 0.19" | "3.06 ms +/- 0.15" | "0.32 ms +/- 0.05" | "29.92 m
   Uses `multipart-parser` internally to parse multipart requests and generate
   `FileUpload`s for storage
 - [`headers`](https://github.com/remix-run/remix/tree/main/packages/headers) -
-  Used internally to parse HTTP headers and get metadata (filename, content type)
-  for each `MultipartPart`
+  Used internally to parse HTTP headers and get metadata (filename, content
+  type) for each `MultipartPart`
 
 ## Credits
 

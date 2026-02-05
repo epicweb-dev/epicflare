@@ -105,8 +105,8 @@ Benefits of this pattern:
 
 - **No unnecessary re-renders**: Only components that subscribe to changes are
   updated
-- **Decoupled updates**: The provider doesn't need to call `handle.update()` when
-  context changes
+- **Decoupled updates**: The provider doesn't need to call `handle.update()`
+  when context changes
 - **Type-safe events**: `TypedEventTarget` ensures event handlers receive the
   correct event types
 

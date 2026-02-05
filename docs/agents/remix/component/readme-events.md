@@ -5,8 +5,9 @@ Source: https://github.com/remix-run/remix/tree/main/packages/component
 ## Events
 
 Events use the `on` prop and are handled by
-[`@remix-run/interaction`](../interaction/index.md). Listeners receive an `AbortSignal`
-that's aborted when the component is disconnected or the handler is re-entered.
+[`@remix-run/interaction`](../interaction/index.md). Listeners receive an
+`AbortSignal` that's aborted when the component is disconnected or the handler
+is re-entered.
 
 ```tsx
 function SearchInput(handle: Handle) {

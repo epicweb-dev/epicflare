@@ -35,8 +35,8 @@ function Clock(handle: Handle) {
 
 ## `handle.on(target, listeners)`
 
-Listen to an `EventTarget` with automatic cleanup when the component disconnects.
-Ideal for global event targets like `document` and `window`.
+Listen to an `EventTarget` with automatic cleanup when the component
+disconnects. Ideal for global event targets like `document` and `window`.
 
 ```tsx
 function KeyboardTracker(handle: Handle) {

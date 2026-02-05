@@ -87,8 +87,8 @@ function Player(handle: Handle) {
 
 ### `handle.queueTask(task)`
 
-Schedule a task to run after the next update. Useful for DOM operations that need
-to happen after rendering.
+Schedule a task to run after the next update. Useful for DOM operations that
+need to happen after rendering.
 
 ```tsx
 function Form(handle: Handle) {

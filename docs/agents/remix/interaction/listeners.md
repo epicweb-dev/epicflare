@@ -69,16 +69,16 @@ on(listItem, {
 })
 ```
 
-Import builtins from their modules (for example,
-`@remix-run/interaction/press`, `@remix-run/interaction/keys`). Some interactions
-may coordinate with others (for example, calling `event.preventDefault()` in one
-listener can prevent a related interaction from firing).
+Import builtins from their modules (for example, `@remix-run/interaction/press`,
+`@remix-run/interaction/keys`). Some interactions may coordinate with others
+(for example, calling `event.preventDefault()` in one listener can prevent a
+related interaction from firing).
 
 ## Async listeners and reentry protection
 
-The `signal` is aborted when the same listener is re-entered (for example, a user
-types quickly and triggers `input` repeatedly). Pass it to async APIs or check it
-manually to avoid stale work.
+The `signal` is aborted when the same listener is re-entered (for example, a
+user types quickly and triggers `input` repeatedly). Pass it to async APIs or
+check it manually to avoid stale work.
 
 ```ts
 on(inputElement, {

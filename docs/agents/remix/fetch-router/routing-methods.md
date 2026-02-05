@@ -67,15 +67,16 @@ router.map(routes, {
 
 ## Declaring routes
 
-In additon to the `{ method, pattern }` syntax shown above, the router provides a
-few shorthand methods that help to eliminate some of the boilerplate when
+In additon to the `{ method, pattern }` syntax shown above, the router provides
+a few shorthand methods that help to eliminate some of the boilerplate when
 building complex route maps:
 
 - [`form`](#declaring-form-routes) - creates a route map with an `index` (`GET`)
   and `action` (`POST`) route. This is well-suited to showing a standard HTML
   `<form>` and handling its submit action at the same URL.
 - [`resources` (and `resource`)](./routing-resources.md) - creates a route map
-  with a set of resource-based routes, useful when defining RESTful API routes or
+  with a set of resource-based routes, useful when defining RESTful API routes
+  or
   [Rails-style resource-based routes](https://guides.rubyonrails.org/routing.html#resource-routing-the-rails-default).
 
 ### Declaring form routes
@@ -83,9 +84,9 @@ building complex route maps:
 Continuing with the contact page example, let's use the `form` shorthand to make
 the route map a little less verbose.
 
-A `form()` route map contains two routes: `index` and `action`. The `index` route
-is a `GET` route that shows the form, and the `action` route is a `POST` route
-that handles the form submission.
+A `form()` route map contains two routes: `index` and `action`. The `index`
+route is a `GET` route that shows the form, and the `action` route is a `POST`
+route that handles the form submission.
 
 ```tsx
 import { createRouter, route, form } from '@remix-run/fetch-router'
@@ -143,17 +144,18 @@ router.map(routes, {
 		action({ formData }) {
 			let message = formData.get('message') as string
 			let body = html`
-        <html>
-          <body>
-            <h1>Thanks!</h1>
-            <p>You said: ${message}</p>
+				<html>
+					<body>
+						<h1>Thanks!</h1>
+						<p>You said: ${message}</p>
 
-            <p>
-              Got more to say? <a href="${routes.contact.index.href()}">Send another message</a>
-            </p>
-          </body>
-        </html>
-      `
+						<p>
+							Got more to say?
+							<a href="${routes.contact.index.href()}">Send another message</a>
+						</p>
+					</body>
+				</html>
+			`
 
 			return createHtmlResponse(body)
 		},

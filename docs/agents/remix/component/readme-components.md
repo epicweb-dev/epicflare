@@ -71,7 +71,8 @@ When a component returns a function, it has two phases:
 The `setup` prop is separate from regular props. Only the `setup` prop is passed
 to the setup function, and only props are passed to the render function.
 
-- `setup` prop for values that initialize state (e.g., `initial`, `defaultValue`)
+- `setup` prop for values that initialize state (e.g., `initial`,
+  `defaultValue`)
 - Regular props for values that change over time (e.g., `label`, `disabled`)
 
 ```tsx

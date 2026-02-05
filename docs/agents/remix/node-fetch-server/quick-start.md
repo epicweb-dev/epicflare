@@ -61,7 +61,10 @@ async function handler(request: Request) {
 
 			// Validate required fields
 			if (!userData.name || !userData.email) {
-				return Response.json({ error: 'Name and email are required' }, { status: 400 })
+				return Response.json(
+					{ error: 'Name and email are required' },
+					{ status: 400 },
+				)
 			}
 
 			// Create user (your implementation)
@@ -136,7 +139,9 @@ async function handler(request: Request) {
 	})
 }
 
-let server = http.createServer(createRequestListener(handler, { host: hostname }))
+let server = http.createServer(
+	createRequestListener(handler, { host: hostname }),
+)
 
 server.listen(3000)
 ```

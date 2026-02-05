@@ -35,10 +35,7 @@ import { spring } from '@remix-run/component'
 
 let { duration, easing } = spring('bouncy')
 
-let keyframes = [
-	{ transform: 'scale(0.9)' },
-	{ transform: 'scale(1)' },
-]
+let keyframes = [{ transform: 'scale(0.9)' }, { transform: 'scale(1)' }]
 
 element.animate(keyframes, {
 	duration,

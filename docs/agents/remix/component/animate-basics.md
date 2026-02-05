@@ -18,7 +18,8 @@ The `animate` prop is an intrinsic property that wraps the Web Animations API
 
 - **Enter**: Element animates from the specified keyframe(s) to its natural
   styles
-- **Exit**: Element animates from its current styles to the specified keyframe(s)
+- **Exit**: Element animates from its current styles to the specified
+  keyframe(s)
 - **Layout**: Element smoothly animates from old position/size to new using FLIP
   technique
 - **DOM persistence**: When a vnode is removed, the element stays in the DOM
@@ -54,6 +55,7 @@ Mix and match as needed:
 
 The `enter` keyframe defines the starting state - the element animates from
 these values to its natural styles. The `exit` keyframe defines the ending state
+
 - the element animates from its current styles to these values:
 
 ```tsx

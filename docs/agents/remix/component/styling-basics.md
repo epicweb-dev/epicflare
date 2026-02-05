@@ -4,8 +4,8 @@ Source:
 https://github.com/remix-run/remix/tree/main/packages/component/docs/styling.md
 
 The `css` prop provides inline styling with support for pseudo-selectors,
-pseudo-elements, attribute selectors, descendant selectors, and media queries. It
-follows modern CSS nesting selector rules.
+pseudo-elements, attribute selectors, descendant selectors, and media queries.
+It follows modern CSS nesting selector rules.
 
 ## Basic CSS prop
 

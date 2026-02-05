@@ -3,8 +3,8 @@
 Source:
 https://github.com/remix-run/remix/tree/main/packages/component/docs/patterns.md
 
-Use `handle.queueTask()` in event handlers for DOM operations that need to happen
-after the DOM has changed from the next update.
+Use `handle.queueTask()` in event handlers for DOM operations that need to
+happen after the DOM has changed from the next update.
 
 ## Focus management
 

@@ -4,7 +4,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/fetch-router
 
 ## Testing
 
-Testing is straightforward because `fetch-router` uses the standard `fetch()` API:
+Testing is straightforward because `fetch-router` uses the standard `fetch()`
+API:
 
 ```ts
 import * as assert from 'node:assert/strict'
@@ -30,14 +31,15 @@ describe('blog routes', () => {
 })
 ```
 
-No special test harness or mocking required! Just use `fetch()` like you would in
-production.
+No special test harness or mocking required! Just use `fetch()` like you would
+in production.
 
 ## Related work
 
-- [@remix-run/response](../response/index.md) - Response helpers for HTML, JSON, files, and
-  redirects
-- [@remix-run/headers](../headers/index.md) - A library for working with HTTP headers
+- [@remix-run/response](../response/index.md) - Response helpers for HTML, JSON,
+  files, and redirects
+- [@remix-run/headers](../headers/index.md) - A library for working with HTTP
+  headers
 - [@remix-run/form-data-parser](../form-data-parser) - A library for parsing
   multipart/form-data requests
 - [@remix-run/route-pattern](../route-pattern) - The pattern matching library

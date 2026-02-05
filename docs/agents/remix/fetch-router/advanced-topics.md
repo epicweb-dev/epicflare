@@ -16,8 +16,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/fetch-router
 
 ### Content negotiation
 
-- use `Accept.from()` from `@remix-run/headers` to serve different responses based
-  on the client's `Accept` header
+- use `Accept.from()` from `@remix-run/headers` to serve different responses
+  based on the client's `Accept` header
   - maybe put this on `context.accepts()` for convenience?
 
 ### Sessions
@@ -29,8 +29,8 @@ Source: https://github.com/remix-run/remix/tree/main/packages/fetch-router
 
 ### Form data and file uploads
 
-- use the `formData()` middleware to parse the `FormData` object from the request
-  body
+- use the `formData()` middleware to parse the `FormData` object from the
+  request body
 - use the `formData` property of the context object to access the form data
 - use the `files` property of the context object to access the uploaded files
 - use the `uploadHandler` option of the `formData()` middleware to handle file
@@ -81,8 +81,8 @@ let response = createHtmlResponse(html`<h1>${unsafe}</h1>`, { status: 400 })
 ```
 
 The `html.raw` template tag can be used to interpolate values without escaping
-them. This has the same semantics as `String.raw` but for HTML snippets that have
-already been escaped or are from trusted sources:
+them. This has the same semantics as `String.raw` but for HTML snippets that
+have already been escaped or are from trusted sources:
 
 ```ts
 // Use html.raw as a template tag to skip escaping interpolations

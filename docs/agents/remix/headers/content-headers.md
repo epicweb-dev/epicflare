@@ -107,7 +107,12 @@ new ContentRange({ unit: 'bytes', start: 0, end: 499, size: 1000 })
 // Use class for type safety when setting Headers values
 // via ContentRange's `.toString()` method
 let headers = new Headers({
-	'Content-Range': new ContentRange({ unit: 'bytes', start: 0, end: 499, size: 1000 }),
+	'Content-Range': new ContentRange({
+		unit: 'bytes',
+		start: 0,
+		end: 499,
+		size: 1000,
+	}),
 })
 headers.set(
 	'Content-Range',

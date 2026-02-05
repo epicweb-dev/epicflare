@@ -1,6 +1,7 @@
 # Compression options
 
-Source: https://github.com/remix-run/remix/tree/main/packages/compression-middleware
+Source:
+https://github.com/remix-run/remix/tree/main/packages/compression-middleware
 
 ## Threshold
 

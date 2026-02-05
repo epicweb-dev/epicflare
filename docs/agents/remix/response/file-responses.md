@@ -62,7 +62,8 @@ For assets that require strong validation (e.g., to support
 [`If-Match`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Match)
 preconditions or
 [`If-Range`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Range)
-with [`Range` requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range)),
+with
+[`Range` requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range)),
 configure strong ETag generation:
 
 ```ts
@@ -82,7 +83,8 @@ return createFileResponse(file, request, {
 })
 ```
 
-For large files or custom hashing requirements, provide a custom digest function:
+For large files or custom hashing requirements, provide a custom digest
+function:
 
 ```ts
 await createFileResponse(file, request, {
