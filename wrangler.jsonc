@@ -37,8 +37,20 @@
 	"kv_namespaces": [
 		{
 			"binding": "OAUTH_KV",
-			"id": "00000000000000000000000000000000",
-			"preview_id": "00000000000000000000000000000000",
+			"id": "e2c0caa629a04af198d90fb5ec388f62",
+			"preview_id": "becbb91b27364709a7e8a9c7533c9ff5",
 		},
 	],
+	"env": {
+		"preview": {
+			"d1_databases": [
+				{
+					"binding": "APP_DB",
+					"database_name": "epicflare-preview",
+					"database_id": "3c511f1e-fc84-439e-818a-0884dab2b0e8",
+					"migrations_dir": "migrations",
+				},
+			],
+		},
+	},
 }
