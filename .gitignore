@@ -27,4 +27,3 @@ dist-ssr
 playwright-report
 test-results
 public/client-entry.js
-worker-configuration.d.ts
