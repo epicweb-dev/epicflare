@@ -1,14 +1,13 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "cloudflare-remix-vite-mcp",
-	"compatibility_date": "2026-02-04",
+	"compatibility_date": "2026-01-31",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "./worker/index.ts",
 	"assets": {
 		"directory": "./public",
 		"binding": "ASSETS",
 	},
-	"tsconfig": "./tsconfig.worker.json",
 	"migrations": [
 		{
 			"new_sqlite_classes": ["MCP"],

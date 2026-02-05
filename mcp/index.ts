@@ -8,7 +8,7 @@ export type Props = {
 	baseUrl: string
 }
 export class MCP extends McpAgent<Env, State, Props> {
-	server = new McpServer(
+	server: any = new McpServer(
 		{
 			name: 'MathMCP',
 			version: '1.0.0',

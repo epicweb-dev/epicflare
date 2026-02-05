@@ -1,8 +1,4 @@
 {
-	"files": [],
-	"references": [
-		{ "path": "./tsconfig.node.json" },
-		{ "path": "./tsconfig.worker.json" },
-		{ "path": "./tsconfig.remix.json" }
-	]
+	"extends": "./tsconfig.remix.json",
+	"include": ["./client", "./server", "./types/reset.d.ts"]
 }

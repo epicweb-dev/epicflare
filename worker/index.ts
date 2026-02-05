@@ -1,4 +1,5 @@
-import { MCP } from './mcp/index.ts'
+import { MCP } from '../mcp/index.ts'
+import { handleRequest } from '../server/handler'
 import { withCors } from './utils.ts'
 
 export { MCP }
@@ -10,8 +11,14 @@ export default {
 			'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 			'Access-Control-Allow-Headers': 'content-type',
 		}),
-		handler: async (request: Request, env: Env, ctx: ExecutionContext<any>) => {
+		handler: async (request: Request, env, ctx) => {
 			const url = new URL(request.url)
+
+			if (
+				url.pathname === '/.well-known/appspecific/com.chrome.devtools.json'
+			) {
+				return new Response(null, { status: 204 })
+			}
 
 			if (url.pathname === '/mcp') {
 				ctx.props.baseUrl = url.origin
@@ -29,7 +36,7 @@ export default {
 				}
 			}
 
-			return new Response(null, { status: 404 })
+			return handleRequest(request)
 		},
 	}),
 }

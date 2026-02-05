@@ -26,7 +26,15 @@ export async function registerTools(agent: MCP) {
 				),
 			},
 		},
-		async ({ left, right, operator }) => {
+		async ({
+			left,
+			right,
+			operator,
+		}: {
+			left: number
+			right: number
+			operator: keyof typeof operations
+		}) => {
 			let operation = operations[operator]
 			let result = operation(left, right)
 			return {

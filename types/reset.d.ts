@@ -1,5 +1,3 @@
-import '@epic-web/config/reset.d.ts'
-
 declare global {
 	interface CustomExportedHandler<Props = {}> {
 		fetch: (
