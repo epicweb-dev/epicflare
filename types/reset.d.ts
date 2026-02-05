@@ -11,3 +11,5 @@ declare global {
 		) => Response | Promise<Response>
 	}
 }
+
+export {}
