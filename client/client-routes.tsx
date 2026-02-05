@@ -525,6 +525,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 		const scopes = info?.scopes ?? []
 		const scopeLabel =
 			scopes.length > 0 ? scopes.join(', ') : 'No scopes requested.'
+		const actionsDisabled = status !== 'ready' || submitting
 
 		return (
 			<section
@@ -616,7 +617,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 							required
 							autoComplete="email"
 							placeholder="you@example.com"
-							disabled={status !== 'ready' || submitting}
+							disabled={actionsDisabled}
 							css={{
 								padding: spacing.sm,
 								borderRadius: radius.md,
@@ -642,7 +643,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 							required
 							autoComplete="current-password"
 							placeholder="Enter your password"
-							disabled={status !== 'ready' || submitting}
+							disabled={actionsDisabled}
 							css={{
 								padding: spacing.sm,
 								borderRadius: radius.md,
@@ -655,7 +656,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 					<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
 						<button
 							type="submit"
-							disabled={status !== 'ready' || submitting}
+							disabled={actionsDisabled}
 							css={{
 								padding: `${spacing.sm} ${spacing.lg}`,
 								borderRadius: radius.full,
@@ -664,15 +665,15 @@ function OAuthAuthorizeForm(handle: Handle) {
 								color: colors.onPrimary,
 								fontSize: typography.fontSize.base,
 								fontWeight: typography.fontWeight.semibold,
-								cursor: submitting ? 'not-allowed' : 'pointer',
-								opacity: submitting ? 0.7 : 1,
+								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
+								opacity: actionsDisabled ? 0.7 : 1,
 							}}
 						>
 							{submitting ? 'Submitting...' : 'Authorize'}
 						</button>
 						<button
 							type="button"
-							disabled={submitting}
+							disabled={actionsDisabled}
 							on={{ click: () => submitDecision('deny') }}
 							css={{
 								padding: `${spacing.sm} ${spacing.lg}`,
@@ -682,8 +683,8 @@ function OAuthAuthorizeForm(handle: Handle) {
 								color: colors.text,
 								fontSize: typography.fontSize.base,
 								fontWeight: typography.fontWeight.medium,
-								cursor: submitting ? 'not-allowed' : 'pointer',
-								opacity: submitting ? 0.7 : 1,
+								cursor: actionsDisabled ? 'not-allowed' : 'pointer',
+								opacity: actionsDisabled ? 0.7 : 1,
 							}}
 						>
 							Deny
