@@ -43,6 +43,7 @@ Avoid `page.locator('css')` unless no accessible alternative exists.
 - Playwright sets `CLOUDFLARE_ENV=test` so Wrangler uses `.env.test`.
 - Ensure `env.test` includes assets, KV, and durable objects since these are not
   inherited from top-level Wrangler config.
+- The `env.test` config supplies a `COOKIE_SECRET` var for local sessions.
 - Client routes live in `client/app.tsx` and `client/client-routes.tsx`.
 - API endpoints are defined in `server/routes.ts` and mapped in
   `server/router.ts`.

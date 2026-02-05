@@ -76,6 +76,9 @@
 				"directory": "./public",
 				"binding": "ASSETS",
 			},
+			"vars": {
+				"COOKIE_SECRET": "playwright-cookie-secret",
+			},
 			"durable_objects": {
 				"bindings": [
 					{
