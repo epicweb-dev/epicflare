@@ -1,15 +1,28 @@
-# epicflare
+<div align="center">
+  <img src="./public/logo.png" alt="epicflare logo" width="400" />
 
-![epicflare logo](./public/logo.png)
+  <p>
+    <strong>A starter and reference for building full-stack web applications on Cloudflare Workers</strong>
+  </p>
 
-epicflare is a starter and reference project for building full stack web
-applications on Cloudflare Workers. It ships a Remix-powered UI, server routing,
-and OAuth-protected MCP endpoints so you can build both a user-facing app and
-tooling APIs on the same Worker.
+  <p>
+    <a href="https://github.com/epicweb-dev/epicflare/actions/workflows/deploy.yml"><img src="https://img.shields.io/github/actions/workflow/status/epicweb-dev/epicflare/deploy.yml?branch=main&style=flat&logo=github&label=CI" alt="Build Status" /></a>
+    <img src="https://img.shields.io/badge/TypeScript-5.9-blue?style=flat&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Bun-runtime-f9f1e1?style=flat&logo=bun&logoColor=black" alt="Bun" />
+    <img src="https://img.shields.io/badge/Cloudflare-Workers-F38020?style=flat&logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+    <img src="https://img.shields.io/badge/Remix-3.0_alpha-000000?style=flat&logo=remix&logoColor=white" alt="Remix" />
+  </p>
+</div>
 
-## Quick start
+---
 
-```
+epicflare ships a Remix-powered UI, server routing, and OAuth-protected MCP
+endpoints so you can build both a user-facing app and tooling APIs on the same
+Worker.
+
+## Quick Start
+
+```bash
 bunx degit epicweb-dev/epicflare my-epicflare-app
 cd my-epicflare-app
 bun install
@@ -17,28 +30,48 @@ bun ./docs/post-download.ts --guided
 bun run dev
 ```
 
-See `docs/getting-started.md` for the full setup paths and expectations.
+See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup
+paths and expectations.
 
-## Tech stack and infrastructure
+## Tech Stack
 
-- Cloudflare Workers with Wrangler for local dev, builds, and deploys.
-- Remix 3 components for the client UI and server rendering.
-- Bun for installs and scripts; esbuild for client bundling.
-- D1 for application data, KV for OAuth/session storage, and Durable Objects for
-  MCP state.
-- MCP server endpoints with OAuth and CORS support.
-- Playwright for end-to-end testing.
+| Layer           | Technology                                                            |
+| --------------- | --------------------------------------------------------------------- |
+| Runtime         | [Cloudflare Workers](https://workers.cloudflare.com/)                 |
+| UI Framework    | [Remix 3](https://remix.run/) (alpha)                                 |
+| Package Manager | [Bun](https://bun.sh/)                                                |
+| Database        | [Cloudflare D1](https://developers.cloudflare.com/d1/)                |
+| Session/OAuth   | [Cloudflare KV](https://developers.cloudflare.com/kv/)                |
+| MCP State       | [Durable Objects](https://developers.cloudflare.com/durable-objects/) |
+| E2E Testing     | [Playwright](https://playwright.dev/)                                 |
+| Bundler         | [esbuild](https://esbuild.github.io/)                                 |
 
-## How it works
+## How It Works
 
-- `worker/index.ts` is the entrypoint for Cloudflare Workers.
-- OAuth requests are handled first, then MCP requests, then static assets.
-- Non-asset requests fall through to the server handler and router.
-- Client assets are bundled into `public/` and served via the `ASSETS` binding.
+```
+Request → worker/index.ts
+              │
+              ├─→ OAuth handlers
+              ├─→ MCP endpoints
+              ├─→ Static assets (public/)
+              └─→ Server router → Remix components
+```
 
-## Docs
+- `worker/index.ts` is the entrypoint for Cloudflare Workers
+- OAuth requests are handled first, then MCP requests, then static assets
+- Non-asset requests fall through to the server handler and router
+- Client assets are bundled into `public/` and served via the `ASSETS` binding
 
-- `docs/getting-started.md` for degit setup, environment variables, and
-  deployment.
-- `docs/environment-variables.md` for adding new env vars.
-- `docs/agents/setup.md` for local development and verification commands.
+## Documentation
+
+| Document                                                           | Description                          |
+| ------------------------------------------------------------------ | ------------------------------------ |
+| [`docs/getting-started.md`](./docs/getting-started.md)             | Setup, environment variables, deploy |
+| [`docs/environment-variables.md`](./docs/environment-variables.md) | Adding new env vars                  |
+| [`docs/agents/setup.md`](./docs/agents/setup.md)                   | Local development and verification   |
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by <a href="https://epicweb.dev">Epic Web</a></sub>
+</div>
