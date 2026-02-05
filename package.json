@@ -44,6 +44,7 @@
   },
   "prettier": "@epic-web/config/prettier",
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.2.2",
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "6.0.0",
     "@modelcontextprotocol/ext-apps": "^1.0.1",

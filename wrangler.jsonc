@@ -2,7 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "epicflare",
 	"compatibility_date": "2026-01-31",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"main": "./worker/index.ts",
 	"assets": {
 		"directory": "./public",
@@ -32,6 +32,13 @@
 			"database_name": "epicflare",
 			"database_id": "16601d74-b13d-441c-96d7-53095b856cde",
 			"migrations_dir": "migrations",
+		},
+	],
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "00000000000000000000000000000000",
+			"preview_id": "00000000000000000000000000000000",
 		},
 	],
 }
