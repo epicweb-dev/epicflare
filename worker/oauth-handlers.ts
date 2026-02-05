@@ -330,7 +330,6 @@ export async function handleAuthorizeRequest(
 	if (!userRecord || !passwordCheck?.valid) {
 		return respondAuthorizeError(request, 'Invalid email or password.')
 	}
-	}
 
 	if (passwordCheck.upgradedHash) {
 		try {
