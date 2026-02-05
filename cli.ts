@@ -4,8 +4,6 @@ import readline from 'node:readline'
 import { setTimeout as delay } from 'node:timers/promises'
 import getPort, { clearLockedPorts } from 'get-port'
 
-type Command = 'dev' | 'client' | 'worker' | 'build' | 'deploy' | 'typecheck'
-
 const defaultWorkerPort = 3742
 
 const ansiReset = '\x1b[0m'
@@ -26,15 +24,6 @@ function dim(text: string) {
 	return `${ansiDim}${text}${ansiReset}`
 }
 
-const commands: Record<Command, string> = {
-	dev: 'Start client + worker dev servers',
-	client: 'Start esbuild watcher only',
-	worker: 'Start Wrangler dev server only',
-	build: 'Build client + worker',
-	deploy: 'Build and deploy',
-	typecheck: 'Run TypeScript typecheck',
-}
-
 type OutputFilterKey = 'client' | 'worker' | 'default'
 
 const outputFilters: Record<OutputFilterKey, Array<RegExp>> = {
@@ -43,30 +32,12 @@ const outputFilters: Record<OutputFilterKey, Array<RegExp>> = {
 	default: [],
 }
 
-const command = (process.argv[2] as Command | undefined) ?? 'dev'
-const extraArgs = process.argv.slice(3)
+const extraArgs = process.argv.slice(2)
 let shutdown: (() => void) | null = null
 let devChildren: Array<ChildProcess> = []
 let workerOrigin = ''
 
-if (!(command in commands)) {
-	showHelp(`Unknown command: ${command}`)
-	process.exit(1)
-}
-
-if (command === 'dev') {
-	void startDev()
-} else if (command === 'client') {
-	runBunScript('dev:client', extraArgs, {}, { outputFilter: 'client' })
-} else if (command === 'worker') {
-	runBunScript('dev:worker', extraArgs, {}, { outputFilter: 'worker' })
-} else if (command === 'build') {
-	runBunScript('build')
-} else if (command === 'deploy') {
-	runBunScript('deploy')
-} else if (command === 'typecheck') {
-	runBunScript('typecheck')
-}
+void startDev()
 
 async function startDev() {
 	await restartDev({ announce: false })
@@ -225,10 +196,6 @@ function showHelp(header?: string) {
 	console.log(`  ${colorize('r', 'cyan')} - ${colorize('restart', 'orange')}`)
 	console.log(`  ${colorize('h', 'cyan')} - ${colorize('help', 'magenta')}`)
 	console.log(`  ${colorize('q', 'cyan')} - ${colorize('quit', 'firebrick')}`)
-	console.log(`\n${bright('Commands:')}`)
-	for (const [name, description] of Object.entries(commands)) {
-		console.log(`  ${colorize(name.padEnd(8), 'cyan')} ${description}`)
-	}
 }
 
 async function restartDev(

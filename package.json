@@ -9,8 +9,7 @@
     "url": "git+ssh://git@github.com/epicweb-dev/epicflare.git"
   },
   "scripts": {
-    "dev": "bun cli.ts dev",
-    "cli": "bun cli.ts",
+    "dev": "bun cli.ts",
     "dev:client": "esbuild client/entry.tsx --bundle --format=esm --target=es2022 --outdir=public --entry-names=client-entry --chunk-names=assets/[name] --asset-names=assets/[name] --jsx=automatic --jsx-import-source=remix/component --watch",
     "dev:worker": "bun ./wrangler-env.ts dev --local",
     "deploy": "bun run build && bun ./wrangler-env.ts deploy",
