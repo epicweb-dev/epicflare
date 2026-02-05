@@ -1,6 +1,5 @@
 import type {
 	AuthRequest,
-	ClientInfo,
 	OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import { Layout } from '../server/layout.ts'
