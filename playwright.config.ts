@@ -16,12 +16,11 @@ export default defineConfig({
 		trace: 'on-first-retry',
 	},
 	webServer: {
-		command: `bun run build:client && bun run preview -- --port ${playwrightPort}`,
+		command: `bun run build:client && bun run preview -- --port ${playwrightPort} --var COOKIE_SECRET=playwright-secret`,
 		url: baseURL,
 		reuseExistingServer: true,
 		env: {
 			CLOUDFLARE_ENV: 'preview',
-			COOKIE_SECRET: 'playwright-secret',
 			WRANGLER_LOG_PATH: './logs.local',
 			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
 		},
