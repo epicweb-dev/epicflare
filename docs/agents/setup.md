@@ -26,3 +26,9 @@ Quick notes for getting a local Epicflare environment running.
 - `bun run validate` runs format, lint, build, typecheck, and Playwright tests.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
+
+## Remix package docs
+
+Use the Remix package index for quick navigation:
+
+- `docs/agents/remix/index.md`
