@@ -9,9 +9,47 @@ on:
       - main
 
 jobs:
-  deploy:
+  lint:
     runs-on: ubuntu-latest
-    name: 🚀 Deploy
+    name: 🧹 Lint
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          cache: true
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧹 Lint
+        run: bun run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    name: 🧪 Typecheck
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          cache: true
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧪 Typecheck
+        run: bun run typecheck
+
+  e2e:
+    runs-on: ubuntu-latest
+    name: 🎭 E2E
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -39,11 +77,25 @@ jobs:
       - name: 🧪 Playwright Tests
         run: bun run test:e2e
 
-      - name: 🧪 Typecheck
-        run: bun run typecheck
+  deploy:
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy
+    needs:
+      - lint
+      - typecheck
+      - e2e
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
 
-      - name: 🧹 Lint
-        run: bun run lint
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          cache: true
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
 
       - name: ☁️ Deploy to Cloudflare Workers
         if: github.ref == 'refs/heads/main'
