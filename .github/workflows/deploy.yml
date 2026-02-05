@@ -117,7 +117,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
-        run: echo "$COOKIE_SECRET" | wrangler secret put COOKIE_SECRET
+        run: echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET
 
       - name: ☁️ Deploy to Cloudflare Workers
         if: github.ref == 'refs/heads/main'
