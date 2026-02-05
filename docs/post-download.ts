@@ -93,11 +93,12 @@ function logDryRun(message: string) {
 
 function runWrangler(
 	args: Array<string>,
-	options?: { stdio?: 'inherit' | 'pipe' },
+	options?: { stdio?: 'inherit' | 'pipe'; input?: string },
 ) {
 	const result = spawnSync('bunx', ['wrangler', ...args], {
 		encoding: 'utf8',
 		stdio: options?.stdio ?? 'pipe',
+		input: options?.input,
 	})
 	return {
 		status: result.status ?? 1,
@@ -463,7 +464,9 @@ function createKvNamespace({
 	if (preview) {
 		args.push('--preview')
 	}
-	const result = runWrangler(args)
+	// Pipe "n" to suppress wrangler's prompt asking if we want to add it to config
+	// We handle config updates ourselves via updateWrangler()
+	const result = runWrangler(args, { input: 'n\n' })
 	if (result.status !== 0) {
 		console.error('\nFailed to create KV namespace.')
 		console.error(result.stdout || result.stderr)
