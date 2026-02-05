@@ -7,6 +7,7 @@ import type {
 	OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import {
+	handleAuthorizeInfo,
 	handleAuthorizeRequest,
 	handleOAuthCallback,
 	oauthScopes,
@@ -96,14 +97,20 @@ const createDatabase = async (password: string) => {
 const createEnv = (helpers: OAuthHelpers, appDb?: D1Database) =>
 	({ OAUTH_PROVIDER: helpers, APP_DB: appDb }) as unknown as Env
 
-const createFormRequest = (data: Record<string, string>) =>
+const createFormRequest = (
+	data: Record<string, string>,
+	headers: Record<string, string> = {},
+) =>
 	new Request('https://example.com/oauth/authorize', {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			...headers,
+		},
 		body: new URLSearchParams(data),
 	})
 
-test('authorize page renders client and scope info', async () => {
+test('authorize page returns SPA shell', async () => {
 	const response = await handleAuthorizeRequest(
 		new Request('https://example.com/oauth/authorize'),
 		createEnv(createHelpers()),
@@ -111,9 +118,25 @@ test('authorize page renders client and scope info', async () => {
 
 	expect(response.status).toBe(200)
 	const body = await response.text()
-	expect(body).toContain('Authorize access')
-	expect(body).toContain('Epicflare Demo')
-	expect(body).toContain('profile')
+	expect(body).toContain('client-entry.js')
+	expect(body).toContain('app-shell')
+})
+
+test('authorize info returns client and scopes', async () => {
+	const response = await handleAuthorizeInfo(
+		new Request(
+			'https://example.com/oauth/authorize-info?response_type=code&client_id=client-123&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback&scope=profile&state=demo',
+		),
+		createEnv(createHelpers()),
+	)
+
+	expect(response.status).toBe(200)
+	const payload = await response.json()
+	expect(payload).toEqual({
+		ok: true,
+		client: { id: baseClient.clientId, name: baseClient.clientName },
+		scopes: baseAuthRequest.scope,
+	})
 })
 
 test('authorize denies access and redirects with error', async () => {
@@ -135,13 +158,20 @@ test('authorize denies access and redirects with error', async () => {
 
 test('authorize requires email and password for approval', async () => {
 	const response = await handleAuthorizeRequest(
-		createFormRequest({ decision: 'approve', email: 'user@example.com' }),
+		createFormRequest(
+			{ decision: 'approve', email: 'user@example.com' },
+			{ Accept: 'application/json' },
+		),
 		createEnv(createHelpers()),
 	)
 
 	expect(response.status).toBe(400)
-	const body = await response.text()
-	expect(body).toContain('Email and password are required.')
+	const payload = await response.json()
+	expect(payload).toEqual({
+		ok: false,
+		error: 'Email and password are required.',
+		code: 'invalid_request',
+	})
 })
 
 test('authorize uses default scopes when none requested', async () => {
@@ -172,14 +202,13 @@ test('authorize uses default scopes when none requested', async () => {
 	expect(capturedOptions?.scope).toEqual(oauthScopes)
 })
 
-test('oauth callback page renders success details', async () => {
+test('oauth callback page returns SPA shell', async () => {
 	const response = handleOAuthCallback(
 		new Request('https://example.com/oauth/callback?code=abc123&state=demo'),
 	)
 
 	expect(response.status).toBe(200)
 	const body = await response.text()
-	expect(body).toContain('Authorization completed.')
-	expect(body).toContain('abc123')
-	expect(body).toContain('demo')
+	expect(body).toContain('client-entry.js')
+	expect(body).toContain('app-shell')
 })

@@ -4,6 +4,7 @@ import { handleRequest } from '../server/handler'
 import {
 	apiHandler,
 	handleAuthorizeRequest,
+	handleAuthorizeInfo,
 	handleOAuthCallback,
 	oauthPaths,
 	oauthScopes,
@@ -29,6 +30,10 @@ const appHandler = withCors({
 
 		if (url.pathname === oauthPaths.authorize) {
 			return handleAuthorizeRequest(request, env)
+		}
+
+		if (url.pathname === oauthPaths.authorizeInfo) {
+			return handleAuthorizeInfo(request, env)
 		}
 
 		if (url.pathname === oauthPaths.callback) {

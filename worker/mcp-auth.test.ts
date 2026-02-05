@@ -91,6 +91,35 @@ test('mcp request rejects invalid tokens', async () => {
 	expect(response.status).toBe(401)
 })
 
+test('mcp request rejects tokens without resource audience', async () => {
+	const tokenSummary: TokenSummary = {
+		id: 'token',
+		grantId: 'grant',
+		userId: 'user',
+		createdAt: 0,
+		expiresAt: 999999,
+		grant: {
+			clientId: 'client',
+			scope: oauthScopes,
+			props: { userId: 'user' },
+		},
+	}
+	const response = await handleMcpRequest({
+		request: new Request(`https://example.com${mcpResourcePath}`, {
+			headers: { Authorization: 'Bearer valid' },
+		}),
+		env: createEnv(
+			createHelpers({
+				unwrapToken: async () => tokenSummary,
+			}),
+		),
+		ctx: createContext(),
+		fetchMcp: () => new Response('ok'),
+	})
+
+	expect(response.status).toBe(401)
+})
+
 test('mcp request forwards when token is valid', async () => {
 	const tokenSummary: TokenSummary = {
 		id: 'token',
