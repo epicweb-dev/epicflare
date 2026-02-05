@@ -19,16 +19,20 @@ if (!hasEnvFlag) {
 let resolvedPort = process.env.PORT
 
 if (isDevCommand && !hasPortFlag) {
-	const desiredPort = Number.parseInt(process.env.PORT ?? '3742', 10)
-	const portRange = Array.from(
-		{ length: 10 },
-		(_, index) => desiredPort + index,
-	)
-	resolvedPort = String(
-		await getPort({
-			port: portRange,
-		}),
-	)
+	if (process.env.PORT) {
+		resolvedPort = process.env.PORT
+	} else {
+		const desiredPort = 3742
+		const portRange = Array.from(
+			{ length: 10 },
+			(_, index) => desiredPort + index,
+		)
+		resolvedPort = String(
+			await getPort({
+				port: portRange,
+			}),
+		)
+	}
 	commandArgs.push('--port', resolvedPort)
 }
 
@@ -43,12 +47,23 @@ const proc = Bun.spawn(['wrangler', ...commandArgs], {
 	env: processEnv,
 })
 
-const handleSignal = (signal: NodeJS.Signals) => {
+let isShuttingDown = false
+
+function handleSignal(signal: NodeJS.Signals) {
+	if (isShuttingDown) return
+	isShuttingDown = true
 	proc.kill(signal)
+	setTimeout(() => {
+		if (!proc.killed) proc.kill('SIGKILL')
+		process.exit(1)
+	}, 5_000).unref()
 }
 
 process.on('SIGINT', () => handleSignal('SIGINT'))
 process.on('SIGTERM', () => handleSignal('SIGTERM'))
+process.on('exit', () => {
+	if (!proc.killed) proc.kill('SIGKILL')
+})
 
 const exitCode = await proc.exited
 if (isDevCommand && resolvedPort) {
