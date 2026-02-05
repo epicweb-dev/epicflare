@@ -23,12 +23,11 @@ Worker.
 ## Quick Start
 
 ```bash
-bunx degit epicweb-dev/epicflare my-epicflare-app
-cd my-epicflare-app
-bun install
-bun ./docs/post-download.ts --guided
-bun run dev
+bunx create-epicflare my-epicflare-app
 ```
+
+This will clone the template, install dependencies, run the guided setup, and
+start the dev server.
 
 See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup
 paths and expectations.

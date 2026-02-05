@@ -108,6 +108,16 @@ function runWrangler(
 }
 
 function extractIdFromOutput(output: string) {
+	// Try database_id first (for D1 database creation)
+	const databaseIdJsonMatch = /"database_id"\s*:\s*"([^"]+)"/.exec(output)
+	if (databaseIdJsonMatch?.[1]) {
+		return databaseIdJsonMatch[1]
+	}
+	const databaseIdTextMatch = /\bdatabase_id:\s*([a-f0-9-]+)/i.exec(output)
+	if (databaseIdTextMatch?.[1]) {
+		return databaseIdTextMatch[1]
+	}
+	// Fallback to id (for KV namespace creation)
 	const jsonMatch = /"id"\s*:\s*"([^"]+)"/.exec(output)
 	if (jsonMatch?.[1]) {
 		return jsonMatch[1]
@@ -430,19 +440,42 @@ function createD1Database({
 		logDryRun(`Would create D1 database "${databaseName}".`)
 		return `dry-run-${databaseName}`
 	}
-	const result = runWrangler(['d1', 'create', databaseName])
-	if (result.status !== 0) {
+	const createResult = runWrangler(['d1', 'create', databaseName])
+	if (createResult.status !== 0) {
 		console.error('\nFailed to create D1 database.')
-		console.error(result.stdout || result.stderr)
+		console.error(createResult.stdout || createResult.stderr)
 		process.exit(1)
 	}
-	const id = extractIdFromOutput(result.stdout + result.stderr)
-	if (!id) {
-		console.error('\nCould not parse D1 database id from output.')
-		console.error(result.stdout || result.stderr)
+	// Use wrangler d1 list --json to get structured output instead of parsing text
+	const listResult = runWrangler(['d1', 'list', '--json'])
+	if (listResult.status !== 0) {
+		console.error('\nFailed to list D1 databases.')
+		console.error(listResult.stdout || listResult.stderr)
 		process.exit(1)
 	}
-	return id
+	try {
+		const databases = JSON.parse(listResult.stdout) as Array<{
+			uuid: string
+			name: string
+		}>
+		const database = databases.find((db) => db.name === databaseName)
+		if (!database) {
+			console.error(
+				`\nCould not find newly created database "${databaseName}" in list.`,
+			)
+			console.error(
+				'Available databases:',
+				databases.map((d) => d.name).join(', '),
+			)
+			process.exit(1)
+		}
+		return database.uuid
+	} catch (error) {
+		console.error('\nCould not parse D1 database list JSON output.')
+		console.error(listResult.stdout || listResult.stderr)
+		console.error(error)
+		process.exit(1)
+	}
 }
 
 function createKvNamespace({
