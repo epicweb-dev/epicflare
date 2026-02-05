@@ -31,14 +31,6 @@ type OAuthContext = ExecutionContext & {
 	props?: OAuthProps
 }
 
-const escapeHtml = (value: string) =>
-	value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&#39;')
-
 const createUserId = async (email: string) => {
 	const normalized = email.trim().toLowerCase()
 	const data = new TextEncoder().encode(normalized)
@@ -71,9 +63,7 @@ const renderAuthorizePage = ({
 }) => {
 	const clientLabel = client.clientName ?? client.clientId
 	const scopeList =
-		request.scope.length > 0
-			? request.scope.map(escapeHtml).join(', ')
-			: oauthScopes.map(escapeHtml).join(', ')
+		request.scope.length > 0 ? request.scope.join(', ') : oauthScopes.join(', ')
 	const searchParams = new URLSearchParams()
 	if (request.responseType)
 		searchParams.set('response_type', request.responseType)
@@ -101,7 +91,7 @@ const renderAuthorizePage = ({
 				style="color: var(--color-primary); font-weight: var(--font-weight-medium);"
 				role="alert"
 			>
-				${escapeHtml(errorMessage)}
+				${errorMessage}
 			</p>`
 		: html``
 
@@ -117,7 +107,7 @@ const renderAuthorizePage = ({
 					Authorize access
 				</h1>
 				<p style="color: var(--color-text-muted); margin: 0;">
-					${escapeHtml(clientLabel)} wants to access your Epicflare account.
+					${clientLabel} wants to access your Epicflare account.
 				</p>
 			</header>
 			<section
@@ -133,7 +123,7 @@ const renderAuthorizePage = ({
 			${message}
 			<form
 				method="post"
-				action="${escapeHtml(actionPath)}"
+				action="${actionPath}"
 				style="display: grid; gap: var(--spacing-md); padding: var(--spacing-lg); border-radius: var(--radius-lg); border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-sm);"
 			>
 				<label style="display: grid; gap: var(--spacing-xs);">
@@ -143,7 +133,7 @@ const renderAuthorizePage = ({
 						name="email"
 						required
 						autocomplete="email"
-						value="${escapeHtml(emailValue ?? '')}"
+						value="${emailValue ?? ''}"
 						placeholder="you@example.com"
 						style="padding: var(--spacing-sm); border-radius: var(--radius-md); border: 1px solid var(--color-border); font-size: var(--font-size-base); font-family: var(--font-family);"
 					/>
@@ -194,9 +184,7 @@ const renderErrorPage = (message: string, status = 400) =>
 			>
 				OAuth error
 			</h1>
-			<p style="margin: 0; color: var(--color-text-muted);">
-				${escapeHtml(message)}
-			</p>
+			<p style="margin: 0; color: var(--color-text-muted);">${message}</p>
 			<a href="/" style="color: var(--color-primary); text-decoration: none;"
 				>Back home</a
 			>
@@ -225,7 +213,7 @@ const renderCallbackPage = ({
 		? html`<pre
 				style="margin: 0; padding: var(--spacing-md); border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); white-space: pre-wrap;"
 			>
-${escapeHtml(details)}</pre
+${details}</pre
 			>`
 		: html``
 	return renderPage(
@@ -238,13 +226,11 @@ ${escapeHtml(details)}</pre
 			>
 				OAuth callback
 			</h1>
-			<p style="margin: 0; color: var(--color-text-muted);">
-				${escapeHtml(statusLine)}
-			</p>
+			<p style="margin: 0; color: var(--color-text-muted);">${statusLine}</p>
 			${detailsMarkup}
 			${state
 				? html`<p style="margin: 0; color: var(--color-text-muted);">
-						State: ${escapeHtml(state)}
+						State: ${state}
 					</p>`
 				: html``}
 		</main>`,
