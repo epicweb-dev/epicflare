@@ -18,7 +18,7 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: true,
 		env: {
-			CLOUDFLARE_ENV: 'test',
+			CLOUDFLARE_ENV: 'preview',
 			WRANGLER_LOG_PATH: './logs.local',
 			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
 		},
