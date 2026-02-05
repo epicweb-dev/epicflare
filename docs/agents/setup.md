@@ -23,7 +23,8 @@ Quick notes for getting a local Epicflare environment running.
 
 ## Checks
 
-- `bun run validate` runs format check, lint fix, build, typecheck, and
-  Playwright tests.
+- `bun run validate` runs format check, lint fix, build, typecheck, Playwright
+  tests, and MCP E2E tests.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
+- `bun run test:mcp` to run MCP server E2E tests.
