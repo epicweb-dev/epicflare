@@ -1,20 +1,11 @@
-import { createCookie } from '@remix-run/cookie'
 import { type BuildAction } from 'remix/fetch-router'
+import { createAuthCookie } from '../auth-session.ts'
 import type routes from '../routes.ts'
-
-const sessionMaxAgeSeconds = 60 * 60 * 24 * 7
 
 type AuthMode = 'login' | 'signup'
 
 const isAuthMode = (value: string): value is AuthMode =>
 	value === 'login' || value === 'signup'
-
-const sessionCookie = createCookie('epicflare_session', {
-	httpOnly: true,
-	sameSite: 'Lax',
-	path: '/',
-	maxAge: sessionMaxAgeSeconds,
-})
 
 const jsonResponse = (data: unknown, init?: ResponseInit) =>
 	new Response(JSON.stringify(data), {
@@ -53,10 +44,13 @@ export default {
 			)
 		}
 
-		const sessionValue = crypto.randomUUID()
-		const cookie = await sessionCookie.serialize(sessionValue, {
-			secure: url.protocol === 'https:',
-		})
+		const cookie = await createAuthCookie(
+			{
+				id: crypto.randomUUID(),
+				email: normalizedEmail,
+			},
+			url.protocol === 'https:',
+		)
 
 		return jsonResponse(
 			{ ok: true, mode: normalizedMode },
