@@ -23,4 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .wrangler
-
+playwright-report
+test-results
+public/client-entry.js
