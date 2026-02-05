@@ -1,5 +1,8 @@
 # Code style
 
+Apply these rules to all new or edited code. When in doubt, match the existing
+file style first, then run the formatter.
+
 ## Function forms
 
 - Prefer function declarations for named, reusable functions.
@@ -21,6 +24,9 @@
 - Prefer `type` aliases for object shapes and unions.
 - Use `interface` only when you need declaration merging or public extension
   points.
+- Prefer inline type definitions in parameters over named types unless sharing
+  is necessary. When a one-off named type is useful, consider `Parameters<>` (or
+  similar utility types) instead.
 - Use `satisfies` when exporting objects that must match framework contracts.
 
 ## Absence values

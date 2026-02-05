@@ -23,6 +23,34 @@ We use bun for scripts and installs.
 bun install
 ```
 
+## Post-download setup
+
+Run the setup script to update Wrangler config, create a local `.env`. It
+removes itself after running.
+
+```
+bun ./docs/post-download.ts
+```
+
+For non-interactive runs (like agents/CI), pass flags or `--defaults`. The
+`--defaults` flag skips prompts and uses defaults based on the current directory
+name (worker/package/database names), plus a generated cookie secret.
+
+```
+bun ./docs/post-download.ts --defaults --database-id <id> --preview-database-id <id> --kv-namespace-id <id>
+```
+
+To preview changes without writing, add `--dry-run`.
+
+The script expects:
+
+- Bun installed (uses `bun`/`bunx`).
+- Running from the repo root (needs `wrangler.jsonc` and `package.json`).
+- Write access to `wrangler.jsonc`, `package.json`, `.env`, and `docs/`.
+- Wrangler authentication available. If you are not logged in, the script will
+  print the `bunx wrangler login` command and stop. In interactive mode, it can
+  offer to run the login command for you.
+
 ## Cloudflare prerequisites
 
 1. Install Wrangler if you do not have it already:

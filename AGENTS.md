@@ -2,6 +2,11 @@
 
 We use bun for installing dependencies and running scripts. Do not use npm.
 
+## Code style
+
+- Read and follow `docs/agents/code-style.md` before writing code.
+- Match the surrounding file style (quotes, semicolons, formatting).
+
 ## Agent setup
 
 - Install dependencies with `bun install`.
