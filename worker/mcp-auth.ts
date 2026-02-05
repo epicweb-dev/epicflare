@@ -60,7 +60,7 @@ const audienceMatches = (
 	audience: string | string[] | undefined,
 	requestUrl: URL,
 ) => {
-	if (!audience) return true
+	if (!audience) return false
 	const allowed = Array.isArray(audience) ? audience : [audience]
 	const origin = requestUrl.origin
 	const resourcePath = `${origin}${mcpResourcePath}`

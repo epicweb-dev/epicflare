@@ -129,6 +129,9 @@ const verifyPassword = async (
 	password: string,
 	storedHash: string,
 ): Promise<{ valid: boolean; upgradedHash?: string }> => {
+	if (!storedHash) {
+		return { valid: false }
+	}
 	const normalizedHash = storedHash.trim()
 	if (normalizedHash.startsWith(`${passwordHashPrefix}$`)) {
 		const [prefix, iterationsRaw, saltHex, hashHex, ...extra] =
@@ -536,7 +539,13 @@ export const apiHandler = {
 	async fetch(request: Request, _env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url)
 		if (url.pathname === '/api/me') {
-			const props = (ctx as OAuthContext).props ?? null
+			const props = (ctx as OAuthContext).props
+			if (!props) {
+				return jsonResponse(
+					{ ok: false, error: 'Unauthorized' },
+					{ status: 401 },
+				)
+			}
 			return jsonResponse({ ok: true, user: props })
 		}
 
