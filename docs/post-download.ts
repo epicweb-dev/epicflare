@@ -93,41 +93,31 @@ function logDryRun(message: string) {
 
 function runWrangler(
 	args: Array<string>,
-	options?: { stdio?: 'inherit' | 'pipe'; input?: string },
+	options?: { stdio?: 'inherit' | 'pipe'; input?: string; quiet?: boolean },
 ) {
-	console.log(paint(`  Running:\n   bunx wrangler ${args.join(' ')}`, 'dim'))
+	if (!options?.quiet) {
+		console.log(paint(`  Running:    bunx wrangler ${args.join(' ')}`, 'dim'))
+	}
 	const result = spawnSync('bunx', ['wrangler', ...args], {
 		encoding: 'utf8',
 		stdio: options?.stdio ?? 'pipe',
 		input: options?.input,
 	})
+	const status = result.status ?? 1
+	if (status !== 0 && options?.stdio !== 'inherit' && !options?.quiet) {
+		console.error(
+			paint(`  Command failed: wrangler ${args.join(' ')}`, 'yellow'),
+		)
+		const output = (result.stdout ?? '') + (result.stderr ?? '')
+		if (output.trim()) {
+			console.error(output)
+		}
+	}
 	return {
-		status: result.status ?? 1,
+		status,
 		stdout: result.stdout ?? '',
 		stderr: result.stderr ?? '',
 	}
-}
-
-function extractIdFromOutput(output: string) {
-	// Try database_id first (for D1 database creation)
-	const databaseIdJsonMatch = /"database_id"\s*:\s*"([^"]+)"/.exec(output)
-	if (databaseIdJsonMatch?.[1]) {
-		return databaseIdJsonMatch[1]
-	}
-	const databaseIdTextMatch = /\bdatabase_id:\s*([a-f0-9-]+)/i.exec(output)
-	if (databaseIdTextMatch?.[1]) {
-		return databaseIdTextMatch[1]
-	}
-	// Fallback to id (for KV namespace creation)
-	const jsonMatch = /"id"\s*:\s*"([^"]+)"/.exec(output)
-	if (jsonMatch?.[1]) {
-		return jsonMatch[1]
-	}
-	const textMatch = /\bid:\s*([a-f0-9-]+)/i.exec(output)
-	if (textMatch?.[1]) {
-		return textMatch[1]
-	}
-	return ''
 }
 
 function buildSummaryOutput(summary: {
@@ -357,11 +347,11 @@ function reportNonInteractiveFailure(missing: Array<string>) {
 }
 
 function isWranglerLoggedIn() {
-	return runWrangler(['whoami']).status === 0
+	return runWrangler(['whoami'], { quiet: true }).status === 0
 }
 
 function isWranglerAvailable() {
-	return runWrangler(['--version']).status === 0
+	return runWrangler(['--version'], { quiet: true }).status === 0
 }
 
 function runPreflightChecks() {
@@ -441,17 +431,16 @@ function createD1Database({
 		logDryRun(`Would create D1 database "${databaseName}".`)
 		return `dry-run-${databaseName}`
 	}
+	console.log(paint(`  Creating D1 database "${databaseName}"...`, 'dim'))
 	const createResult = runWrangler(['d1', 'create', databaseName])
 	if (createResult.status !== 0) {
 		console.error('\nFailed to create D1 database.')
-		console.error(createResult.stdout || createResult.stderr)
 		process.exit(1)
 	}
 	// Use wrangler d1 list --json to get structured output instead of parsing text
 	const listResult = runWrangler(['d1', 'list', '--json'])
 	if (listResult.status !== 0) {
 		console.error('\nFailed to list D1 databases.')
-		console.error(listResult.stdout || listResult.stderr)
 		process.exit(1)
 	}
 	try {
@@ -471,10 +460,9 @@ function createD1Database({
 			process.exit(1)
 		}
 		return database.uuid
-	} catch (error) {
+	} catch {
 		console.error('\nCould not parse D1 database list JSON output.')
 		console.error(listResult.stdout || listResult.stderr)
-		console.error(error)
 		process.exit(1)
 	}
 }
@@ -498,21 +486,45 @@ function createKvNamespace({
 	if (preview) {
 		args.push('--preview')
 	}
+	const label = preview ? 'preview ' : ''
+	console.log(paint(`  Creating ${label}KV namespace "${title}"...`, 'dim'))
 	// Pipe "n" to suppress wrangler's prompt asking if we want to add it to config
 	// We handle config updates ourselves via updateWrangler()
-	const result = runWrangler(args, { input: 'n\n' })
-	if (result.status !== 0) {
+	const createResult = runWrangler(args, { input: 'n\n' })
+	if (createResult.status !== 0) {
 		console.error('\nFailed to create KV namespace.')
-		console.error(result.stdout || result.stderr)
 		process.exit(1)
 	}
-	const id = extractIdFromOutput(result.stdout + result.stderr)
-	if (!id) {
-		console.error('\nCould not parse KV namespace id from output.')
-		console.error(result.stdout || result.stderr)
+	// Use wrangler kv namespace list to get structured output instead of parsing text
+	// When --preview is used, wrangler appends "_preview" to the title
+	const expectedTitle = preview ? `${title}_preview` : title
+	const listResult = runWrangler(['kv', 'namespace', 'list'])
+	if (listResult.status !== 0) {
+		console.error('\nFailed to list KV namespaces.')
 		process.exit(1)
 	}
-	return id
+	try {
+		const namespaces = JSON.parse(listResult.stdout) as Array<{
+			id: string
+			title: string
+		}>
+		const namespace = namespaces.find((ns) => ns.title === expectedTitle)
+		if (!namespace) {
+			console.error(
+				`\nCould not find newly created KV namespace "${expectedTitle}" in list.`,
+			)
+			console.error(
+				'Available namespaces:',
+				namespaces.map((ns) => ns.title).join(', '),
+			)
+			process.exit(1)
+		}
+		return namespace.id
+	} catch {
+		console.error('\nCould not parse KV namespace list JSON output.')
+		console.error(listResult.stdout || listResult.stderr)
+		process.exit(1)
+	}
 }
 
 async function run() {
