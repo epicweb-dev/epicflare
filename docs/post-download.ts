@@ -482,7 +482,7 @@ function createKvNamespace({
 		)
 		return `dry-run-${title}`
 	}
-	const args = ['kv', 'namespace', 'create', title, '--binding', 'OAUTH_KV']
+	const args = ['kv', 'namespace', 'create', title]
 	if (preview) {
 		args.push('--preview')
 	}
