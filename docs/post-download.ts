@@ -96,7 +96,9 @@ function runWrangler(
 	options?: { stdio?: 'inherit' | 'pipe'; input?: string; quiet?: boolean },
 ) {
 	if (!options?.quiet) {
-		console.log(paint(`  Running:\n    bunx wrangler ${args.join(' ')}`, 'dim'))
+		console.log(
+			paint(`    Running:\n      bunx wrangler ${args.join(' ')}`, 'dim'),
+		)
 	}
 	const result = spawnSync('bunx', ['wrangler', ...args], {
 		encoding: 'utf8',
