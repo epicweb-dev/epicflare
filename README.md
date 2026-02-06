@@ -23,7 +23,7 @@ Worker.
 ## Quick Start
 
 ```bash
-bunx create-epicflare my-epicflare-app
+bunx create-epicflare
 ```
 
 This will clone the template, install dependencies, run the guided setup, and
