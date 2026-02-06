@@ -28,7 +28,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install chromium --with-deps",
-    "test:mcp": "bun test mcp-e2e/mcp-server-e2e.test.ts"
+    "test:mcp": "bun test mcp/mcp-server-e2e.test.ts"
   },
   "devDependencies": {
     "@epic-web/config": "^1.22.0",
