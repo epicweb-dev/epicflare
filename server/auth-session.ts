@@ -52,6 +52,14 @@ export async function createAuthCookie(session: AuthSession, secure: boolean) {
 	return getSessionCookie().serialize(JSON.stringify(session), { secure })
 }
 
+export async function destroyAuthCookie(secure: boolean) {
+	return getSessionCookie().serialize('', {
+		secure,
+		maxAge: 0,
+		expires: new Date(0),
+	})
+}
+
 export async function readAuthSession(request: Request) {
 	const cookieHeader = request.headers.get('Cookie')
 	if (!cookieHeader) return null

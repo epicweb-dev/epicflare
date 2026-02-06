@@ -1,6 +1,7 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { html } from 'remix/html-template'
 import { readAuthSession } from '../auth-session.ts'
+import { redirectToLogin } from '../auth-redirect.ts'
 import { Layout } from '../layout.ts'
 import { render } from '../render.ts'
 import type routes from '../routes.ts'
@@ -27,6 +28,14 @@ function renderAccount(email: string) {
 			<p style="margin: 0; color: var(--color-text-muted);">
 				You are signed in to epicflare.
 			</p>
+			<form method="post" action="/logout" style="margin: 0;">
+				<button
+					type="submit"
+					style="padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-full); border: none; background: var(--color-primary); color: var(--color-on-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); cursor: pointer;"
+				>
+					Log out
+				</button>
+			</form>
 			<a
 				href="/"
 				style="color: var(--color-primary); font-weight: var(--font-weight-medium); text-decoration: none;"
@@ -43,7 +52,7 @@ export default {
 		const session = await readAuthSession(request)
 
 		if (!session) {
-			return Response.redirect(new URL('/login', request.url), 302)
+			return redirectToLogin(request)
 		}
 
 		return render(
