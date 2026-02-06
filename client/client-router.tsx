@@ -99,12 +99,9 @@ export function getPathname() {
 
 export function navigate(to: string) {
 	if (typeof window === 'undefined') return
-	if (window.location.pathname === to) {
-		notify()
-		return
-	}
-	window.history.pushState({}, '', to)
-	notify()
+	// Remix router bug prevents reliable client navigation right now.
+	// Force full reloads; in the next Remix version we can restore SPA navigation.
+	window.location.assign(to)
 }
 
 export function Router(handle: Handle, setup: RouterSetup) {
