@@ -12,7 +12,14 @@ import {
 
 export function HomeRoute() {
 	return (_match: { path: string; params: Record<string, string> }) => (
-		<section css={{ display: 'grid', gap: spacing.lg }}>
+		<section
+			css={{
+				display: 'grid',
+				gap: spacing.lg,
+				justifyItems: 'center',
+				textAlign: 'center',
+			}}
+		>
 			<div
 				css={{
 					display: 'grid',
@@ -22,27 +29,27 @@ export function HomeRoute() {
 					border: `1px solid ${colors.border}`,
 					background: `linear-gradient(135deg, ${colors.primarySoftStrong}, ${colors.primarySoftest})`,
 					boxShadow: shadows.sm,
+					maxWidth: '36rem',
+					width: '100%',
 				}}
 			>
 				<div
 					css={{
-						display: 'flex',
-						flexWrap: 'wrap',
-						gap: spacing.lg,
-						alignItems: 'center',
+						display: 'grid',
+						gap: spacing.md,
+						justifyItems: 'center',
 					}}
 				>
 					<img
 						src="/logo.png"
 						alt="epicflare logo"
 						css={{
-							width: '240px',
+							width: '220px',
 							maxWidth: '100%',
 							height: 'auto',
-							flex: '0 0 auto',
 						}}
 					/>
-					<div css={{ display: 'grid', gap: spacing.sm, minWidth: '16rem' }}>
+					<div css={{ display: 'grid', gap: spacing.sm }}>
 						<h1
 							css={{
 								fontSize: typography.fontSize['2xl'],
@@ -61,76 +68,6 @@ export function HomeRoute() {
 				</div>
 			</div>
 			<Counter setup={{ initial: 1 }} />
-		</section>
-	)
-}
-
-export function ClientRoute() {
-	return (match: { path: string; params: Record<string, string> }) => (
-		<section>
-			<h2
-				css={{
-					fontSize: typography.fontSize.lg,
-					fontWeight: typography.fontWeight.semibold,
-					marginBottom: spacing.sm,
-					color: colors.text,
-				}}
-			>
-				Client-side Route
-			</h2>
-			<p
-				css={{
-					marginBottom: spacing.md,
-					color: colors.textMuted,
-				}}
-			>
-				This page is rendered by the client-side router without a server
-				roundtrip.
-			</p>
-			<p
-				css={{
-					color: colors.text,
-					fontSize: typography.fontSize.sm,
-				}}
-			>
-				Current path: {match.path}
-			</p>
-		</section>
-	)
-}
-
-export function ClientParamRoute() {
-	return (match: { path: string; params: Record<string, string> }) => (
-		<section>
-			<h2
-				css={{
-					fontSize: typography.fontSize.lg,
-					fontWeight: typography.fontWeight.semibold,
-					marginBottom: spacing.sm,
-					color: colors.text,
-				}}
-			>
-				Client Param Route
-			</h2>
-			<p
-				css={{
-					marginBottom: spacing.md,
-					color: colors.textMuted,
-				}}
-			>
-				This route proves `:id` params are working.
-			</p>
-			<p css={{ color: colors.text }}>
-				ID param: <strong>{match.params.id ?? 'missing'}</strong>
-			</p>
-			<p
-				css={{
-					color: colors.text,
-					fontSize: typography.fontSize.sm,
-				}}
-			>
-				Current path: {match.path}
-			</p>
 		</section>
 	)
 }
