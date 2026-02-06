@@ -435,13 +435,15 @@ function createD1Database({
 	const createResult = runWrangler(['d1', 'create', databaseName])
 	if (createResult.status !== 0) {
 		console.error('\nFailed to create D1 database.')
-		process.exit(1)
+		throw new Error(`Failed to create D1 database "${databaseName}"`)
 	}
 	// Use wrangler d1 list --json to get structured output instead of parsing text
 	const listResult = runWrangler(['d1', 'list', '--json'])
 	if (listResult.status !== 0) {
 		console.error('\nFailed to list D1 databases.')
-		process.exit(1)
+		throw new Error(
+			`Failed to list D1 databases after creating "${databaseName}"`,
+		)
 	}
 	try {
 		const databases = JSON.parse(listResult.stdout) as Array<{
@@ -457,13 +459,18 @@ function createD1Database({
 				'Available databases:',
 				databases.map((d) => d.name).join(', '),
 			)
-			process.exit(1)
+			throw new Error(
+				`Could not find newly created database "${databaseName}" in list`,
+			)
 		}
 		return database.uuid
-	} catch {
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error
+		}
 		console.error('\nCould not parse D1 database list JSON output.')
 		console.error(listResult.stdout || listResult.stderr)
-		process.exit(1)
+		throw new Error('Could not parse D1 database list JSON output')
 	}
 }
 
@@ -493,7 +500,7 @@ function createKvNamespace({
 	const createResult = runWrangler(args, { input: 'n\n' })
 	if (createResult.status !== 0) {
 		console.error('\nFailed to create KV namespace.')
-		process.exit(1)
+		throw new Error(`Failed to create KV namespace "${title}"`)
 	}
 	// Use wrangler kv namespace list to get structured output instead of parsing text
 	// When --preview is used, wrangler appends "_preview" to the title
@@ -501,7 +508,7 @@ function createKvNamespace({
 	const listResult = runWrangler(['kv', 'namespace', 'list'])
 	if (listResult.status !== 0) {
 		console.error('\nFailed to list KV namespaces.')
-		process.exit(1)
+		throw new Error(`Failed to list KV namespaces after creating "${title}"`)
 	}
 	try {
 		const namespaces = JSON.parse(listResult.stdout) as Array<{
@@ -517,13 +524,134 @@ function createKvNamespace({
 				'Available namespaces:',
 				namespaces.map((ns) => ns.title).join(', '),
 			)
-			process.exit(1)
+			throw new Error(
+				`Could not find newly created KV namespace "${expectedTitle}" in list`,
+			)
 		}
 		return namespace.id
-	} catch {
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error
+		}
 		console.error('\nCould not parse KV namespace list JSON output.')
 		console.error(listResult.stdout || listResult.stderr)
-		process.exit(1)
+		throw new Error('Could not parse KV namespace list JSON output')
+	}
+}
+
+function deleteD1Database({
+	databaseName,
+	dryRun,
+}: {
+	databaseName: string
+	dryRun: boolean
+}) {
+	if (dryRun) {
+		logDryRun(`Would delete D1 database "${databaseName}".`)
+		return
+	}
+	console.log(paint(`  Deleting D1 database "${databaseName}"...`, 'dim'))
+	const deleteResult = runWrangler(['d1', 'delete', databaseName], {
+		input: 'y\n',
+	})
+	if (deleteResult.status !== 0) {
+		console.error(`\nFailed to delete D1 database "${databaseName}".`)
+		console.error(deleteResult.stdout || deleteResult.stderr)
+	} else {
+		console.log(paint(`  ✓ Deleted D1 database "${databaseName}"`, 'green'))
+	}
+}
+
+function deleteKvNamespace({
+	namespaceId,
+	dryRun,
+}: {
+	namespaceId: string
+	dryRun: boolean
+}) {
+	if (dryRun) {
+		logDryRun(`Would delete KV namespace "${namespaceId}".`)
+		return
+	}
+	console.log(paint(`  Deleting KV namespace "${namespaceId}"...`, 'dim'))
+	const deleteResult = runWrangler(['kv', 'namespace', 'delete', namespaceId])
+	if (deleteResult.status !== 0) {
+		console.error(`\nFailed to delete KV namespace "${namespaceId}".`)
+		console.error(deleteResult.stdout || deleteResult.stderr)
+	} else {
+		console.log(paint(`  ✓ Deleted KV namespace "${namespaceId}"`, 'green'))
+	}
+}
+
+async function cleanupCreatedResources(
+	createdResources: {
+		databases: Array<{ name: string; id: string }>
+		kvNamespaces: Array<{ id: string; title: string }>
+	},
+	dryRun: boolean,
+	canPrompt: boolean,
+) {
+	const hasResources =
+		createdResources.databases.length > 0 ||
+		createdResources.kvNamespaces.length > 0
+
+	if (!hasResources || dryRun) {
+		return
+	}
+
+	console.log(
+		`\n${paint('⚠️  Resources were created before the failure', 'yellow')}`,
+	)
+
+	if (createdResources.databases.length > 0) {
+		console.log('Created D1 databases:')
+		for (const db of createdResources.databases) {
+			console.log(`  - ${db.name} (${db.id})`)
+		}
+	}
+
+	if (createdResources.kvNamespaces.length > 0) {
+		console.log('Created KV namespaces:')
+		for (const ns of createdResources.kvNamespaces) {
+			console.log(`  - ${ns.title} (${ns.id})`)
+		}
+	}
+
+	if (!canPrompt) {
+		console.log('\nRun the following commands to clean up created resources:')
+		for (const db of createdResources.databases) {
+			console.log(`  bunx wrangler d1 delete ${db.name}`)
+		}
+		for (const ns of createdResources.kvNamespaces) {
+			console.log(`  bunx wrangler kv namespace delete ${ns.id}`)
+		}
+		return
+	}
+
+	const shouldCleanup = await promptConfirm(
+		'Would you like to delete the created resources?',
+		true,
+	)
+
+	if (!shouldCleanup) {
+		console.log('\nYou can delete them later with:')
+		for (const db of createdResources.databases) {
+			console.log(`  bunx wrangler d1 delete ${db.name}`)
+		}
+		for (const ns of createdResources.kvNamespaces) {
+			console.log(`  bunx wrangler kv namespace delete ${ns.id}`)
+		}
+		return
+	}
+
+	console.log(`\n${paint('🧹 Cleaning up created resources...', 'bold')}`)
+
+	for (const db of createdResources.databases) {
+		deleteD1Database({ databaseName: db.name, dryRun })
+	}
+
+	for (const ns of createdResources.kvNamespaces) {
+		deleteKvNamespace({ namespaceId: ns.id, dryRun })
 	}
 }
 
@@ -646,6 +774,15 @@ async function run() {
 	let kvNamespaceId = providedKvNamespaceId
 	let kvNamespacePreviewId = providedKvNamespacePreviewId
 
+	// Track created resources for cleanup on failure
+	const createdResources: {
+		databases: Array<{ name: string; id: string }>
+		kvNamespaces: Array<{ id: string; title: string }>
+	} = {
+		databases: [],
+		kvNamespaces: [],
+	}
+
 	if (shouldCreateResources) {
 		const kvNamespaceTitle = await resolveValue({
 			label: 'KV namespace title (prod)',
@@ -658,21 +795,55 @@ async function run() {
 			defaultValue: `${appName}-oauth-preview`,
 		})
 
-		databaseId = createD1Database({ databaseName, dryRun })
-		previewDatabaseId = createD1Database({
-			databaseName: previewDatabaseName,
-			dryRun,
-		})
-		kvNamespaceId = createKvNamespace({
-			title: kvNamespaceTitle,
-			preview: false,
-			dryRun,
-		})
-		kvNamespacePreviewId = createKvNamespace({
-			title: kvNamespacePreviewTitle,
-			preview: true,
-			dryRun,
-		})
+		try {
+			databaseId = createD1Database({ databaseName, dryRun })
+			if (!dryRun && databaseId && !databaseId.startsWith('dry-run-')) {
+				createdResources.databases.push({ name: databaseName, id: databaseId })
+			}
+			previewDatabaseId = createD1Database({
+				databaseName: previewDatabaseName,
+				dryRun,
+			})
+			if (
+				!dryRun &&
+				previewDatabaseId &&
+				!previewDatabaseId.startsWith('dry-run-')
+			) {
+				createdResources.databases.push({
+					name: previewDatabaseName,
+					id: previewDatabaseId,
+				})
+			}
+			kvNamespaceId = createKvNamespace({
+				title: kvNamespaceTitle,
+				preview: false,
+				dryRun,
+			})
+			if (!dryRun && kvNamespaceId && !kvNamespaceId.startsWith('dry-run-')) {
+				createdResources.kvNamespaces.push({
+					id: kvNamespaceId,
+					title: kvNamespaceTitle,
+				})
+			}
+			kvNamespacePreviewId = createKvNamespace({
+				title: kvNamespacePreviewTitle,
+				preview: true,
+				dryRun,
+			})
+			if (
+				!dryRun &&
+				kvNamespacePreviewId &&
+				!kvNamespacePreviewId.startsWith('dry-run-')
+			) {
+				createdResources.kvNamespaces.push({
+					id: kvNamespacePreviewId,
+					title: kvNamespacePreviewTitle,
+				})
+			}
+		} catch (error) {
+			await cleanupCreatedResources(createdResources, dryRun, canPrompt)
+			throw error
+		}
 	} else if (!skipResourceIds) {
 		databaseId = await resolveValue({
 			label: 'D1 database id (prod)',
@@ -697,75 +868,80 @@ async function run() {
 		reportNonInteractiveFailure(missingFlags)
 	}
 
-	const changedWrangler = updateWrangler({
-		workerName,
-		databaseName,
-		databaseId,
-		previewDatabaseName,
-		previewDatabaseId,
-		kvNamespaceId,
-		kvNamespacePreviewId,
-		dryRun,
-	})
-	const changedPackageJson = updatePackageJson({ packageName, dryRun })
-	const changedEnv = updateEnv({ cookieSecret, dryRun })
-
-	buildSummaryOutput({
-		dryRun,
-		inputs: {
-			appName,
+	try {
+		const changedWrangler = updateWrangler({
 			workerName,
-			packageName,
 			databaseName,
-			databaseId: databaseId || '(skipped)',
+			databaseId,
 			previewDatabaseName,
-			previewDatabaseId: previewDatabaseId || '(skipped)',
-			kvNamespaceId: kvNamespaceId || '(skipped)',
-			kvNamespacePreviewId: kvNamespacePreviewId || '(skipped)',
-			cookieSecret: '(hidden)',
-		},
-		changes: {
-			wranglerJsonc: changedWrangler,
-			packageJson: changedPackageJson,
-			env: changedEnv,
-		},
-	})
+			previewDatabaseId,
+			kvNamespaceId,
+			kvNamespacePreviewId,
+			dryRun,
+		})
+		const changedPackageJson = updatePackageJson({ packageName, dryRun })
+		const changedEnv = updateEnv({ cookieSecret, dryRun })
 
-	rl.close()
-	if (dryRun) {
-		logDryRun('Skipping self-delete.')
-	} else {
-		removeSelf()
-	}
-	showNextSteps()
+		buildSummaryOutput({
+			dryRun,
+			inputs: {
+				appName,
+				workerName,
+				packageName,
+				databaseName,
+				databaseId: databaseId || '(skipped)',
+				previewDatabaseName,
+				previewDatabaseId: previewDatabaseId || '(skipped)',
+				kvNamespaceId: kvNamespaceId || '(skipped)',
+				kvNamespacePreviewId: kvNamespacePreviewId || '(skipped)',
+				cookieSecret: '(hidden)',
+			},
+			changes: {
+				wranglerJsonc: changedWrangler,
+				packageJson: changedPackageJson,
+				env: changedEnv,
+			},
+		})
 
-	if (jsonOutput) {
-		console.log(`\n${paint('📦 JSON summary', 'bold')}`)
-		console.log(
-			JSON.stringify(
-				{
-					dryRun,
-					inputs: {
-						appName,
-						workerName,
-						packageName,
-						databaseName,
-						databaseId,
-						previewDatabaseName,
-						previewDatabaseId,
-						kvNamespaceId,
-						kvNamespacePreviewId,
+		rl.close()
+		if (dryRun) {
+			logDryRun('Skipping self-delete.')
+		} else {
+			removeSelf()
+		}
+		showNextSteps()
+
+		if (jsonOutput) {
+			console.log(`\n${paint('📦 JSON summary', 'bold')}`)
+			console.log(
+				JSON.stringify(
+					{
+						dryRun,
+						inputs: {
+							appName,
+							workerName,
+							packageName,
+							databaseName,
+							databaseId,
+							previewDatabaseName,
+							previewDatabaseId,
+							kvNamespaceId,
+							kvNamespacePreviewId,
+						},
+						changes: {
+							wranglerJsonc: changedWrangler,
+							packageJson: changedPackageJson,
+							env: changedEnv,
+						},
 					},
-					changes: {
-						wranglerJsonc: changedWrangler,
-						packageJson: changedPackageJson,
-						env: changedEnv,
-					},
-				},
-				null,
-				2,
-			),
-		)
+					null,
+					2,
+				),
+			)
+		}
+	} catch (error) {
+		await cleanupCreatedResources(createdResources, dryRun, canPrompt)
+		throw error
 	}
 }
 
