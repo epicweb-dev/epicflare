@@ -2,6 +2,11 @@ import { type Handle } from 'remix/component'
 import { navigate } from './client-router.tsx'
 import { Counter } from './counter.tsx'
 import {
+	fetchSessionInfo,
+	type SessionInfo,
+	type SessionStatus,
+} from './session.ts'
+import {
 	colors,
 	radius,
 	shadows,
@@ -347,8 +352,6 @@ type OAuthAuthorizeInfo = {
 
 type OAuthAuthorizeStatus = 'idle' | 'loading' | 'ready' | 'error'
 type OAuthAuthorizeMessage = { type: 'error' | 'info'; text: string }
-type OAuthSession = { email: string }
-type OAuthSessionStatus = 'idle' | 'loading' | 'ready'
 
 function OAuthAuthorizeForm(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
@@ -356,8 +359,8 @@ function OAuthAuthorizeForm(handle: Handle) {
 	let message: OAuthAuthorizeMessage | null = null
 	let submitting = false
 	let lastSearch = ''
-	let session: OAuthSession | null = null
-	let sessionStatus: OAuthSessionStatus = 'idle'
+	let session: SessionInfo | null = null
+	let sessionStatus: SessionStatus = 'idle'
 
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
@@ -428,22 +431,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 		if (sessionStatus !== 'idle') return
 		sessionStatus = 'loading'
 
-		try {
-			const response = await fetch('/session', {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-			})
-			const payload = await response.json().catch(() => null)
-			const email =
-				response.ok &&
-				payload?.ok &&
-				typeof payload?.session?.email === 'string'
-					? payload.session.email.trim()
-					: ''
-			session = email ? { email } : null
-		} catch {
-			session = null
-		}
+		session = await fetchSessionInfo()
 
 		sessionStatus = 'ready'
 		handle.update()

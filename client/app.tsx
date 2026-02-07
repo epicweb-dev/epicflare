@@ -6,13 +6,12 @@ import {
 	OAuthCallbackRoute,
 } from './client-routes.tsx'
 import { Router } from './client-router.tsx'
+import {
+	fetchSessionInfo,
+	type SessionInfo,
+	type SessionStatus,
+} from './session.ts'
 import { colors, spacing, typography } from './styles/tokens.ts'
-
-type SessionInfo = {
-	email: string
-}
-
-type SessionStatus = 'idle' | 'loading' | 'ready'
 
 type NavLink = {
 	href: string
@@ -27,22 +26,7 @@ export function App(handle: Handle) {
 		if (sessionStatus !== 'idle') return
 		sessionStatus = 'loading'
 
-		try {
-			const response = await fetch('/session', {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-			})
-			const payload = await response.json().catch(() => null)
-			const email =
-				response.ok &&
-				payload?.ok &&
-				typeof payload?.session?.email === 'string'
-					? payload.session.email.trim()
-					: ''
-			session = email ? { email } : null
-		} catch {
-			session = null
-		}
+		session = await fetchSessionInfo()
 
 		sessionStatus = 'ready'
 		handle.update()
