@@ -211,6 +211,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 							type="email"
 							name="email"
 							required
+							autoFocus
 							autoComplete="email"
 							placeholder="you@example.com"
 							css={{
