@@ -2,6 +2,7 @@
 	"extends": "@epic-web/config/typescript",
 	"compilerOptions": {
 		"composite": true,
+		"allowImportingTsExtensions": true,
 		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.worker.tsbuildinfo",
 		"target": "ES2023",
 		"lib": ["ES2023", "WebWorker", "WebWorker.Iterable"],
@@ -17,12 +18,12 @@
 		"noUncheckedSideEffectImports": true
 	},
 	"include": [
+		"./env.d.ts",
+		"./env-schema.ts",
+		"./worker-configuration.d.ts",
 		"../worker/**/*.ts",
 		"../server/**/*.ts",
-		"../mcp/**/*.ts",
-		"../types/env.d.ts",
-		"../types/env-schema.ts",
-		"../types/worker-configuration.d.ts"
+		"../mcp/**/*.ts"
 	],
 	"exclude": ["**/*.test.ts", "**/*.spec.ts"]
 }

@@ -2,6 +2,7 @@
 	"extends": "@epic-web/config/typescript",
 	"compilerOptions": {
 		"composite": true,
+		"allowImportingTsExtensions": true,
 		"target": "ES2023",
 		"lib": ["ES2023"],
 		"module": "ESNext",
