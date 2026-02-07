@@ -16,6 +16,8 @@
 	},
 	"env": {
 		"production": {
+			// Keep this in sync with top-level "name" to avoid "-production".
+			"name": "epicflare",
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
