@@ -3,6 +3,11 @@ import type {
 	OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import { z } from 'zod'
+import {
+	readAuthSession,
+	setAuthSessionSecret,
+} from '../server/auth-session.ts'
+import { getEnv } from '../server/env.ts'
 import { Layout } from '../server/layout.ts'
 import { render } from '../server/render.ts'
 import { createDb, sql } from './db.ts'
@@ -258,6 +263,18 @@ function respondAuthorizeError(
 		: createAuthorizeErrorRedirect(request, errorCode, message)
 }
 
+async function resolveSessionEmail(request: Request, env: Env) {
+	try {
+		const appEnv = getEnv(env)
+		setAuthSessionSecret(appEnv.COOKIE_SECRET)
+		const session = await readAuthSession(request)
+		const email = session?.email?.trim()
+		return email ? email.toLowerCase() : null
+	} catch {
+		return null
+	}
+}
+
 export async function handleAuthorizeInfo(
 	request: Request,
 	env: Env,
@@ -327,49 +344,58 @@ export async function handleAuthorizeRequest(
 	const email = String(formData.get('email') ?? '').trim()
 	const password = String(formData.get('password') ?? '')
 	const normalizedEmail = email.toLowerCase()
+	const sessionEmail = await resolveSessionEmail(request, env)
+	const hasFormCredentials = Boolean(email && password)
+	const hasSession = Boolean(sessionEmail)
 
-	if (!email || !password) {
+	if (!hasFormCredentials && !hasSession) {
 		return respondAuthorizeError(request, 'Email and password are required.')
 	}
 
-	const db = createDb(env.APP_DB)
-	const userRecord = await db.queryFirst(
-		sql`SELECT password_hash FROM users WHERE email = ${normalizedEmail}`,
-		userRecordSchema,
-	)
-	const passwordCheck = userRecord
-		? await verifyPassword(password, userRecord.password_hash)
-		: null
+	let approvedEmail = ''
+	if (hasFormCredentials) {
+		const db = createDb(env.APP_DB)
+		const userRecord = await db.queryFirst(
+			sql`SELECT password_hash FROM users WHERE email = ${normalizedEmail}`,
+			userRecordSchema,
+		)
+		const passwordCheck = userRecord
+			? await verifyPassword(password, userRecord.password_hash)
+			: null
 
-	if (!userRecord || !passwordCheck?.valid) {
-		return respondAuthorizeError(request, 'Invalid email or password.')
-	}
-
-	if (passwordCheck.upgradedHash) {
-		try {
-			await db.exec(
-				sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE email = ${normalizedEmail}`,
-			)
-		} catch {
-			// Ignore upgrade failures so valid logins still succeed.
+		if (!userRecord || !passwordCheck?.valid) {
+			return respondAuthorizeError(request, 'Invalid email or password.')
 		}
+
+		if (passwordCheck.upgradedHash) {
+			try {
+				await db.exec(
+					sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE email = ${normalizedEmail}`,
+				)
+			} catch {
+				// Ignore upgrade failures so valid logins still succeed.
+			}
+		}
+		approvedEmail = normalizedEmail
+	} else if (sessionEmail) {
+		approvedEmail = sessionEmail
 	}
 
 	const resolvedScopes = resolveScopes(authRequest.scope)
 	if (Array.isArray(resolvedScopes)) {
-		const userId = await createUserId(normalizedEmail)
-		const displayName = normalizedEmail.split('@')[0] || 'user'
+		const userId = await createUserId(approvedEmail)
+		const displayName = approvedEmail.split('@')[0] || 'user'
 		const { redirectTo } = await helpers.completeAuthorization({
 			request: authRequest,
 			userId,
 			metadata: {
-				email: normalizedEmail,
+				email: approvedEmail,
 				clientId: authRequest.clientId,
 			},
 			scope: resolvedScopes,
 			props: {
 				userId,
-				email: normalizedEmail,
+				email: approvedEmail,
 				displayName,
 			},
 		})

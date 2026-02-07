@@ -347,6 +347,8 @@ type OAuthAuthorizeInfo = {
 
 type OAuthAuthorizeStatus = 'idle' | 'loading' | 'ready' | 'error'
 type OAuthAuthorizeMessage = { type: 'error' | 'info'; text: string }
+type OAuthSession = { email: string }
+type OAuthSessionStatus = 'idle' | 'loading' | 'ready'
 
 function OAuthAuthorizeForm(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
@@ -354,6 +356,8 @@ function OAuthAuthorizeForm(handle: Handle) {
 	let message: OAuthAuthorizeMessage | null = null
 	let submitting = false
 	let lastSearch = ''
+	let session: OAuthSession | null = null
+	let sessionStatus: OAuthSessionStatus = 'idle'
 
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
@@ -418,6 +422,31 @@ function OAuthAuthorizeForm(handle: Handle) {
 			}
 			handle.update()
 		}
+	}
+
+	async function loadSession() {
+		if (sessionStatus !== 'idle') return
+		sessionStatus = 'loading'
+
+		try {
+			const response = await fetch('/session', {
+				headers: { Accept: 'application/json' },
+				credentials: 'include',
+			})
+			const payload = await response.json().catch(() => null)
+			const email =
+				response.ok &&
+				payload?.ok &&
+				typeof payload?.session?.email === 'string'
+					? payload.session.email.trim()
+					: ''
+			session = email ? { email } : null
+		} catch {
+			session = null
+		}
+
+		sessionStatus = 'ready'
+		handle.update()
 	}
 
 	async function submitDecision(
@@ -486,7 +515,11 @@ function OAuthAuthorizeForm(handle: Handle) {
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		if (!(event.currentTarget instanceof HTMLFormElement)) return
-		await submitDecision('approve', event.currentTarget)
+		const hasSession = Boolean(session?.email)
+		await submitDecision(
+			'approve',
+			hasSession ? undefined : event.currentTarget,
+		)
 	}
 
 	return () => {
@@ -496,12 +529,26 @@ function OAuthAuthorizeForm(handle: Handle) {
 			lastSearch = currentSearch
 			void loadInfo()
 		}
+		if (sessionStatus === 'idle') {
+			void loadSession()
+		}
 
 		const clientLabel = info?.client?.name ?? 'Unknown client'
 		const scopes = info?.scopes ?? []
 		const scopeLabel =
 			scopes.length > 0 ? scopes.join(', ') : 'No scopes requested.'
-		const actionsDisabled = status !== 'ready' || submitting
+		const sessionEmail = session?.email ?? ''
+		const isSessionReady = sessionStatus === 'ready'
+		const isSessionLoading =
+			sessionStatus === 'loading' || sessionStatus === 'idle'
+		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
+		const actionsDisabled = status !== 'ready' || submitting || isSessionLoading
+		const formReady = status === 'ready' && !isSessionLoading
+		const authorizeLabel = submitting
+			? 'Submitting...'
+			: isLoggedIn
+				? 'Approve connection'
+				: 'Authorize'
 
 		return (
 			<section
@@ -548,6 +595,34 @@ function OAuthAuthorizeForm(handle: Handle) {
 					</p>
 					<p css={{ margin: 0, color: colors.textMuted }}>{scopeLabel}</p>
 				</section>
+				{isSessionLoading ? (
+					<p css={{ color: colors.textMuted }}>Checking your session…</p>
+				) : null}
+				{isLoggedIn ? (
+					<section
+						css={{
+							padding: spacing.md,
+							borderRadius: radius.md,
+							border: `1px solid ${colors.border}`,
+							backgroundColor: colors.surface,
+							display: 'grid',
+							gap: spacing.xs,
+						}}
+					>
+						<p
+							css={{
+								margin: 0,
+								fontWeight: typography.fontWeight.medium,
+								color: colors.text,
+							}}
+						>
+							Signed in as {sessionEmail}
+						</p>
+						<p css={{ margin: 0, color: colors.textMuted }}>
+							Approve to continue with this account.
+						</p>
+					</section>
+				) : null}
 				{status === 'loading' ? (
 					<p css={{ color: colors.textMuted }}>
 						Loading authorization details…
@@ -573,62 +648,66 @@ function OAuthAuthorizeForm(handle: Handle) {
 						border: `1px solid ${colors.border}`,
 						backgroundColor: colors.surface,
 						boxShadow: shadows.sm,
-						opacity: status === 'ready' ? 1 : 0.7,
+						opacity: formReady ? 1 : 0.7,
 					}}
 					on={{ submit: handleSubmit }}
 				>
-					<label css={{ display: 'grid', gap: spacing.xs }}>
-						<span
-							css={{
-								color: colors.text,
-								fontWeight: typography.fontWeight.medium,
-								fontSize: typography.fontSize.sm,
-							}}
-						>
-							Email
-						</span>
-						<input
-							type="email"
-							name="email"
-							required
-							autoComplete="email"
-							placeholder="you@example.com"
-							disabled={actionsDisabled}
-							css={{
-								padding: spacing.sm,
-								borderRadius: radius.md,
-								border: `1px solid ${colors.border}`,
-								fontSize: typography.fontSize.base,
-								fontFamily: typography.fontFamily,
-							}}
-						/>
-					</label>
-					<label css={{ display: 'grid', gap: spacing.xs }}>
-						<span
-							css={{
-								color: colors.text,
-								fontWeight: typography.fontWeight.medium,
-								fontSize: typography.fontSize.sm,
-							}}
-						>
-							Password
-						</span>
-						<input
-							type="password"
-							name="password"
-							required
-							autoComplete="current-password"
-							placeholder="Enter your password"
-							disabled={actionsDisabled}
-							css={{
-								padding: spacing.sm,
-								borderRadius: radius.md,
-								border: `1px solid ${colors.border}`,
-								fontSize: typography.fontSize.base,
-								fontFamily: typography.fontFamily,
-							}}
-						/>
-					</label>
+					{!isLoggedIn && isSessionReady ? (
+						<>
+							<label css={{ display: 'grid', gap: spacing.xs }}>
+								<span
+									css={{
+										color: colors.text,
+										fontWeight: typography.fontWeight.medium,
+										fontSize: typography.fontSize.sm,
+									}}
+								>
+									Email
+								</span>
+								<input
+									type="email"
+									name="email"
+									required
+									autoComplete="email"
+									placeholder="you@example.com"
+									disabled={actionsDisabled}
+									css={{
+										padding: spacing.sm,
+										borderRadius: radius.md,
+										border: `1px solid ${colors.border}`,
+										fontSize: typography.fontSize.base,
+										fontFamily: typography.fontFamily,
+									}}
+								/>
+							</label>
+							<label css={{ display: 'grid', gap: spacing.xs }}>
+								<span
+									css={{
+										color: colors.text,
+										fontWeight: typography.fontWeight.medium,
+										fontSize: typography.fontSize.sm,
+									}}
+								>
+									Password
+								</span>
+								<input
+									type="password"
+									name="password"
+									required
+									autoComplete="current-password"
+									placeholder="Enter your password"
+									disabled={actionsDisabled}
+									css={{
+										padding: spacing.sm,
+										borderRadius: radius.md,
+										border: `1px solid ${colors.border}`,
+										fontSize: typography.fontSize.base,
+										fontFamily: typography.fontFamily,
+									}}
+								/>
+							</label>
+						</>
+					) : null}
 					<div css={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
 						<button
 							type="submit"
@@ -645,7 +724,7 @@ function OAuthAuthorizeForm(handle: Handle) {
 								opacity: actionsDisabled ? 0.7 : 1,
 							}}
 						>
-							{submitting ? 'Submitting...' : 'Authorize'}
+							{authorizeLabel}
 						</button>
 						<button
 							type="button"

@@ -7,6 +7,10 @@ import type {
 	OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import {
+	createAuthCookie,
+	setAuthSessionSecret,
+} from '../server/auth-session.ts'
+import {
 	handleAuthorizeInfo,
 	handleAuthorizeRequest,
 	handleOAuthCallback,
@@ -27,6 +31,7 @@ const baseClient: ClientInfo = {
 	clientName: 'epicflare Demo',
 	tokenEndpointAuthMethod: 'client_secret_basic',
 }
+const cookieSecret = 'test-secret'
 
 function createHelpers(overrides: Partial<OAuthHelpers> = {}): OAuthHelpers {
 	return {
@@ -104,8 +109,16 @@ async function createDatabase(password: string) {
 	} as unknown as D1Database
 }
 
-function createEnv(helpers: OAuthHelpers, appDb?: D1Database) {
-	return { OAUTH_PROVIDER: helpers, APP_DB: appDb } as unknown as Env
+function createEnv(
+	helpers: OAuthHelpers,
+	appDb?: D1Database,
+	cookieSecretValue: string = cookieSecret,
+) {
+	return {
+		OAUTH_PROVIDER: helpers,
+		APP_DB: appDb,
+		COOKIE_SECRET: cookieSecretValue,
+	} as unknown as Env
 }
 
 function createFormRequest(
@@ -184,6 +197,37 @@ test('authorize requires email and password for approval', async () => {
 		error: 'Email and password are required.',
 		code: 'invalid_request',
 	})
+})
+
+test('authorize allows approval with an existing session', async () => {
+	let capturedOptions: CompleteAuthorizationOptions | null = null
+	const helpers = createHelpers({
+		async completeAuthorization(options) {
+			capturedOptions = options
+			return { redirectTo: 'https://example.com/callback?code=session' }
+		},
+	})
+	setAuthSessionSecret(cookieSecret)
+	const cookie = await createAuthCookie(
+		{ id: 'session-id', email: 'user@example.com' },
+		false,
+	)
+
+	const response = await handleAuthorizeRequest(
+		createFormRequest(
+			{ decision: 'approve' },
+			{ Accept: 'application/json', Cookie: cookie },
+		),
+		createEnv(helpers),
+	)
+
+	expect(response.status).toBe(200)
+	const payload = await response.json()
+	expect(payload).toEqual({
+		ok: true,
+		redirectTo: 'https://example.com/callback?code=session',
+	})
+	expect(capturedOptions).not.toBeNull()
 })
 
 test('authorize uses default scopes when none requested', async () => {
