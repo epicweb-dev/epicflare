@@ -10,6 +10,7 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 ## Agent setup
 
 - Install dependencies with `bun install`.
+- Copy `.env.example` to `.env` before running dev or tests.
 
 ## Verification before commit
 
