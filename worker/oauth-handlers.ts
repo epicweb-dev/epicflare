@@ -7,7 +7,7 @@ import {
 	readAuthSession,
 	setAuthSessionSecret,
 } from '../server/auth-session.ts'
-import { createPasswordHash, verifyPassword } from '../server/password-hash.ts'
+import { verifyPassword } from '../server/password-hash.ts'
 import { getEnv } from '../server/env.ts'
 import { Layout } from '../server/layout.ts'
 import { render } from '../server/render.ts'

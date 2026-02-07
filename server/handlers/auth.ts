@@ -62,10 +62,7 @@ export default {
 				userIdSchema,
 			)
 			if (existingUser) {
-				return jsonResponse(
-					{ error: 'Email already in use.' },
-					{ status: 409 },
-				)
+				return jsonResponse({ error: 'Email already in use.' }, { status: 409 })
 			}
 			const passwordHash = await createPasswordHash(normalizedPassword)
 			try {

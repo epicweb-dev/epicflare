@@ -33,7 +33,10 @@ function createTestDb() {
 		prepare(query: string) {
 			return {
 				bind(...params: Array<unknown>) {
-					const normalizedQuery = query.replace(/\s+/g, ' ').trim().toLowerCase()
+					const normalizedQuery = query
+						.replace(/\s+/g, ' ')
+						.trim()
+						.toLowerCase()
 					return {
 						async first() {
 							if (normalizedQuery.startsWith('select id from users')) {
