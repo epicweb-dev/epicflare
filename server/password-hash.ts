@@ -4,7 +4,7 @@ const passwordHashBytes = 32
 const passwordHashIterations = 120_000
 const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
 
-function toHex(bytes: Uint8Array) {
+export function toHex(bytes: Uint8Array) {
 	return Array.from(bytes)
 		.map((value) => value.toString(16).padStart(2, '0'))
 		.join('')

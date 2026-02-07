@@ -7,7 +7,7 @@ import {
 	readAuthSession,
 	setAuthSessionSecret,
 } from '../server/auth-session.ts'
-import { verifyPassword } from '../server/password-hash.ts'
+import { toHex, verifyPassword } from '../server/password-hash.ts'
 import { getEnv } from '../server/env.ts'
 import { Layout } from '../server/layout.ts'
 import { render } from '../server/render.ts'
@@ -43,12 +43,6 @@ function renderSpaShell(status = 200) {
 }
 
 const userRecordSchema = z.object({ password_hash: z.string() })
-
-function toHex(bytes: Uint8Array) {
-	return Array.from(bytes)
-		.map((value) => value.toString(16).padStart(2, '0'))
-		.join('')
-}
 
 async function createUserId(email: string) {
 	const normalized = email.trim().toLowerCase()
