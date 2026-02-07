@@ -99,6 +99,16 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 		handle.update()
 	}
 
+	function getRedirectTarget() {
+		if (typeof window === 'undefined') return null
+		const params = new URLSearchParams(window.location.search)
+		const redirectTo = params.get('redirectTo')
+		if (!redirectTo) return null
+		if (!redirectTo.startsWith('/')) return null
+		if (redirectTo.startsWith('//')) return null
+		return redirectTo
+	}
+
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		if (!(event.currentTarget instanceof HTMLFormElement)) return
@@ -133,7 +143,8 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 			}
 
 			if (typeof window !== 'undefined') {
-				window.location.assign('/account')
+				const redirectTo = getRedirectTarget()
+				window.location.assign(redirectTo ?? '/account')
 			}
 		} catch {
 			setState('error', 'Network error. Please try again.')

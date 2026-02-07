@@ -13,7 +13,7 @@ Quick notes for getting a local epicflare environment running.
 
 ## Local development
 
-- Copy `.env.example` to `.env` and update secrets as needed.
+- Copy `.env.example` to `.env` before starting any work, then update secrets as needed.
 - `bun run dev`
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
