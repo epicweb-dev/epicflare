@@ -90,6 +90,8 @@ jobs:
         run: bun run test:e2e:install
 
       - name: 🗄️ Apply D1 Migrations
+        env:
+          CLOUDFLARE_ENV: test
         run: bun run migrate:local
 
       - name: 🧪 Playwright Tests
@@ -111,6 +113,8 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: 🗄️ Apply D1 Migrations
+        env:
+          CLOUDFLARE_ENV: test
         run: bun run migrate:local
 
       - name: 🧩 MCP E2E Tests
