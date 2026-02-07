@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import net from 'node:net'
 import getPort from 'get-port'
@@ -42,7 +44,18 @@ const processEnv = {
 	...(resolvedPort ? { PORT: resolvedPort } : {}),
 }
 
-const proc = Bun.spawn(['wrangler', ...commandArgs], {
+const localWranglerPath = path.join(
+	process.cwd(),
+	'node_modules',
+	'.bin',
+	process.platform === 'win32' ? 'wrangler.cmd' : 'wrangler',
+)
+const wranglerCommand =
+	(existsSync(localWranglerPath) && localWranglerPath) ||
+	Bun.which('wrangler') ||
+	'wrangler'
+
+const proc = Bun.spawn([wranglerCommand, ...commandArgs], {
 	stdio: ['inherit', 'inherit', 'inherit'],
 	env: processEnv,
 })

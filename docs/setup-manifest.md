@@ -28,5 +28,6 @@ Tests use `.env.test` when `CLOUDFLARE_ENV=test` (set by Playwright).
 
 Configure these secrets for deploy workflows:
 
-- `CLOUDFLARE_API_TOKEN` (Workers deploy access)
+- `CLOUDFLARE_API_TOKEN` (Workers deploy + D1 edit access on the correct
+  account)
 - `COOKIE_SECRET` (same format as local)
