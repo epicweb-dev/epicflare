@@ -69,7 +69,8 @@ bun ./docs/post-download.ts --guided
 
 2. Configure GitHub Actions secrets for deploy:
 
-- `CLOUDFLARE_API_TOKEN` (Workers deploy access)
+- `CLOUDFLARE_API_TOKEN` (Workers deploy + D1 edit access on the correct
+  account)
 - `COOKIE_SECRET` (generate with `openssl rand -hex 32` or similar)
 
 3. Deploy:
