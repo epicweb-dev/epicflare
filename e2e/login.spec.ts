@@ -29,14 +29,18 @@ test('logs in with email and password', async ({ page }) => {
 })
 
 test('signs up with email and password', async ({ page }) => {
+	const signupUser = {
+		email: `new-user-${crypto.randomUUID()}@example.com`,
+		password: 'password123',
+	}
 	await page.goto('/signup')
 
-	await page.getByLabel('Email').fill('new-user@example.com')
-	await page.getByLabel('Password').fill('password123')
+	await page.getByLabel('Email').fill(signupUser.email)
+	await page.getByLabel('Password').fill(signupUser.password)
 	await page.getByRole('button', { name: 'Create account' }).click()
 
 	await expect(page).toHaveURL(/\/account$/)
 	await expect(
-		page.getByRole('heading', { name: 'Welcome, new-user@example.com' }),
+		page.getByRole('heading', { name: `Welcome, ${signupUser.email}` }),
 	).toBeVisible()
 })
