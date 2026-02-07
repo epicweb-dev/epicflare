@@ -105,6 +105,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 		const redirectTo = params.get('redirectTo')
 		if (!redirectTo) return null
 		if (!redirectTo.startsWith('/')) return null
+		if (redirectTo.startsWith('//')) return null
 		return redirectTo
 	}
 
