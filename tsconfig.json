@@ -1,4 +1,8 @@
 {
-	"extends": "./tsconfig.remix.json",
-	"include": ["./client", "./server", "./types/env.d.ts"]
+	"files": [],
+	"references": [
+		{ "path": "./types/tsconfig-tools.json" },
+		{ "path": "./types/tsconfig-client.json" },
+		{ "path": "./types/tsconfig-worker.json" }
+	]
 }

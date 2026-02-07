@@ -106,11 +106,12 @@ export async function handleMcpRequest({
 	}
 
 	const context = ctx as OAuthExecutionContext
-	context.props = {
+	const props: OAuthContextProps = {
 		...context.props,
 		baseUrl: url.origin,
 		user: tokenSummary.grant.props,
 	}
+	context.props = props
 
-	return fetchMcp(request, env, context)
+	return fetchMcp(request, env, context as ExecutionContext<OAuthContextProps>)
 }

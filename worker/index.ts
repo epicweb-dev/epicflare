@@ -76,7 +76,12 @@ const appHandler = withCors({
 const oauthProvider = new OAuthProvider({
 	apiRoute: oauthPaths.apiPrefix,
 	apiHandler,
-	defaultHandler: { fetch: appHandler },
+	defaultHandler: {
+		fetch(request, env, ctx) {
+			// @ts-expect-error https://github.com/cloudflare/workers-oauth-provider/issues/71
+			return appHandler(request, env, ctx)
+		},
+	},
 	authorizeEndpoint: oauthPaths.authorize,
 	tokenEndpoint: oauthPaths.token,
 	clientRegistrationEndpoint: oauthPaths.register,
@@ -87,4 +92,4 @@ export default {
 	fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		return oauthProvider.fetch(request, env, ctx)
 	},
-}
+} satisfies ExportedHandler<Env>

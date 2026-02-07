@@ -22,7 +22,7 @@
     "preview": "bun ./wrangler-env.ts dev --local",
     "generate-types": "bun ./wrangler-env.ts types ./types/worker-configuration.d.ts",
     "pretypecheck": "bun run generate-types",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b --noEmit",
     "inspect": "inspector",
     "validate": "concurrently --kill-others-on-fail -n format,lint,build,typecheck,test,test:mcp -c green,yellow,blue,magenta,cyan,red \"bun run format:check\" \"bun run lint:fix\" \"bun run build\" \"bun run typecheck\" \"bun run test:e2e\" \"bun run test:mcp\"",
     "test:e2e": "playwright test",
@@ -31,6 +31,7 @@
     "test:mcp": "bun test mcp/mcp-server-e2e.test.ts"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.23.1",
     "@epic-web/config": "^1.22.0",
     "@mcpjam/inspector": "^1.5.12",
     "@playwright/test": "^1.58.1",

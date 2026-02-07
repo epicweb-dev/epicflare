@@ -5,6 +5,14 @@ import {
 	auth,
 	type OAuthClientProvider,
 } from '@modelcontextprotocol/sdk/client/auth.js'
+import type {
+	OAuthClientInformationMixed,
+	OAuthTokens,
+} from '@modelcontextprotocol/sdk/shared/auth.js'
+import type {
+	CallToolResult,
+	ContentBlock,
+} from '@modelcontextprotocol/sdk/types.js'
 import getPort from 'get-port'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -288,13 +296,22 @@ async function authorizeWithPassword(
 			password: user.password,
 		}),
 	})
-	const payload = await response.json().catch(() => null)
-	if (!response.ok || !payload || payload.ok !== true) {
+	const payload = (await response.json().catch(() => null)) as unknown
+
+	if (!response.ok || !payload || typeof payload !== 'object') {
 		throw new Error(
 			`OAuth approval failed (${response.status}). ${JSON.stringify(payload)}`,
 		)
 	}
-	const redirectUrl = new URL(payload.redirectTo)
+
+	const approval = payload as { ok?: unknown; redirectTo?: unknown }
+	if (approval.ok !== true || typeof approval.redirectTo !== 'string') {
+		throw new Error(
+			`OAuth approval failed (${response.status}). ${JSON.stringify(payload)}`,
+		)
+	}
+
+	const redirectUrl = new URL(approval.redirectTo)
 	const code = redirectUrl.searchParams.get('code')
 	if (!code) {
 		throw new Error('Authorization response missing code.')
@@ -315,8 +332,8 @@ function createOAuthProvider({
 	clientMetadata: OAuthClientProvider['clientMetadata']
 	authorize: (authorizationUrl: URL) => Promise<string>
 }): TestOAuthProvider {
-	let clientInformation: Record<string, unknown> | undefined
-	let tokens: Record<string, unknown> | undefined
+	let clientInformation: OAuthClientInformationMixed | undefined
+	let tokens: OAuthTokens | undefined
 	let codeVerifier: string | undefined
 	let authorizationCode: Promise<string> | undefined
 
@@ -408,7 +425,6 @@ async function createMcpClient(
 
 test(
 	'mcp server lists tools after oauth flow',
-	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using database = await createTestDatabase()
 		await using server = await startDevServer(database.persistDir)
@@ -419,11 +435,11 @@ test(
 
 		expect(toolNames).toContain('do_math')
 	},
+	{ timeout: defaultTimeoutMs },
 )
 
 test(
 	'mcp server executes do_math tool',
-	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using database = await createTestDatabase()
 		await using server = await startDevServer(database.persistDir)
@@ -439,8 +455,12 @@ test(
 		})
 
 		const textOutput =
-			result.content?.find((item) => item.type === 'text')?.text ?? ''
+			(result as CallToolResult).content.find(
+				(item): item is Extract<ContentBlock, { type: 'text' }> =>
+					item.type === 'text',
+			)?.text ?? ''
 
 		expect(textOutput).toContain('12')
 	},
+	{ timeout: defaultTimeoutMs },
 )

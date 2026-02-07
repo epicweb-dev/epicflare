@@ -1,11 +1,12 @@
 {
 	"extends": "@epic-web/config/typescript",
 	"compilerOptions": {
-		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.remix.tsbuildinfo",
+		"composite": true,
+		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.client.tsbuildinfo",
 		"lib": ["DOM", "DOM.Iterable", "ES2022"],
 		"types": [],
 		"jsx": "react-jsx",
 		"jsxImportSource": "remix/component"
 	},
-	"include": ["./types/env.d.ts", "./client", "./server"]
+	"include": ["../client/**/*.ts", "../client/**/*.tsx"]
 }

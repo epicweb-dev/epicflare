@@ -7,7 +7,7 @@ export type DbQuery<Params extends ReadonlyArray<D1Value>> = {
 	params: Params
 }
 
-type ZodSchema<T> = z.ZodType<T, z.ZodTypeDef, unknown>
+type ZodSchema<T> = z.ZodType<T>
 
 export function sql<Params extends ReadonlyArray<D1Value>>(
 	strings: TemplateStringsArray,

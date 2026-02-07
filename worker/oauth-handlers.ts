@@ -67,7 +67,9 @@ function timingSafeEqual(left: Uint8Array, right: Uint8Array) {
 	if (left.length !== right.length) return false
 	let result = 0
 	for (let index = 0; index < left.length; index += 1) {
-		result |= left[index] ^ right[index]
+		const leftValue = left[index] ?? 0
+		const rightValue = right[index] ?? 0
+		result |= leftValue ^ rightValue
 	}
 	return result === 0
 }
@@ -95,7 +97,7 @@ async function derivePasswordKey(
 	const derivedBits = await crypto.subtle.deriveBits(
 		{
 			name: 'PBKDF2',
-			salt,
+			salt: salt as unknown as BufferSource,
 			iterations,
 			hash: 'SHA-256',
 		},
@@ -138,6 +140,7 @@ async function verifyPassword(
 		if (prefix !== passwordHashPrefix || extra.length > 0) {
 			return { valid: false }
 		}
+		if (!iterationsRaw) return { valid: false }
 		const iterations = Number.parseInt(iterationsRaw, 10)
 		const salt = saltHex ? fromHex(saltHex) : null
 		const hash = hashHex ? fromHex(hashHex) : null
@@ -299,7 +302,10 @@ export async function handleAuthorizeRequest(
 	const helpers = getOAuthHelpers(env)
 	const resolution = await resolveAuthRequest(helpers, request)
 	if ('error' in resolution) {
-		return respondAuthorizeError(request, resolution.error)
+		return respondAuthorizeError(
+			request,
+			resolution.error ?? 'Unable to process OAuth request.',
+		)
 	}
 
 	const { authRequest } = resolution
@@ -383,7 +389,7 @@ export function handleOAuthCallback(request: Request): Response {
 }
 
 export const apiHandler = {
-	async fetch(request: Request, _env: Env, ctx: ExecutionContext) {
+	async fetch(request: Request, _env: unknown, ctx: ExecutionContext) {
 		const url = new URL(request.url)
 		if (url.pathname === '/api/me') {
 			const props = (ctx as OAuthContext).props

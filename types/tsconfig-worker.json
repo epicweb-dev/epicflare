@@ -1,0 +1,28 @@
+{
+	"extends": "@epic-web/config/typescript",
+	"compilerOptions": {
+		"composite": true,
+		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.worker.tsbuildinfo",
+		"target": "ES2023",
+		"lib": ["ES2023", "WebWorker", "WebWorker.Iterable"],
+		"module": "ESNext",
+		"types": [],
+		"moduleResolution": "bundler",
+		"verbatimModuleSyntax": true,
+		"moduleDetection": "force",
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"erasableSyntaxOnly": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedSideEffectImports": true
+	},
+	"include": [
+		"../worker/**/*.ts",
+		"../server/**/*.ts",
+		"../mcp/**/*.ts",
+		"../types/env.d.ts",
+		"../types/env-schema.ts",
+		"../types/worker-configuration.d.ts"
+	],
+	"exclude": ["**/*.test.ts", "**/*.spec.ts"]
+}

@@ -1,0 +1,27 @@
+{
+	"extends": "@epic-web/config/typescript",
+	"compilerOptions": {
+		"composite": true,
+		"target": "ES2023",
+		"lib": ["ES2023"],
+		"module": "ESNext",
+		"types": ["node", "bun"],
+		"moduleResolution": "bundler",
+		"verbatimModuleSyntax": true,
+		"moduleDetection": "force",
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"erasableSyntaxOnly": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedSideEffectImports": true,
+		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.tools.tsbuildinfo"
+	},
+	"include": [
+		"../vite.config.ts",
+		"../playwright.config.ts",
+		"../wrangler-env.ts",
+		"../cli.ts",
+		"../docs/post-download.ts",
+		"../mcp/mcp-server-e2e.test.ts"
+	]
+}

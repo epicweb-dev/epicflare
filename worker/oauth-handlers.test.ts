@@ -187,14 +187,22 @@ test('authorize requires email and password for approval', async () => {
 })
 
 test('authorize uses default scopes when none requested', async () => {
-	let capturedOptions: CompleteAuthorizationOptions | null = null
+	let resolveCapturedOptions:
+		| ((value: CompleteAuthorizationOptions) => void)
+		| undefined
+	const capturedOptionsPromise = new Promise<CompleteAuthorizationOptions>(
+		(resolve) => {
+			resolveCapturedOptions = resolve
+		},
+	)
+
 	const helpers = createHelpers({
 		parseAuthRequest: async () => ({
 			...baseAuthRequest,
 			scope: [],
 		}),
 		async completeAuthorization(options) {
-			capturedOptions = options
+			resolveCapturedOptions?.(options)
 			return { redirectTo: 'https://example.com/callback?code=ok' }
 		},
 	})
@@ -211,7 +219,8 @@ test('authorize uses default scopes when none requested', async () => {
 	expect(response.headers.get('Location')).toBe(
 		'https://example.com/callback?code=ok',
 	)
-	expect(capturedOptions?.scope).toEqual(oauthScopes)
+	const capturedOptions = await capturedOptionsPromise
+	expect(capturedOptions.scope).toEqual(oauthScopes)
 })
 
 test('oauth callback page returns SPA shell', async () => {
