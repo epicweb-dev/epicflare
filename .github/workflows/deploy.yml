@@ -89,6 +89,9 @@ jobs:
       - name: 🎭 Install Playwright Browsers
         run: bun run test:e2e:install
 
+      - name: 🗄️ Apply D1 Migrations
+        run: bun run migrate:local
+
       - name: 🧪 Playwright Tests
         run: bun run test:e2e
 
@@ -106,6 +109,9 @@ jobs:
 
       - name: 📥 Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: 🗄️ Apply D1 Migrations
+        run: bun run migrate:local
 
       - name: 🧩 MCP E2E Tests
         run: bun run test:mcp
