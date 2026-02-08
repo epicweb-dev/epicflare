@@ -62,7 +62,7 @@ async function createDatabase(password: string) {
 				bind() {
 					return {
 						async first() {
-							return { password_hash: passwordHash }
+							return { id: 1, password_hash: passwordHash }
 						},
 						async run() {
 							return { success: true }
