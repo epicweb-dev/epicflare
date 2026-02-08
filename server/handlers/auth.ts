@@ -2,6 +2,7 @@ import { type BuildAction } from 'remix/fetch-router'
 import { z } from 'zod'
 import { createAuthCookie } from '../auth-session.ts'
 import { getRequestIp, logAuditEvent } from '../audit-log.ts'
+import { jsonResponse } from '../json-response.ts'
 import { normalizeEmail } from '../normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '../password-hash.ts'
 import type { AppEnv } from '../../types/env-schema.ts'
@@ -12,16 +13,6 @@ type AuthMode = 'login' | 'signup'
 
 function isAuthMode(value: string): value is AuthMode {
 	return value === 'login' || value === 'signup'
-}
-
-function jsonResponse(data: unknown, init?: ResponseInit) {
-	return new Response(JSON.stringify(data), {
-		...init,
-		headers: {
-			'Content-Type': 'application/json',
-			...init?.headers,
-		},
-	})
 }
 
 function isUniqueConstraintError(error: unknown) {

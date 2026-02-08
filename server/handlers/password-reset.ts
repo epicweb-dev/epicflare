@@ -5,6 +5,7 @@ import { createDb, sql } from '../../worker/db.ts'
 import { logAuditEvent, getRequestIp } from '../audit-log.ts'
 import { sendResendEmail } from '../email/resend.ts'
 import { toHex } from '../hex.ts'
+import { jsonResponse } from '../json-response.ts'
 import { normalizeEmail } from '../normalize-email.ts'
 import { createPasswordHash } from '../password-hash.ts'
 import type routes from '../routes.ts'
@@ -31,16 +32,6 @@ const resetTokenSchema = z.object({
 	user_id: z.number(),
 	expires_at: z.number(),
 })
-
-function jsonResponse(data: unknown, init?: ResponseInit) {
-	return new Response(JSON.stringify(data), {
-		...init,
-		headers: {
-			'Content-Type': 'application/json',
-			...init?.headers,
-		},
-	})
-}
 
 function buildResetEmail(resetUrl: string) {
 	return {
