@@ -19,7 +19,10 @@ types, runtime validation, and documentation in sync.
    const EnvSchema = z.object({
    	COOKIE_SECRET: z
    		.string()
-   		.min(1, 'Missing COOKIE_SECRET for session signing.'),
+   		.min(
+   			32,
+   			'COOKIE_SECRET must be at least 32 characters for session signing.',
+   		),
    	THIRD_PARTY_API_KEY: z
    		.string()
    		.min(

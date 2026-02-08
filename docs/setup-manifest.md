@@ -16,6 +16,19 @@ Create or provide the following resources (prod + preview):
 
 The post-download script will write the resulting IDs into `wrangler.jsonc`.
 
+## Rate limiting (Cloudflare dashboard)
+
+Use Cloudflare's built-in rate limiting rules instead of custom Worker logic.
+
+1. Open the Cloudflare dashboard for the zone that routes to your Worker.
+2. Go to `Security` → `WAF` → `Rate limiting rules` (or `Rules` →
+   `Rate limiting rules`).
+3. Create a rule that targets auth endpoints, for example:
+   - Expression:
+     `(http.request.method eq "POST" and http.request.uri.path in {"/auth" "/oauth/authorize" "/oauth/token" "/oauth/register"})`
+   - Threshold: `10` requests per `1 minute` per IP (tune as needed).
+   - Action: `Block` or `Managed Challenge`.
+
 ## Environment variables
 
 Local development uses `.env`, which Wrangler loads automatically:
