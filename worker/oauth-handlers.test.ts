@@ -32,7 +32,7 @@ const baseClient: ClientInfo = {
 	clientName: 'epicflare Demo',
 	tokenEndpointAuthMethod: 'client_secret_basic',
 }
-const cookieSecret = 'test-secret'
+const cookieSecret = 'test-secret-0123456789abcdef0123456789'
 
 function createHelpers(overrides: Partial<OAuthHelpers> = {}): OAuthHelpers {
 	return {
@@ -79,9 +79,10 @@ function createEnv(
 	appDb?: D1Database,
 	cookieSecretValue: string = cookieSecret,
 ) {
+	const resolvedDb = appDb ?? ({} as D1Database)
 	return {
 		OAUTH_PROVIDER: helpers,
-		APP_DB: appDb,
+		APP_DB: resolvedDb,
 		COOKIE_SECRET: cookieSecretValue,
 	} as unknown as Env
 }

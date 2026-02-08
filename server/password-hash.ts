@@ -1,16 +1,12 @@
+import { toHex } from './hex.ts'
+
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const passwordHashIterations = 120_000
 const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
 
-export function toHex(bytes: Uint8Array) {
-	return Array.from(bytes)
-		.map((value) => value.toString(16).padStart(2, '0'))
-		.join('')
-}
-
-function fromHex(value: string) {
+function fromHex(value: string): Uint8Array<ArrayBuffer> | null {
 	const normalized = value.trim().toLowerCase()
 	if (!/^[0-9a-f]+$/.test(normalized) || normalized.length % 2 !== 0) {
 		return null
@@ -24,20 +20,41 @@ function fromHex(value: string) {
 	return bytes
 }
 
+function padToLength(buffer: Uint8Array, length: number) {
+	if (buffer.length === length) return buffer
+	const padded = new Uint8Array(length)
+	padded.set(buffer)
+	return padded
+}
+
 function timingSafeEqual(left: Uint8Array, right: Uint8Array) {
-	if (left.length !== right.length) return false
-	let result = 0
-	for (let index = 0; index < left.length; index += 1) {
-		const leftValue = left[index] ?? 0
-		const rightValue = right[index] ?? 0
-		result |= leftValue ^ rightValue
+	const maxLength = Math.max(left.length, right.length)
+	const leftPadded = padToLength(left, maxLength)
+	const rightPadded = padToLength(right, maxLength)
+	const subtle = crypto.subtle as SubtleCrypto & {
+		timingSafeEqual?: (
+			a: ArrayBuffer | ArrayBufferView,
+			b: ArrayBuffer | ArrayBufferView,
+		) => boolean
 	}
-	return result === 0
+	const isEqual =
+		typeof subtle.timingSafeEqual === 'function'
+			? subtle.timingSafeEqual(leftPadded, rightPadded)
+			: (() => {
+					let result = 0
+					for (let index = 0; index < maxLength; index += 1) {
+						const leftValue = leftPadded[index] ?? 0
+						const rightValue = rightPadded[index] ?? 0
+						result |= leftValue ^ rightValue
+					}
+					return result === 0
+				})()
+	return isEqual && left.length === right.length
 }
 
 async function derivePasswordKey(
 	password: string,
-	salt: Uint8Array,
+	salt: Uint8Array<ArrayBuffer>,
 	iterations: number,
 	length: number,
 ) {
@@ -51,7 +68,7 @@ async function derivePasswordKey(
 	const derivedBits = await crypto.subtle.deriveBits(
 		{
 			name: 'PBKDF2',
-			salt: salt as unknown as BufferSource,
+			salt,
 			iterations,
 			hash: 'SHA-256',
 		},
@@ -68,7 +85,8 @@ async function hashLegacyPassword(password: string) {
 }
 
 export async function createPasswordHash(password: string) {
-	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
+	const salt = new Uint8Array(new ArrayBuffer(passwordSaltBytes))
+	crypto.getRandomValues(salt)
 	const hash = await derivePasswordKey(
 		password,
 		salt,

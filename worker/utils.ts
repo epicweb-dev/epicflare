@@ -51,3 +51,7 @@ export function mergeHeaders(
 	}
 	return merged
 }
+
+export function wantsJson(request: Request) {
+	return request.headers.get('Accept')?.includes('application/json') ?? false
+}

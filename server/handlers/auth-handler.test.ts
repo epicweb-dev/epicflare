@@ -1,12 +1,17 @@
 /// <reference types="bun" />
-import { beforeAll, beforeEach, expect, test } from 'bun:test'
+import { beforeAll, expect, test } from 'bun:test'
 import { RequestContext } from 'remix/fetch-router'
-import { setAppDb } from '../app-env.ts'
 import { setAuthSessionSecret } from '../auth-session.ts'
 import { createPasswordHash } from '../password-hash.ts'
-import auth from './auth.ts'
+import { createAuthHandler } from './auth.ts'
 
-function createAuthRequest(body: unknown, url: string) {
+const testCookieSecret = 'test-cookie-secret-0123456789abcdef0123456789'
+
+function createAuthRequest(
+	body: unknown,
+	url: string,
+	handler: ReturnType<typeof createAuthHandler>,
+) {
 	const request = new Request(url, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -15,7 +20,7 @@ function createAuthRequest(body: unknown, url: string) {
 	const context = new RequestContext(request)
 
 	return {
-		run: () => auth.action(context),
+		run: () => handler.action(context),
 	}
 }
 
@@ -46,12 +51,33 @@ function createTestDb() {
 							}
 							if (
 								normalizedQuery.startsWith(
-									'select password_hash from users where email = ?',
+									'select id, password_hash from users where email = ?',
 								)
 							) {
 								const email = String(params[0] ?? '').toLowerCase()
 								const user = users.get(email)
-								return user ? { password_hash: user.password_hash } : null
+								return user
+									? { id: user.id, password_hash: user.password_hash }
+									: null
+							}
+							if (
+								normalizedQuery.startsWith('insert into users') &&
+								normalizedQuery.includes('returning id')
+							) {
+								const [username, email, passwordHash] = params as Array<string>
+								const normalizedEmail = String(email).toLowerCase()
+								if (users.has(normalizedEmail)) {
+									throw new Error('UNIQUE constraint failed: users.email')
+								}
+								const user: TestUser = {
+									id: nextId,
+									email: String(email),
+									username: String(username),
+									password_hash: String(passwordHash),
+								}
+								nextId += 1
+								users.set(normalizedEmail, user)
+								return { id: user.id }
 							}
 							return null
 						},
@@ -74,11 +100,13 @@ function createTestDb() {
 							}
 							if (
 								normalizedQuery.startsWith(
-									'update users set password_hash = ? where email = ?',
+									'update users set password_hash = ? where id = ?',
 								)
 							) {
-								const [passwordHash, email] = params as Array<string>
-								const user = users.get(String(email).toLowerCase())
+								const [passwordHash, id] = params as Array<unknown>
+								const user = Array.from(users.values()).find(
+									(entry) => entry.id === Number(id),
+								)
 								if (user) {
 									user.password_hash = String(passwordHash)
 								}
@@ -108,19 +136,17 @@ function createTestDb() {
 	return { db, users, addUser }
 }
 
-let testDb: ReturnType<typeof createTestDb>
-
 beforeAll(() => {
-	setAuthSessionSecret('test-cookie-secret')
-})
-
-beforeEach(() => {
-	testDb = createTestDb()
-	setAppDb(testDb.db)
+	setAuthSessionSecret(testCookieSecret)
 })
 
 test('auth handler returns 400 for invalid JSON', async () => {
-	const authRequest = createAuthRequest('{', 'http://example.com/auth')
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
+	const authRequest = createAuthRequest('{', 'http://example.com/auth', handler)
 	const response = await authRequest.run()
 	expect(response.status).toBe(400)
 	const payload = await response.json()
@@ -128,9 +154,15 @@ test('auth handler returns 400 for invalid JSON', async () => {
 })
 
 test('auth handler returns 400 for missing fields', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
 	const authRequest = createAuthRequest(
 		{ email: 'a@b.com' },
 		'http://example.com/auth',
+		handler,
 	)
 	const response = await authRequest.run()
 	expect(response.status).toBe(400)
@@ -141,9 +173,15 @@ test('auth handler returns 400 for missing fields', async () => {
 })
 
 test('auth handler rejects login with unknown user', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
 	const authRequest = createAuthRequest(
 		{ email: 'a@b.com', password: 'secret', mode: 'login' },
 		'http://example.com/auth',
+		handler,
 	)
 	const response = await authRequest.run()
 	expect(response.status).toBe(401)
@@ -152,9 +190,15 @@ test('auth handler rejects login with unknown user', async () => {
 })
 
 test('auth handler creates a user and cookie for signup', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
 	const authRequest = createAuthRequest(
 		{ email: 'new@b.com', password: 'secret', mode: 'signup' },
 		'http://example.com/auth',
+		handler,
 	)
 	const response = await authRequest.run()
 	expect(response.status).toBe(200)
@@ -166,10 +210,16 @@ test('auth handler creates a user and cookie for signup', async () => {
 })
 
 test('auth handler returns ok with a session cookie for login', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
 	await testDb.addUser('a@b.com', 'secret')
 	const authRequest = createAuthRequest(
 		{ email: 'a@b.com', password: 'secret', mode: 'login' },
 		'http://example.com/auth',
+		handler,
 	)
 	const response = await authRequest.run()
 	expect(response.status).toBe(200)
@@ -180,9 +230,16 @@ test('auth handler returns ok with a session cookie for login', async () => {
 })
 
 test('auth handler sets Secure cookie over https', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
+	await testDb.addUser('secure@b.com', 'secret')
 	const authRequest = createAuthRequest(
-		{ email: 'a@b.com', password: 'secret', mode: 'signup' },
+		{ email: 'secure@b.com', password: 'secret', mode: 'login' },
 		'https://example.com/auth',
+		handler,
 	)
 	const response = await authRequest.run()
 	const setCookie = response.headers.get('Set-Cookie') ?? ''

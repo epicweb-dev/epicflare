@@ -3,15 +3,18 @@ import type {
 	OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import { z } from 'zod'
+import { getRequestIp, logAuditEvent } from '../server/audit-log.ts'
 import {
 	readAuthSession,
 	setAuthSessionSecret,
 } from '../server/auth-session.ts'
-import { toHex, verifyPassword } from '../server/password-hash.ts'
 import { getEnv } from '../server/env.ts'
+import { toHex } from '../server/hex.ts'
+import { verifyPassword } from '../server/password-hash.ts'
 import { Layout } from '../server/layout.ts'
 import { render } from '../server/render.ts'
 import { createDb, sql } from './db.ts'
+import { wantsJson } from './utils.ts'
 
 export const oauthPaths = {
 	authorize: '/oauth/authorize',
@@ -42,6 +45,8 @@ function renderSpaShell(status = 200) {
 	return render(Layout({}), { status })
 }
 
+const dummyPasswordHash =
+	'pbkdf2_sha256$120000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 const userRecordSchema = z.object({ password_hash: z.string() })
 
 async function createUserId(email: string) {
@@ -111,10 +116,6 @@ function createAccessDeniedRedirectUrl(request: AuthRequest) {
 	redirectUrl.searchParams.set('error', 'access_denied')
 	if (request.state) redirectUrl.searchParams.set('state', request.state)
 	return redirectUrl.toString()
-}
-
-function wantsJson(request: Request) {
-	return request.headers.get('Accept')?.includes('application/json') ?? false
 }
 
 function createAuthorizeErrorRedirect(
@@ -192,6 +193,7 @@ export async function handleAuthorizeRequest(
 		return new Response('Method not allowed', { status: 405 })
 	}
 
+	const requestIp = getRequestIp(request) ?? undefined
 	const helpers = getOAuthHelpers(env)
 	const resolution = await resolveAuthRequest(helpers, request)
 	if ('error' in resolution) {
@@ -225,6 +227,15 @@ export async function handleAuthorizeRequest(
 	const hasSession = Boolean(sessionEmail)
 
 	if (!hasFormCredentials && !hasSession) {
+		void logAuditEvent({
+			category: 'oauth',
+			action: 'authorize',
+			result: 'failure',
+			email: normalizedEmail || undefined,
+			ip: requestIp,
+			clientId: authRequest.clientId,
+			reason: 'missing_credentials',
+		})
 		return respondAuthorizeError(request, 'Email and password are required.')
 	}
 
@@ -235,11 +246,23 @@ export async function handleAuthorizeRequest(
 			sql`SELECT password_hash FROM users WHERE email = ${normalizedEmail}`,
 			userRecordSchema,
 		)
-		const passwordCheck = userRecord
-			? await verifyPassword(password, userRecord.password_hash)
-			: null
+		let passwordCheck: Awaited<ReturnType<typeof verifyPassword>> | null = null
+		if (userRecord) {
+			passwordCheck = await verifyPassword(password, userRecord.password_hash)
+		} else {
+			await verifyPassword(password, dummyPasswordHash)
+		}
 
 		if (!userRecord || !passwordCheck?.valid) {
+			void logAuditEvent({
+				category: 'oauth',
+				action: 'authorize',
+				result: 'failure',
+				email: normalizedEmail,
+				ip: requestIp,
+				clientId: authRequest.clientId,
+				reason: 'invalid_credentials',
+			})
 			return respondAuthorizeError(request, 'Invalid email or password.')
 		}
 
@@ -274,6 +297,14 @@ export async function handleAuthorizeRequest(
 				email: approvedEmail,
 				displayName,
 			},
+		})
+		void logAuditEvent({
+			category: 'oauth',
+			action: 'authorize',
+			result: 'success',
+			email: approvedEmail,
+			ip: requestIp,
+			clientId: authRequest.clientId,
 		})
 		return wantsJson(request)
 			? jsonResponse({ ok: true, redirectTo })
