@@ -2,12 +2,45 @@ import { type BuildAction } from 'remix/fetch-router'
 import { destroyAuthCookie } from '../auth-session.ts'
 import type routes from '../routes.ts'
 
+function normalizeProto(value: string) {
+	return value.trim().replace(/^"|"$/g, '').toLowerCase()
+}
+
+function getForwardedProto(request: Request) {
+	const forwarded = request.headers.get('forwarded')
+	if (forwarded) {
+		for (const entry of forwarded.split(',')) {
+			for (const pair of entry.split(';')) {
+				const [key, rawValue] = pair.split('=')
+				if (!key || !rawValue) continue
+				if (key.trim().toLowerCase() === 'proto') {
+					return normalizeProto(rawValue)
+				}
+			}
+		}
+	}
+
+	const xForwardedProto = request.headers.get('x-forwarded-proto')
+	if (xForwardedProto) {
+		return normalizeProto(xForwardedProto.split(',')[0] ?? '')
+	}
+
+	return null
+}
+
+function isSecureRequest(request: Request) {
+	const forwardedProto = getForwardedProto(request)
+	if (forwardedProto) {
+		return forwardedProto === 'https'
+	}
+	return new URL(request.url).protocol === 'https:'
+}
+
 export default {
 	middleware: [],
 	async action({ request }) {
-		const requestUrl = new URL(request.url)
-		const cookie = await destroyAuthCookie(requestUrl.protocol === 'https:')
-		const location = new URL('/login', requestUrl)
+		const cookie = await destroyAuthCookie(isSecureRequest(request))
+		const location = new URL('/login', request.url)
 
 		return new Response(null, {
 			status: 302,
