@@ -5,7 +5,6 @@ import { createDb, sql } from '../../worker/db.ts'
 import { logAuditEvent, getRequestIp } from '../audit-log.ts'
 import { sendResendEmail } from '../email/resend.ts'
 import { toHex } from '../hex.ts'
-import { jsonResponse } from '../json-response.ts'
 import { normalizeEmail } from '../normalize-email.ts'
 import { createPasswordHash } from '../password-hash.ts'
 import type routes from '../routes.ts'
@@ -90,7 +89,10 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 			try {
 				body = await request.json()
 			} catch {
-				return jsonResponse({ error: 'Invalid JSON payload.' }, { status: 400 })
+				return Response.json(
+					{ error: 'Invalid JSON payload.' },
+					{ status: 400 },
+				)
 			}
 			const parsed = resetRequestSchema.safeParse(body)
 			const requestIp = getRequestIp(request) ?? undefined
@@ -108,7 +110,7 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 					path: url.pathname,
 					reason: 'invalid_payload',
 				})
-				return jsonResponse({ error: 'Email is required.' }, { status: 400 })
+				return Response.json({ error: 'Email is required.' }, { status: 400 })
 			}
 
 			const userRecord = await db.queryFirst(
@@ -189,7 +191,7 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 				})
 			}
 
-			return jsonResponse({
+			return Response.json({
 				ok: true,
 				message: 'If the account exists, a reset email has been sent.',
 			})
@@ -210,7 +212,10 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 			try {
 				body = await request.json()
 			} catch {
-				return jsonResponse({ error: 'Invalid JSON payload.' }, { status: 400 })
+				return Response.json(
+					{ error: 'Invalid JSON payload.' },
+					{ status: 400 },
+				)
 			}
 			const parsed = resetConfirmSchema.safeParse(body)
 			const requestIp = getRequestIp(request) ?? undefined
@@ -226,7 +231,7 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 					path: url.pathname,
 					reason: 'invalid_payload',
 				})
-				return jsonResponse(
+				return Response.json(
 					{ error: 'Token and password are required.' },
 					{ status: 400 },
 				)
@@ -253,7 +258,7 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 					path: url.pathname,
 					reason: resetRecord ? 'expired_token' : 'invalid_token',
 				})
-				return jsonResponse(
+				return Response.json(
 					{ error: 'Reset link is invalid or expired.' },
 					{ status: 400 },
 				)
@@ -279,7 +284,7 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 				path: url.pathname,
 			})
 
-			return jsonResponse({ ok: true })
+			return Response.json({ ok: true })
 		},
 	} satisfies BuildAction<
 		typeof routes.passwordResetConfirm.method,
