@@ -63,7 +63,7 @@ export function HomeRoute() {
 								color: colors.text,
 							}}
 						>
-							epicflare <span css={{ color: colors.primary }}>Remix 3</span>
+							epicflare <span css={{ color: colors.primaryText }}>Remix 3</span>
 						</h1>
 						<p css={{ margin: 0, color: colors.textMuted }}>
 							Remix 3 components running on the client, backed by Remix 3
@@ -298,6 +298,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 				<div css={{ display: 'grid', gap: spacing.sm }}>
 					<a
 						href={isSignup ? '/login' : '/signup'}
+						aria-pressed={isSignup}
 						on={{
 							click: (event) => {
 								if (event.defaultPrevented) return
@@ -308,7 +309,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 							background: 'none',
 							border: 'none',
 							padding: 0,
-							color: colors.primary,
+							color: colors.primaryText,
 							fontSize: typography.fontSize.sm,
 							cursor: 'pointer',
 							textAlign: 'left',
@@ -317,7 +318,6 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 								textDecoration: 'underline',
 							},
 						}}
-						aria-pressed={isSignup}
 					>
 						{toggleLabel} {toggleAction}
 					</a>
