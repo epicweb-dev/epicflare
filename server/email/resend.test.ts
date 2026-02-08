@@ -1,10 +1,7 @@
 /// <reference types="bun" />
 import { expect, test } from 'bun:test'
 import { readMockRequests } from '../../tools/mock-api-server.ts'
-import {
-	createMockResendServer,
-	mockResendBasePath,
-} from '../../tools/mock-resend-server.ts'
+import { createMockResendServer } from '../../tools/mock-resend-server.ts'
 import { createTemporaryDirectory } from '../../tools/temp-directory.ts'
 import { resendEmailSchema, sendResendEmail } from './resend.ts'
 
@@ -28,7 +25,7 @@ test('sendResendEmail posts to the mock Resend API', async () => {
 
 	const requests = await readMockRequests(tempDir.path)
 	expect(requests.length).toBe(1)
-	expect(requests[0]?.path).toBe(`${mockResendBasePath}/emails`)
+	expect(requests[0]?.path).toBe('/emails')
 	const recorded = resendEmailSchema.parse(requests[0]?.body)
 	expect(recorded).toEqual(email)
 })

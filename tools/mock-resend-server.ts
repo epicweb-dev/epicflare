@@ -1,8 +1,6 @@
 import { resendEmailSchema } from '../shared/resend-email.ts'
 import { createMockApiServer, type MockApiServer } from './mock-api-server.ts'
 
-export const mockResendBasePath = '/mock/resend'
-
 export type MockResendServer = MockApiServer & {
 	baseUrl: string
 	storageDir: string
@@ -21,7 +19,7 @@ export function createMockResendServer(
 		routes: [
 			{
 				method: 'POST',
-				path: `${mockResendBasePath}/emails`,
+				path: '/emails',
 				handler: ({ body }) => {
 					const parsed = resendEmailSchema.safeParse(body)
 					if (!parsed.success) {
@@ -38,7 +36,7 @@ export function createMockResendServer(
 			},
 		],
 	})
-	const baseUrl = new URL(mockResendBasePath, server.url).toString()
+	const baseUrl = server.url
 
 	return { ...server, baseUrl, storageDir }
 }
