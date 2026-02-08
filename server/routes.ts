@@ -9,6 +9,8 @@ const routes = route({
 	auth: post('/auth'),
 	session: '/session',
 	logout: post('/logout'),
+	passwordResetRequest: post('/password-reset'),
+	passwordResetConfirm: post('/password-reset/confirm'),
 })
 
 export default routes

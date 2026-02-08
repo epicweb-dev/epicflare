@@ -15,6 +15,9 @@ Quick notes for getting a local epicflare environment running.
 
 - Copy `.env.example` to `.env` before starting any work, then update secrets as
   needed.
+- Run `bun run mock:resend` to emulate Resend locally (stores requests in
+  `mock-data/resend`). Set `RESEND_API_BASE_URL` to the mock server URL in
+  `.env` and provide a placeholder `RESEND_API_KEY`.
 - `bun run dev`
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`

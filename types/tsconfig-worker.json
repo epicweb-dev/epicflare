@@ -21,9 +21,15 @@
 		"./env.d.ts",
 		"./env-schema.ts",
 		"./worker-configuration.d.ts",
+		"../shared/**/*.ts",
 		"../worker/**/*.ts",
 		"../server/**/*.ts",
 		"../mcp/**/*.ts"
 	],
-	"exclude": ["**/*.test.ts", "**/*.spec.ts"]
+	"exclude": [
+		"**/*.test.ts",
+		"**/*.spec.ts",
+		"../**/*.test.ts",
+		"../**/*.spec.ts"
+	]
 }

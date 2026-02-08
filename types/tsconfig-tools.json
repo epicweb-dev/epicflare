@@ -23,6 +23,8 @@
 		"../wrangler-env.ts",
 		"../cli.ts",
 		"../docs/post-download.ts",
-		"../mcp/mcp-server-e2e.test.ts"
+		"../mcp/mcp-server-e2e.test.ts",
+		"../tools/**/*.ts",
+		"../shared/**/*.ts"
 	]
 }
