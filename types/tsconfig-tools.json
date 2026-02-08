@@ -4,7 +4,18 @@
 		"composite": true,
 		"allowImportingTsExtensions": true,
 		"target": "ES2023",
-		"lib": ["ES2023"],
+		"lib": ["ES2023", "ESNext.Disposable"],
+		"baseUrl": ".",
+		// Force MCP SDK to resolve to the hoisted install to avoid duplicate
+		// private type conflicts when multiple copies are present.
+		"paths": {
+			"@modelcontextprotocol/sdk": [
+				"../node_modules/@modelcontextprotocol/sdk"
+			],
+			"@modelcontextprotocol/sdk/*": [
+				"../node_modules/@modelcontextprotocol/sdk/*"
+			]
+		},
 		"module": "ESNext",
 		"types": ["node", "bun"],
 		"moduleResolution": "bundler",
@@ -23,6 +34,8 @@
 		"../wrangler-env.ts",
 		"../cli.ts",
 		"../docs/post-download.ts",
-		"../mcp/mcp-server-e2e.test.ts"
+		"../mcp/mcp-server-e2e.test.ts",
+		"../tools/**/*.ts",
+		"../shared/**/*.ts"
 	]
 }

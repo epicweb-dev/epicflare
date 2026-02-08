@@ -14,16 +14,6 @@ function isAuthMode(value: string): value is AuthMode {
 	return value === 'login' || value === 'signup'
 }
 
-function jsonResponse(data: unknown, init?: ResponseInit) {
-	return new Response(JSON.stringify(data), {
-		...init,
-		headers: {
-			'Content-Type': 'application/json',
-			...init?.headers,
-		},
-	})
-}
-
 function isUniqueConstraintError(error: unknown) {
 	return (
 		error instanceof Error && /unique constraint failed/i.test(error.message)
@@ -46,11 +36,17 @@ export function createAuthHandler(appEnv: AppEnv) {
 			try {
 				body = await request.json()
 			} catch {
-				return jsonResponse({ error: 'Invalid JSON payload.' }, { status: 400 })
+				return Response.json(
+					{ error: 'Invalid JSON payload.' },
+					{ status: 400 },
+				)
 			}
 
 			if (!body || typeof body !== 'object') {
-				return jsonResponse({ error: 'Invalid request body.' }, { status: 400 })
+				return Response.json(
+					{ error: 'Invalid request body.' },
+					{ status: 400 },
+				)
 			}
 
 			const { email, password, mode } = body as Record<string, unknown>
@@ -71,7 +67,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 					path: url.pathname,
 					reason: 'missing_fields',
 				})
-				return jsonResponse(
+				return Response.json(
 					{ error: 'Email, password, and mode are required.' },
 					{ status: 400 },
 				)
@@ -92,7 +88,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 						path: url.pathname,
 						reason: 'email_exists',
 					})
-					return jsonResponse(
+					return Response.json(
 						{ error: 'Email already registered.' },
 						{ status: 409 },
 					)
@@ -121,7 +117,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 							path: url.pathname,
 							reason: 'email_exists',
 						})
-						return jsonResponse(
+						return Response.json(
 							{ error: 'Email already registered.' },
 							{ status: 409 },
 						)
@@ -138,7 +134,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 						path: url.pathname,
 						reason: 'insert_failed',
 					})
-					return jsonResponse(
+					return Response.json(
 						{ error: 'Unable to create account.' },
 						{ status: 500 },
 					)
@@ -156,7 +152,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 					ip: requestIp,
 					path: url.pathname,
 				})
-				return jsonResponse(
+				return Response.json(
 					{ ok: true, mode: normalizedMode },
 					{
 						headers: {
@@ -190,7 +186,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 					path: url.pathname,
 					reason: 'invalid_credentials',
 				})
-				return jsonResponse(
+				return Response.json(
 					{ error: 'Invalid email or password.' },
 					{ status: 401 },
 				)
@@ -221,7 +217,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 				ip: requestIp,
 				path: url.pathname,
 			})
-			return jsonResponse(
+			return Response.json(
 				{ ok: true, mode: normalizedMode },
 				{
 					headers: {

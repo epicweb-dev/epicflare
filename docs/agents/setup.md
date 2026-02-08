@@ -15,7 +15,9 @@ Quick notes for getting a local epicflare environment running.
 
 - Copy `.env.example` to `.env` before starting any work, then update secrets as
   needed.
-- `bun run dev`
+- `bun run dev` (starts mock API servers automatically and sets
+  `RESEND_API_BASE_URL` to the local mock host).
+- Add new mock API servers by following `docs/agents/mock-api-servers.md`.
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
   - `bun run dev:worker`

@@ -5,6 +5,7 @@ import {
 	LoginRoute,
 	OAuthAuthorizeRoute,
 	OAuthCallbackRoute,
+	ResetPasswordRoute,
 } from './client-routes.tsx'
 import { Router } from './client-router.tsx'
 import {
@@ -104,6 +105,7 @@ export function App(handle: Handle) {
 							'/account': AccountRoute(),
 							'/login': LoginRoute('login'),
 							'/signup': LoginRoute('signup'),
+							'/reset-password': ResetPasswordRoute(),
 							'/oauth/authorize': OAuthAuthorizeRoute(),
 							'/oauth/callback': OAuthCallbackRoute(),
 						},
