@@ -34,6 +34,7 @@ Use Cloudflare's built-in rate limiting rules instead of custom Worker logic.
 Local development uses `.env`, which Wrangler loads automatically:
 
 - `COOKIE_SECRET` (generate with `openssl rand -hex 32`)
+- `APP_BASE_URL` (for example `https://app.example.com`)
 - `RESEND_API_BASE_URL` (optional, defaults to `https://api.resend.com`)
 - `RESEND_API_KEY` (optional, required to send via Resend)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)

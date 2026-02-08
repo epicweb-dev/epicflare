@@ -129,7 +129,7 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 				const token = generateResetToken()
 				const tokenHash = await hashResetToken(token)
 				const expiresAt = Date.now() + resetTokenExpiryMs
-				const resetUrl = new URL('/reset-password', request.url)
+				const resetUrl = new URL('/reset-password', appEnv.APP_BASE_URL)
 				resetUrl.searchParams.set('token', token)
 				const email = buildResetEmail(resetUrl.toString())
 				const fromEmail = appEnv.RESEND_FROM_EMAIL?.trim() ?? ''
