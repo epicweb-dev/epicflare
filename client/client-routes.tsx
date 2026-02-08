@@ -298,6 +298,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 				<div css={{ display: 'grid', gap: spacing.sm }}>
 					<a
 						href={isSignup ? '/login' : '/signup'}
+						aria-pressed={isSignup}
 						on={{
 							click: (event) => {
 								if (event.defaultPrevented) return
