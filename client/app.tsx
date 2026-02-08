@@ -69,7 +69,7 @@ export function App(handle: Handle) {
 					<a
 						href="/"
 						css={{
-							color: colors.primary,
+							color: colors.primaryText,
 							fontWeight: typography.fontWeight.medium,
 							textDecoration: 'none',
 							'&:hover': {
@@ -84,7 +84,7 @@ export function App(handle: Handle) {
 							key={link.href}
 							href={link.href}
 							css={{
-								color: colors.primary,
+								color: colors.primaryText,
 								fontWeight: typography.fontWeight.medium,
 								textDecoration: 'none',
 								'&:hover': {

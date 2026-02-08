@@ -5,11 +5,12 @@
 	--color-primary: #f47c00;
 	--color-primary-hover: #e26c00;
 	--color-primary-active: #c85a00;
-	--color-on-primary: #fff7ef;
+	--color-on-primary: #120b08;
+	--color-primary-text: #b04700;
 	--color-background: #f6f6f8;
 	--color-surface: #ececf1;
 	--color-text: #2f2f34;
-	--color-text-muted: #6b6b74;
+	--color-text-muted: #676770;
 	--color-border: #d7d7df;
 
 	/* Typography */
@@ -80,7 +81,8 @@
 		--color-primary: #f6a23a;
 		--color-primary-hover: #f08b1a;
 		--color-primary-active: #d87305;
-		--color-on-primary: #1b120c;
+		--color-on-primary: #120b08;
+		--color-primary-text: #f6a23a;
 		--color-background: #121216;
 		--color-surface: #1c1c22;
 		--color-text: #f1f1f5;
