@@ -14,12 +14,13 @@ import type {
 	ContentBlock,
 } from '@modelcontextprotocol/sdk/types.js'
 import getPort from 'get-port'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))
+const migrationsDir = join(projectRoot, 'migrations')
 const bunBin = process.execPath
 const defaultTimeoutMs = 60_000
 
@@ -96,18 +97,7 @@ async function createTestDatabase() {
 		password: `pw-${crypto.randomUUID()}`,
 	}
 
-	await runWrangler([
-		'd1',
-		'execute',
-		'APP_DB',
-		'--local',
-		'--env',
-		'test',
-		'--persist-to',
-		persistDir,
-		'--file',
-		'migrations/0001-init.sql',
-	])
+	await applyMigrations(persistDir)
 
 	const passwordHash = await createPasswordHash(user.password)
 	const username = user.email.split('@')[0] || 'user'
@@ -135,6 +125,36 @@ async function createTestDatabase() {
 			await rm(persistDir, { recursive: true, force: true })
 		},
 	}
+}
+
+async function applyMigrations(persistDir: string) {
+	const migrationFiles = await listMigrationFiles()
+	if (migrationFiles.length === 0) {
+		throw new Error('No migration files found in migrations directory.')
+	}
+
+	for (const migrationFile of migrationFiles) {
+		await runWrangler([
+			'd1',
+			'execute',
+			'APP_DB',
+			'--local',
+			'--env',
+			'test',
+			'--persist-to',
+			persistDir,
+			'--file',
+			join('migrations', migrationFile),
+		])
+	}
+}
+
+async function listMigrationFiles() {
+	const entries = await readdir(migrationsDir, { withFileTypes: true })
+	return entries
+		.filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+		.map((entry) => entry.name)
+		.sort((left, right) => left.localeCompare(right))
 }
 
 function captureOutput(stream: ReadableStream<Uint8Array> | null) {
