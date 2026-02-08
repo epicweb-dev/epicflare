@@ -1,5 +1,5 @@
 import { invariant } from '@epic-web/invariant'
-import { McpServer } from '../node_modules/agents/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { McpAgent } from 'agents/mcp'
 import { registerTools } from './tools.ts'
 
@@ -16,7 +16,7 @@ export class MCP extends McpAgent<Env, State, Props> {
 		{
 			instructions: `Use this server to solve math problems reliably and accurately.`,
 		},
-	)
+	) as unknown as McpAgent<Env, State, Props>['server']
 	async init() {
 		await registerTools(this)
 	}

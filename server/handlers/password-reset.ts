@@ -125,24 +125,30 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 				resetUserSchema,
 			)
 
+			const token = generateResetToken()
+			const tokenHash = await hashResetToken(token)
+			const expiresAt = Date.now() + resetTokenExpiryMs
+
+			await db.exec(
+				sql`
+					DELETE FROM password_resets
+					WHERE user_id = (SELECT id FROM users WHERE email = ${normalizedEmail})
+				`,
+			)
+			await db.exec(
+				sql`
+					INSERT INTO password_resets (user_id, token_hash, expires_at)
+					SELECT id, ${tokenHash}, ${expiresAt}
+					FROM users
+					WHERE email = ${normalizedEmail}
+				`,
+			)
+
 			if (userRecord) {
-				const token = generateResetToken()
-				const tokenHash = await hashResetToken(token)
-				const expiresAt = Date.now() + resetTokenExpiryMs
 				const resetUrl = new URL('/reset-password', appEnv.APP_BASE_URL)
 				resetUrl.searchParams.set('token', token)
 				const email = buildResetEmail(resetUrl.toString())
 				const fromEmail = appEnv.RESEND_FROM_EMAIL?.trim() ?? ''
-
-				await db.exec(
-					sql`DELETE FROM password_resets WHERE user_id = ${userRecord.id}`,
-				)
-				await db.exec(
-					sql`
-						INSERT INTO password_resets (user_id, token_hash, expires_at)
-						VALUES (${userRecord.id}, ${tokenHash}, ${expiresAt})
-					`,
-				)
 
 				if (!fromEmail) {
 					logMissingEmailConfig({
