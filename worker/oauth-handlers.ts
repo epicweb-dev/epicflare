@@ -47,7 +47,7 @@ function renderSpaShell(status = 200) {
 
 const dummyPasswordHash =
 	'pbkdf2_sha256$120000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
-const userRecordSchema = z.object({ password_hash: z.string() })
+const userRecordSchema = z.object({ id: z.number(), password_hash: z.string() })
 
 async function createUserId(email: string) {
 	const normalized = email.trim().toLowerCase()
@@ -243,7 +243,7 @@ export async function handleAuthorizeRequest(
 	if (hasFormCredentials) {
 		const db = createDb(env.APP_DB)
 		const userRecord = await db.queryFirst(
-			sql`SELECT password_hash FROM users WHERE email = ${normalizedEmail}`,
+			sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
 			userRecordSchema,
 		)
 		let passwordCheck: Awaited<ReturnType<typeof verifyPassword>> | null = null
@@ -269,7 +269,7 @@ export async function handleAuthorizeRequest(
 		if (passwordCheck.upgradedHash) {
 			try {
 				await db.exec(
-					sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE email = ${normalizedEmail}`,
+					sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE id = ${userRecord.id}`,
 				)
 			} catch {
 				// Ignore upgrade failures so valid logins still succeed.
