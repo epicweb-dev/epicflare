@@ -4,7 +4,16 @@
 		"composite": true,
 		"allowImportingTsExtensions": true,
 		"target": "ES2023",
-		"lib": ["ES2023"],
+		"lib": ["ES2023", "ESNext.Disposable"],
+		"baseUrl": ".",
+		"paths": {
+			"@modelcontextprotocol/sdk": [
+				"../node_modules/@modelcontextprotocol/sdk"
+			],
+			"@modelcontextprotocol/sdk/*": [
+				"../node_modules/@modelcontextprotocol/sdk/*"
+			]
+		},
 		"module": "ESNext",
 		"types": ["node", "bun"],
 		"moduleResolution": "bundler",

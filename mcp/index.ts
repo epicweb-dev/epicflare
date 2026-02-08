@@ -16,7 +16,7 @@ export class MCP extends McpAgent<Env, State, Props> {
 		{
 			instructions: `Use this server to solve math problems reliably and accurately.`,
 		},
-	) as unknown as McpAgent<Env, State, Props>['server']
+	)
 	async init() {
 		await registerTools(this)
 	}

@@ -45,7 +45,10 @@ export async function sendResendEmail(
 		return { ok: false, skipped: true }
 	}
 
-	const endpoint = new URL('/emails', config.apiBaseUrl)
+	const baseUrl = config.apiBaseUrl.endsWith('/')
+		? config.apiBaseUrl
+		: `${config.apiBaseUrl}/`
+	const endpoint = new URL('emails', baseUrl)
 	const response = await fetch(endpoint.toString(), {
 		method: 'POST',
 		headers: {

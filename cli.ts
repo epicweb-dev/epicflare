@@ -3,8 +3,13 @@ import { platform } from 'node:os'
 import readline from 'node:readline'
 import { setTimeout as delay } from 'node:timers/promises'
 import getPort, { clearLockedPorts } from 'get-port'
+import {
+	createMockResendServer,
+	type MockResendServer,
+} from './tools/mock-resend-server.ts'
 
 const defaultWorkerPort = 3742
+const defaultMockPort = 8788
 
 const ansiReset = '\x1b[0m'
 const ansiBright = '\x1b[1m'
@@ -36,6 +41,8 @@ const extraArgs = process.argv.slice(2)
 let shutdown: (() => void) | null = null
 let devChildren: Array<ChildProcess> = []
 let workerOrigin = ''
+let mockResendServer: MockResendServer | null = null
+let mockEnvOverrides: Record<string, string> = {}
 
 void startDev()
 
@@ -45,7 +52,10 @@ async function startDev() {
 		getWorkerOrigin: () => workerOrigin,
 		restart: restartDev,
 	})
-	shutdown = setupShutdown(() => devChildren)
+	shutdown = setupShutdown(
+		() => devChildren,
+		() => mockResendServer,
+	)
 }
 
 function resolveWorkerOrigin(port: number) {
@@ -105,13 +115,20 @@ function pipeStream(
 	})
 }
 
-function setupShutdown(getChildren: () => Array<ChildProcess>) {
+function setupShutdown(
+	getChildren: () => Array<ChildProcess>,
+	getMockServer: () => MockResendServer | null,
+) {
 	function doShutdown() {
 		console.log(dim('\nShutting down...'))
 		for (const child of getChildren()) {
 			if (!child.killed) {
 				child.kill('SIGINT')
 			}
+		}
+		const server = getMockServer()
+		if (server) {
+			server[Symbol.dispose]()
 		}
 
 		setTimeout(() => {
@@ -202,6 +219,7 @@ async function restartDev(
 	{ announce }: { announce: boolean } = { announce: true },
 ) {
 	await stopChildren(devChildren)
+	const mockEnv = await ensureMockServers()
 	const desiredPort = Number.parseInt(
 		process.env.PORT ?? String(defaultWorkerPort),
 		10,
@@ -224,7 +242,7 @@ async function restartDev(
 	const worker = runBunScript(
 		'dev:worker',
 		extraArgs,
-		{ PORT: String(workerPort) },
+		{ PORT: String(workerPort), ...mockEnv },
 		{ outputFilter: 'worker' },
 	)
 	devChildren = [client, worker]
@@ -233,6 +251,41 @@ async function restartDev(
 		console.log(dim('\nRestarted dev servers.'))
 		logAppRunning(() => workerOrigin)
 	}
+}
+
+function hasEnvValue(value: string | undefined) {
+	return typeof value === 'string' && value.trim().length > 0
+}
+
+async function ensureMockServers() {
+	if (mockResendServer) {
+		return mockEnvOverrides
+	}
+	const desiredPort = Number.parseInt(
+		process.env.MOCK_API_PORT ?? String(defaultMockPort),
+		10,
+	)
+	const portRange = Array.from(
+		{ length: 10 },
+		(_, index) => desiredPort + index,
+	)
+	const mockPort = await getPort({ port: portRange })
+	mockResendServer = createMockResendServer({
+		port: mockPort,
+		storageDir: process.env.MOCK_API_STORAGE_DIR ?? 'mock-data/resend',
+	})
+	mockEnvOverrides = {
+		RESEND_API_BASE_URL: mockResendServer.baseUrl,
+	}
+	if (!hasEnvValue(process.env.RESEND_API_KEY)) {
+		mockEnvOverrides.RESEND_API_KEY = 'mock-resend-key'
+	}
+	if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
+		mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
+	}
+	console.log(dim(`Mock API server running at ${mockResendServer.url}`))
+	console.log(dim(`Resend mock base URL ${mockResendServer.baseUrl}`))
+	return mockEnvOverrides
 }
 
 async function stopChildren(children: Array<ChildProcess>) {

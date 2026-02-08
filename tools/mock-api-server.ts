@@ -35,6 +35,7 @@ export type MockApiRoute = {
 export type MockApiServer = {
 	url: string
 	stop: () => void
+	[Symbol.dispose]: () => void
 }
 
 export type MockApiServerOptions = {
@@ -133,6 +134,7 @@ export function createMockApiServer(
 	return {
 		url: `http://${hostname}:${server.port}`,
 		stop: () => server.stop(),
+		[Symbol.dispose]: () => server.stop(),
 	}
 }
 

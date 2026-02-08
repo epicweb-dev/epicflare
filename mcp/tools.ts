@@ -11,11 +11,7 @@ let operations = {
 } satisfies Record<string, OperationFn>
 
 export async function registerTools(agent: MCP) {
-	const server = await agent.server
-	if (!('registerTool' in server)) {
-		throw new Error('MCP server does not support tool registration.')
-	}
-	server.registerTool(
+	agent.server.registerTool(
 		'do_math',
 		{
 			description: 'Solve a math problem',

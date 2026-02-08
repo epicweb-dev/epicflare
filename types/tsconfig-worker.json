@@ -6,6 +6,15 @@
 		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.worker.tsbuildinfo",
 		"target": "ES2023",
 		"lib": ["ES2023", "WebWorker", "WebWorker.Iterable"],
+		"baseUrl": ".",
+		"paths": {
+			"@modelcontextprotocol/sdk": [
+				"../node_modules/@modelcontextprotocol/sdk"
+			],
+			"@modelcontextprotocol/sdk/*": [
+				"../node_modules/@modelcontextprotocol/sdk/*"
+			]
+		},
 		"module": "ESNext",
 		"types": [],
 		"moduleResolution": "bundler",
