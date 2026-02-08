@@ -15,6 +15,19 @@ import {
 	typography,
 } from './styles/tokens.ts'
 
+function getSearchParams() {
+	return typeof window === 'undefined'
+		? new URLSearchParams()
+		: new URLSearchParams(window.location.search)
+}
+
+function normalizeRedirectTo(value: string | null) {
+	if (!value) return null
+	if (!value.startsWith('/')) return null
+	if (value.startsWith('//')) return null
+	return value
+}
+
 export function HomeRoute() {
 	return (_match: { path: string; params: Record<string, string> }) => (
 		<section
@@ -79,15 +92,27 @@ export function HomeRoute() {
 
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
+type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 type LoginFormSetup = {
 	initialMode?: AuthMode
+}
+
+function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
+	const path = mode === 'signup' ? '/signup' : '/login'
+	if (!redirectTo) return path
+	const params = new URLSearchParams({ redirectTo })
+	return `${path}?${params.toString()}`
 }
 
 function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 	let mode: AuthMode = setup.initialMode ?? 'login'
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
+	let sessionStatus: SessionStatus = 'idle'
+	let sessionEmail = ''
+	const redirectTo = normalizeRedirectTo(getSearchParams().get('redirectTo'))
+	const redirectTarget = redirectTo ?? '/account'
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
@@ -100,19 +125,25 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 		mode = nextMode
 		status = 'idle'
 		message = null
-		navigate(nextMode === 'signup' ? '/signup' : '/login')
+		navigate(buildAuthPath(nextMode, redirectTo))
 		handle.update()
 	}
 
-	function getRedirectTarget() {
-		if (typeof window === 'undefined') return null
-		const params = new URLSearchParams(window.location.search)
-		const redirectTo = params.get('redirectTo')
-		if (!redirectTo) return null
-		if (!redirectTo.startsWith('/')) return null
-		if (redirectTo.startsWith('//')) return null
-		return redirectTo
-	}
+	handle.queueTask(async (signal) => {
+		if (sessionStatus !== 'idle') return
+		sessionStatus = 'loading'
+
+		const session = await fetchSessionInfo(signal)
+		if (signal.aborted) return
+		sessionEmail = session?.email ?? ''
+
+		sessionStatus = 'ready'
+		if (sessionEmail && typeof window !== 'undefined') {
+			window.location.assign(redirectTarget)
+			return
+		}
+		handle.update()
+	})
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
@@ -148,8 +179,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 			}
 
 			if (typeof window !== 'undefined') {
-				const redirectTo = getRedirectTarget()
-				window.location.assign(redirectTo ?? '/account')
+				window.location.assign(redirectTarget)
 			}
 		} catch {
 			setState('error', 'Network error. Please try again.')
@@ -297,7 +327,7 @@ function LoginForm(handle: Handle, setup: LoginFormSetup = {}) {
 				</form>
 				<div css={{ display: 'grid', gap: spacing.sm }}>
 					<a
-						href={isSignup ? '/login' : '/signup'}
+						href={buildAuthPath(isSignup ? 'login' : 'signup', redirectTo)}
 						aria-pressed={isSignup}
 						on={{
 							click: (event) => {
@@ -346,6 +376,90 @@ export function LoginRoute(initialMode: AuthMode = 'login') {
 	)
 }
 
+function AccountPage(handle: Handle) {
+	let status: AccountStatus = 'loading'
+	let email = ''
+	let message: string | null = null
+
+	async function loadAccount(signal: AbortSignal) {
+		try {
+			const response = await fetch('/session', {
+				headers: { Accept: 'application/json' },
+				credentials: 'include',
+				signal,
+			})
+			if (signal.aborted) return
+			const payload = await response.json().catch(() => null)
+			const sessionEmail =
+				response.ok &&
+				payload?.ok &&
+				typeof payload?.session?.email === 'string'
+					? payload.session.email.trim()
+					: ''
+			if (!sessionEmail) {
+				window.location.assign('/login')
+				return
+			}
+			email = sessionEmail
+			status = 'ready'
+			message = null
+			handle.update()
+		} catch {
+			if (signal.aborted) return
+			status = 'error'
+			message = 'Unable to load your account.'
+			handle.update()
+		}
+	}
+
+	return () => {
+		if (status === 'loading') {
+			handle.queueTask(loadAccount)
+		}
+
+		return (
+			<section
+				css={{
+					maxWidth: '28rem',
+					margin: '0 auto',
+					display: 'grid',
+					gap: spacing.lg,
+				}}
+			>
+				<header css={{ display: 'grid', gap: spacing.xs }}>
+					<h1
+						css={{
+							fontSize: typography.fontSize.xl,
+							fontWeight: typography.fontWeight.semibold,
+							color: colors.text,
+							margin: 0,
+						}}
+					>
+						{email ? `Welcome, ${email}` : 'Welcome'}
+					</h1>
+					<p css={{ color: colors.textMuted }}>
+						You are signed in to epicflare.
+					</p>
+				</header>
+				{status === 'loading' ? (
+					<p css={{ color: colors.textMuted }}>Loading your account…</p>
+				) : null}
+				{message ? (
+					<p css={{ color: colors.error }} role="alert">
+						{message}
+					</p>
+				) : null}
+			</section>
+		)
+	}
+}
+
+export function AccountRoute() {
+	return (_match: { path: string; params: Record<string, string> }) => (
+		<AccountPage />
+	)
+}
+
 type OAuthAuthorizeInfo = {
 	client: { id: string; name: string }
 	scopes: Array<string>
@@ -366,12 +480,6 @@ function OAuthAuthorizeForm(handle: Handle) {
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
 		handle.update()
-	}
-
-	function getSearchParams() {
-		return typeof window === 'undefined'
-			? new URLSearchParams()
-			: new URLSearchParams(window.location.search)
 	}
 
 	function readQueryError() {
