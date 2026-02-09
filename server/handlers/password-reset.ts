@@ -138,7 +138,8 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 			)
 
 			if (userRecord) {
-				const resetUrl = new URL('/reset-password', appEnv.APP_BASE_URL)
+				const appBaseUrl = appEnv.APP_BASE_URL ?? url.origin
+				const resetUrl = new URL('/reset-password', appBaseUrl)
 				resetUrl.searchParams.set('token', token)
 				const email = buildResetEmail(resetUrl.toString())
 				const fromEmail = appEnv.RESEND_FROM_EMAIL?.trim() ?? ''

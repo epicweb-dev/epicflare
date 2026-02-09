@@ -20,7 +20,7 @@ const appBaseUrlSchema = z.preprocess((value) => {
 	if (typeof value !== 'string') return value
 	const trimmed = value.trim()
 	return trimmed.length > 0 ? trimmed : undefined
-}, z.string().url())
+}, z.string().url().optional())
 
 export const EnvSchema = z.object({
 	COOKIE_SECRET: z
