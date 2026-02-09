@@ -33,8 +33,7 @@ types, runtime validation, and documentation in sync.
    ```
 
 3. **Add local defaults**
-   - Update `.env.example`.
-   - If tests depend on it, update `.env.test`.
+   - Update `.env.test` (source for new local `.env` files).
 
 4. **Update required resources docs**
    - Add the variable to `docs/setup-manifest.md`.
