@@ -3,7 +3,8 @@ import { toHex } from './hex.ts'
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
 const passwordHashBytes = 32
-const passwordHashIterations = 120_000
+const maxPasswordHashIterations = 100_000
+const passwordHashIterations = maxPasswordHashIterations
 const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
 
 function fromHex(value: string): Uint8Array<ArrayBuffer> | null {
@@ -117,6 +118,9 @@ export async function verifyPassword(
 		const salt = saltHex ? fromHex(saltHex) : null
 		const hash = hashHex ? fromHex(hashHex) : null
 		if (!iterations || iterations < 1 || !salt || !hash) {
+			return { valid: false }
+		}
+		if (iterations > maxPasswordHashIterations) {
 			return { valid: false }
 		}
 		const derived = await derivePasswordKey(

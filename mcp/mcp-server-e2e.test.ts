@@ -27,7 +27,7 @@ const defaultTimeoutMs = 60_000
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
 const passwordHashBytes = 32
-const passwordHashIterations = 120_000
+const passwordHashIterations = 100_000
 
 function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms))

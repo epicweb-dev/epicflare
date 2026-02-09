@@ -23,7 +23,7 @@ function isUniqueConstraintError(error: unknown) {
 const userLookupSchema = z.object({ id: z.number(), password_hash: z.string() })
 const userIdSchema = z.object({ id: z.number() })
 const dummyPasswordHash =
-	'pbkdf2_sha256$120000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
+	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 
 export function createAuthHandler(appEnv: AppEnv) {
 	const db = createDb(appEnv.APP_DB)
