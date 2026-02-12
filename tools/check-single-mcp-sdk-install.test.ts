@@ -9,6 +9,7 @@ import {
 	findNestedSdkInstallPathsFromRoot,
 	isExactVersion,
 	readInstalledSdkVersions,
+	resolveTopLevelSdkPackageJsonPath,
 	type PackageJson,
 } from './check-single-mcp-sdk-install.ts'
 
@@ -230,6 +231,42 @@ test('findNestedSdkInstallPathsFromRoot returns sorted paths', async () => {
 			workspaceRootPath,
 		})
 		expect(paths).toEqual([earlierPath, laterPath])
+	} finally {
+		await rm(workspaceRootPath, { recursive: true, force: true })
+	}
+})
+
+test('resolveTopLevelSdkPackageJsonPath returns expected top-level path', async () => {
+	const workspaceRootPath = await mkdtemp(join(tmpdir(), 'mcp-sdk-check-'))
+	try {
+		const topLevelPath = join(
+			workspaceRootPath,
+			'node_modules',
+			'@modelcontextprotocol',
+			'sdk',
+			'package.json',
+		)
+		await mkdir(join(topLevelPath, '..'), { recursive: true })
+		await writeFile(topLevelPath, '{"name":"@modelcontextprotocol/sdk"}')
+
+		expect(
+			resolveTopLevelSdkPackageJsonPath({
+				workspaceRootPath,
+			}),
+		).toBe(topLevelPath)
+	} finally {
+		await rm(workspaceRootPath, { recursive: true, force: true })
+	}
+})
+
+test('resolveTopLevelSdkPackageJsonPath throws when top-level sdk is missing', async () => {
+	const workspaceRootPath = await mkdtemp(join(tmpdir(), 'mcp-sdk-check-'))
+	try {
+		expect(() =>
+			resolveTopLevelSdkPackageJsonPath({
+				workspaceRootPath,
+			}),
+		).toThrow('Expected top-level @modelcontextprotocol/sdk install')
 	} finally {
 		await rm(workspaceRootPath, { recursive: true, force: true })
 	}

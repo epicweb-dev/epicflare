@@ -67,6 +67,26 @@ export async function findNestedSdkInstallPathsFromRoot({
 	return paths.sort((left, right) => left.localeCompare(right))
 }
 
+export function resolveTopLevelSdkPackageJsonPath({
+	workspaceRootPath,
+}: {
+	workspaceRootPath: string
+}) {
+	const packageJsonPath = join(
+		workspaceRootPath,
+		'node_modules',
+		'@modelcontextprotocol',
+		'sdk',
+		'package.json',
+	)
+	if (!existsSync(packageJsonPath)) {
+		throw new Error(
+			`Expected top-level @modelcontextprotocol/sdk install at ${packageJsonPath}, but it was not found.`,
+		)
+	}
+	return packageJsonPath
+}
+
 export function expectedVersionFromPackage(packageJson: PackageJson) {
 	const expectedVersion = expectedSdkVersionFromPackageJson(packageJson)
 	if (!expectedVersion) {
@@ -156,11 +176,12 @@ async function main() {
 		)
 	}
 
+	const projectRootPath = fileURLToPath(new URL('../', import.meta.url))
+	const topLevelSdkPackageJsonPath = resolveTopLevelSdkPackageJsonPath({
+		workspaceRootPath: projectRootPath,
+	})
 	const installedPackageJson = (await Bun.file(
-		new URL(
-			'../node_modules/@modelcontextprotocol/sdk/package.json',
-			import.meta.url,
-		),
+		topLevelSdkPackageJsonPath,
 	).json()) as PackageJson
 	if (installedPackageJson.version !== expectedVersion) {
 		throw new Error(
