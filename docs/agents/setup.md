@@ -32,6 +32,8 @@ Quick notes for getting a local epicflare environment running.
   install of `@modelcontextprotocol/sdk` and that it matches the pinned version
   in `package.json`.
 - `bun run test:guardrails` runs unit tests for the MCP SDK guardrail helpers.
+- `bun run verify:guardrails` runs both guardrail unit tests and the dependency
+  tree single-install check.
 - `bun run typecheck` includes the MCP SDK single-install check before `tsc`.
 - See `docs/agents/dependency-guardrails.md` for troubleshooting and policy
   details.

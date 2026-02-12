@@ -35,6 +35,12 @@ Run unit tests for guardrail helpers:
 bun run test:guardrails
 ```
 
+Run both guardrail checks together:
+
+```bash
+bun run verify:guardrails
+```
+
 Run the full local gate:
 
 ```bash

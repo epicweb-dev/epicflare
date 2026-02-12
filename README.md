@@ -77,6 +77,8 @@ avoid MCP type-identity conflicts.
 
 - `bun run check:mcp-sdk` verifies a single install is present and matches the
   pinned version in `package.json`.
+- `bun run verify:guardrails` runs guardrail unit tests and the dependency tree
+  check together.
 - `bun run typecheck` runs this guardrail before TypeScript compilation.
 
 ---

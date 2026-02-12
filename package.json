@@ -30,7 +30,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install chromium --with-deps",
     "test:mcp": "bun test mcp/mcp-server-e2e.test.ts",
-    "test:guardrails": "bun test tools/check-single-mcp-sdk-install.test.ts"
+    "test:guardrails": "bun test tools/check-single-mcp-sdk-install.test.ts",
+    "verify:guardrails": "bun run test:guardrails && bun run check:mcp-sdk"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.25.0",

@@ -60,11 +60,8 @@ jobs:
       - name: 📥 Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: 🧪 Run guardrail unit tests
-        run: bun run test:guardrails
-
-      - name: 🧱 Verify MCP SDK single-install guardrail
-        run: bun run check:mcp-sdk
+      - name: 🧱 Verify dependency guardrails
+        run: bun run verify:guardrails
 
   test:
     runs-on: ubuntu-latest

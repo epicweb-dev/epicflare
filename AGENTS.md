@@ -18,6 +18,7 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 - Run the Full Gate: `bun run validate`.
 - Run dependency guardrail check: `bun run check:mcp-sdk`.
 - Run dependency guardrail unit tests: `bun run test:guardrails`.
+- Run full dependency guardrail suite: `bun run verify:guardrails`.
 - Run formatting: `bun run format`.
 
 ## References
