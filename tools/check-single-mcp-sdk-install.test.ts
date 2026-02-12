@@ -39,6 +39,17 @@ test('expectedVersionFromPackage throws when override missing', () => {
 	)
 })
 
+test('expectedVersionFromPackage throws for non-exact override values', () => {
+	const packageJson: PackageJson = {
+		overrides: {
+			'@modelcontextprotocol/sdk': '^1.26.0',
+		},
+	}
+	expect(() => expectedVersionFromPackage(packageJson)).toThrow(
+		'Expected an exact @modelcontextprotocol/sdk version',
+	)
+})
+
 test('assertDependencyOverrideConsistency requires matching dependency value', () => {
 	const packageJson: PackageJson = {
 		dependencies: {
@@ -60,6 +71,15 @@ test('assertDependencyOverrideConsistency throws for mismatched versions', () =>
 		assertDependencyOverrideConsistency(packageJson, '1.26.0'),
 	).toThrow(
 		'Expected dependency and override versions for @modelcontextprotocol/sdk',
+	)
+})
+
+test('assertDependencyOverrideConsistency throws when dependency is missing', () => {
+	const packageJson: PackageJson = {}
+	expect(() =>
+		assertDependencyOverrideConsistency(packageJson, '1.26.0'),
+	).toThrow(
+		'Expected @modelcontextprotocol/sdk dependency is missing from package.json dependencies.',
 	)
 })
 
