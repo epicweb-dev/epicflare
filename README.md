@@ -69,6 +69,15 @@ Request → worker/index.ts
 | [`docs/environment-variables.md`](./docs/environment-variables.md) | Adding new env vars                  |
 | [`docs/agents/setup.md`](./docs/agents/setup.md)                   | Local development and verification   |
 
+## Dependency Guardrail
+
+This repo enforces a single installed version of `@modelcontextprotocol/sdk` to
+avoid MCP type-identity conflicts.
+
+- `bun run check:mcp-sdk` verifies a single install is present and matches the
+  pinned version in `package.json`.
+- `bun run typecheck` runs this guardrail before TypeScript compilation.
+
 ---
 
 <div align="center">
