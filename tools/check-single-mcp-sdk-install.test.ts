@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
 	assertDependencyOverrideConsistency,
+	expectedSdkVersionFromPackageJson,
 	expectedVersionFromPackage,
 	findNestedSdkInstallPathsFromRoot,
 	isExactVersion,
@@ -30,6 +31,24 @@ test('expectedVersionFromPackage requires exact override version', () => {
 		},
 	}
 	expect(expectedVersionFromPackage(packageJson)).toBe('1.26.0')
+})
+
+test('expectedSdkVersionFromPackageJson reads override version', () => {
+	const packageJson: PackageJson = {
+		overrides: {
+			'@modelcontextprotocol/sdk': '1.26.0',
+		},
+	}
+	expect(expectedSdkVersionFromPackageJson(packageJson)).toBe('1.26.0')
+})
+
+test('expectedSdkVersionFromPackageJson returns null when override missing', () => {
+	const packageJson: PackageJson = {
+		dependencies: {
+			'@modelcontextprotocol/sdk': '1.26.0',
+		},
+	}
+	expect(expectedSdkVersionFromPackageJson(packageJson)).toBeNull()
 })
 
 test('expectedVersionFromPackage throws when override missing', () => {
@@ -94,6 +113,18 @@ test('readInstalledSdkVersions deduplicates parsed versions', () => {
 ├── @modelcontextprotocol/sdk@1.26.0
 `
 	expect(readInstalledSdkVersions(output)).toEqual(['1.26.0'])
+})
+
+test('readInstalledSdkVersions reports multiple unique versions', () => {
+	const output = `
+├── @modelcontextprotocol/sdk@1.26.0
+├── @modelcontextprotocol/sdk@1.25.2
+`
+	expect(readInstalledSdkVersions(output)).toEqual(['1.26.0', '1.25.2'])
+})
+
+test('readInstalledSdkVersions returns empty list when no SDK is found', () => {
+	expect(readInstalledSdkVersions('no sdk here')).toEqual([])
 })
 
 test('findNestedSdkInstallPathsFromRoot returns nested SDK installs', async () => {
