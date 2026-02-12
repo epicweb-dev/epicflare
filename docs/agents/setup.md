@@ -32,6 +32,8 @@ Quick notes for getting a local epicflare environment running.
   install of `@modelcontextprotocol/sdk` and that it matches the pinned version
   in `package.json`.
 - `bun run typecheck` includes the MCP SDK single-install check before `tsc`.
+- See `docs/agents/dependency-guardrails.md` for troubleshooting and policy
+  details.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
