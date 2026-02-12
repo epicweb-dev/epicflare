@@ -31,26 +31,26 @@
     "test:mcp": "bun test mcp/mcp-server-e2e.test.ts"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.23.1",
+    "@cloudflare/vite-plugin": "^1.25.0",
     "@epic-web/config": "^1.22.0",
-    "@playwright/test": "^1.58.1",
-    "@types/bun": "^1.3.8",
+    "@playwright/test": "^1.58.2",
+    "@types/bun": "^1.3.9",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "esbuild": "^0.25.10",
-    "oxlint": "^1.43.0",
+    "esbuild": "^0.27.3",
+    "oxlint": "^1.47.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
-    "wrangler": "^4.62.0"
+    "wrangler": "^4.65.0"
   },
   "prettier": "@epic-web/config/prettier",
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.2.2",
+    "@cloudflare/workers-oauth-provider": "^0.2.3",
     "@epic-web/invariant": "^1.0.0",
-    "@mcp-ui/server": "6.0.0",
+    "@mcp-ui/server": "6.0.1",
     "@modelcontextprotocol/ext-apps": "^1.0.1",
-    "@modelcontextprotocol/sdk": "1.25.2",
-    "agents": "^0.3.10",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "agents": "^0.4.1",
     "get-port": "^7.1.0",
     "remix": "3.0.0-alpha.2",
     "zod": "^4.3.6"

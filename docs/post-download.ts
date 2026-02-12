@@ -240,9 +240,7 @@ function updateEnv({
 	const testPath = join(process.cwd(), '.env.test')
 
 	const hasEnv = existsSync(envPath)
-	const testContent = existsSync(testPath)
-		? readFileSync(testPath, 'utf8')
-		: ''
+	const testContent = existsSync(testPath) ? readFileSync(testPath, 'utf8') : ''
 
 	const envContent = hasEnv
 		? readFileSync(envPath, 'utf8')
