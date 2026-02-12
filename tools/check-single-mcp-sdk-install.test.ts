@@ -166,3 +166,31 @@ test('findNestedSdkInstallPathsFromRoot returns empty for missing dependency', a
 		await rm(workspaceRootPath, { recursive: true, force: true })
 	}
 })
+
+test('findNestedSdkInstallPathsFromRoot handles scoped dependency names', async () => {
+	const workspaceRootPath = await mkdtemp(join(tmpdir(), 'mcp-sdk-check-'))
+	try {
+		const nestedSdkPath = join(
+			workspaceRootPath,
+			'node_modules',
+			'@mcp-ui',
+			'server',
+			'node_modules',
+			'nested',
+			'node_modules',
+			'@modelcontextprotocol',
+			'sdk',
+			'package.json',
+		)
+		await mkdir(join(nestedSdkPath, '..'), { recursive: true })
+		await writeFile(nestedSdkPath, '{"name":"@modelcontextprotocol/sdk"}')
+
+		const paths = await findNestedSdkInstallPathsFromRoot({
+			dependencyName: '@mcp-ui/server',
+			workspaceRootPath,
+		})
+		expect(paths).toEqual([nestedSdkPath])
+	} finally {
+		await rm(workspaceRootPath, { recursive: true, force: true })
+	}
+})
