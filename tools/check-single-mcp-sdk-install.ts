@@ -13,11 +13,7 @@ async function readPackageJson() {
 }
 
 function expectedSdkVersionFromPackageJson(packageJson: PackageJson) {
-	return (
-		packageJson.overrides?.['@modelcontextprotocol/sdk'] ??
-		packageJson.dependencies?.['@modelcontextprotocol/sdk'] ??
-		null
-	)
+	return packageJson.overrides?.['@modelcontextprotocol/sdk'] ?? null
 }
 
 function isExactVersion(version: string) {
@@ -45,12 +41,24 @@ async function main() {
 	const expectedVersion = expectedSdkVersionFromPackageJson(packageJson)
 	if (!expectedVersion) {
 		throw new Error(
-			'Expected @modelcontextprotocol/sdk version is missing from package.json.',
+			'Expected @modelcontextprotocol/sdk override is missing from package.json.',
 		)
 	}
 	if (!isExactVersion(expectedVersion)) {
 		throw new Error(
 			`Expected an exact @modelcontextprotocol/sdk version, but found "${expectedVersion}". Pin the version using package.json overrides.`,
+		)
+	}
+	const dependencyVersion =
+		packageJson.dependencies?.['@modelcontextprotocol/sdk'] ?? null
+	if (!dependencyVersion) {
+		throw new Error(
+			'Expected @modelcontextprotocol/sdk dependency is missing from package.json dependencies.',
+		)
+	}
+	if (dependencyVersion !== expectedVersion) {
+		throw new Error(
+			`Expected dependency and override versions for @modelcontextprotocol/sdk to match, but found dependencies="${dependencyVersion}" and overrides="${expectedVersion}".`,
 		)
 	}
 
