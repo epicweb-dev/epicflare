@@ -194,3 +194,43 @@ test('findNestedSdkInstallPathsFromRoot handles scoped dependency names', async 
 		await rm(workspaceRootPath, { recursive: true, force: true })
 	}
 })
+
+test('findNestedSdkInstallPathsFromRoot returns sorted paths', async () => {
+	const workspaceRootPath = await mkdtemp(join(tmpdir(), 'mcp-sdk-check-'))
+	try {
+		const laterPath = join(
+			workspaceRootPath,
+			'node_modules',
+			'agents',
+			'node_modules',
+			'zeta',
+			'node_modules',
+			'@modelcontextprotocol',
+			'sdk',
+			'package.json',
+		)
+		const earlierPath = join(
+			workspaceRootPath,
+			'node_modules',
+			'agents',
+			'node_modules',
+			'alpha',
+			'node_modules',
+			'@modelcontextprotocol',
+			'sdk',
+			'package.json',
+		)
+		await mkdir(join(laterPath, '..'), { recursive: true })
+		await mkdir(join(earlierPath, '..'), { recursive: true })
+		await writeFile(laterPath, '{"name":"@modelcontextprotocol/sdk"}')
+		await writeFile(earlierPath, '{"name":"@modelcontextprotocol/sdk"}')
+
+		const paths = await findNestedSdkInstallPathsFromRoot({
+			dependencyName: 'agents',
+			workspaceRootPath,
+		})
+		expect(paths).toEqual([earlierPath, laterPath])
+	} finally {
+		await rm(workspaceRootPath, { recursive: true, force: true })
+	}
+})
