@@ -1,6 +1,9 @@
+import { existsSync } from 'node:fs'
+
 type PackageJson = {
 	dependencies?: Record<string, string>
 	overrides?: Record<string, string>
+	version?: string
 }
 
 async function readPackageJson() {
@@ -17,11 +20,24 @@ function expectedSdkVersionFromPackageJson(packageJson: PackageJson) {
 	)
 }
 
+function isExactVersion(version: string) {
+	return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)
+}
+
 function readInstalledSdkVersions(stdout: string) {
 	const matches = Array.from(
 		stdout.matchAll(/@modelcontextprotocol\/sdk@([0-9A-Za-z.-]+)/g),
 	)
 	return matches.map((match) => match[1] ?? '')
+}
+
+function hasNestedSdkInstall(dependencyName: string) {
+	return existsSync(
+		new URL(
+			`../node_modules/${dependencyName}/node_modules/@modelcontextprotocol/sdk/package.json`,
+			import.meta.url,
+		),
+	)
 }
 
 async function main() {
@@ -30,6 +46,11 @@ async function main() {
 	if (!expectedVersion) {
 		throw new Error(
 			'Expected @modelcontextprotocol/sdk version is missing from package.json.',
+		)
+	}
+	if (!isExactVersion(expectedVersion)) {
+		throw new Error(
+			`Expected an exact @modelcontextprotocol/sdk version, but found "${expectedVersion}". Pin the version using package.json overrides.`,
 		)
 	}
 
@@ -45,10 +66,12 @@ async function main() {
 	}
 
 	const output = processResult.stdout.toString()
-	const installedVersions = readInstalledSdkVersions(output)
+	const installedVersions = [...new Set(readInstalledSdkVersions(output))]
 	if (installedVersions.length !== 1) {
 		throw new Error(
-			`Expected exactly one installed @modelcontextprotocol/sdk, found ${installedVersions.length}.`,
+			`Expected exactly one installed @modelcontextprotocol/sdk version in dependency tree, found ${installedVersions.length} (${installedVersions.join(
+				', ',
+			)}).`,
 		)
 	}
 
@@ -56,6 +79,30 @@ async function main() {
 	if (installedVersion !== expectedVersion) {
 		throw new Error(
 			`Expected @modelcontextprotocol/sdk@${expectedVersion}, but found @modelcontextprotocol/sdk@${installedVersion}.`,
+		)
+	}
+
+	const sensitiveDependencies = ['agents', '@mcp-ui/server']
+	const dependenciesWithNestedSdk = sensitiveDependencies.filter((dependency) =>
+		hasNestedSdkInstall(dependency),
+	)
+	if (dependenciesWithNestedSdk.length > 0) {
+		throw new Error(
+			`Found nested @modelcontextprotocol/sdk installs under sensitive dependencies: ${dependenciesWithNestedSdk.join(
+				', ',
+			)}.`,
+		)
+	}
+
+	const installedPackageJson = (await Bun.file(
+		new URL(
+			'../node_modules/@modelcontextprotocol/sdk/package.json',
+			import.meta.url,
+		),
+	).json()) as PackageJson
+	if (installedPackageJson.version !== expectedVersion) {
+		throw new Error(
+			`Physical install version mismatch: expected @modelcontextprotocol/sdk@${expectedVersion}, found @modelcontextprotocol/sdk@${installedPackageJson.version ?? 'unknown'}.`,
 		)
 	}
 
