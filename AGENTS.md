@@ -16,11 +16,13 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 ## Verification before commit
 
 - Run the Full Gate: `bun run validate`.
+- Run dependency guardrail check: `bun run check:mcp-sdk`.
 - Run formatting: `bun run format`.
 
 ## References
 
 - [Setup](./docs/agents/setup.md)
+- [Dependency Guardrails](./docs/agents/dependency-guardrails.md)
 - [Code Style](./docs/agents/code-style.md)
 - [Remix Packages](./docs/agents/remix/index.md)
 - [Testing Principles](./docs/agents/testing-principles.md)

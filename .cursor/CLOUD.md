@@ -5,15 +5,16 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 
 ## Quick Reference
 
-| Task             | Command             |
-| ---------------- | ------------------- |
-| Start dev server | `bun run dev`       |
-| Full validation  | `bun run validate`  |
-| Lint             | `bun run lint`      |
-| Format           | `bun run format`    |
-| Type check       | `bun run typecheck` |
-| Build            | `bun run build`     |
-| E2E tests        | `bun run test:e2e`  |
+| Task             | Command                 |
+| ---------------- | ----------------------- |
+| Start dev server | `bun run dev`           |
+| Full validation  | `bun run validate`      |
+| Dependency check | `bun run check:mcp-sdk` |
+| Lint             | `bun run lint`          |
+| Format           | `bun run format`        |
+| Type check       | `bun run typecheck`     |
+| Build            | `bun run build`         |
+| E2E tests        | `bun run test:e2e`      |
 
 ## Services
 
@@ -34,6 +35,8 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 - [docs/agents/remix/index.md](../docs/agents/remix/index.md) - Remix package
   docs
 - [docs/agents/setup.md](../docs/agents/setup.md) - Setup documentation
+- [docs/agents/dependency-guardrails.md](../docs/agents/dependency-guardrails.md) -
+  Dependency guardrail guide
 - [docs/agents/testing-principles.md](../docs/agents/testing-principles.md) -
   Testing guidelines
 - [docs/agents/end-to-end-testing.md](../docs/agents/end-to-end-testing.md) -
