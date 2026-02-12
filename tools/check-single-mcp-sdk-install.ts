@@ -1,4 +1,6 @@
 import { existsSync } from 'node:fs'
+import { relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export type PackageJson = {
 	dependencies?: Record<string, string>
@@ -27,13 +29,29 @@ export function readInstalledSdkVersions(stdout: string) {
 	return [...new Set(matches.map((match) => match[1] ?? ''))]
 }
 
-function hasNestedSdkInstall(dependencyName: string) {
-	return existsSync(
-		new URL(
-			`../node_modules/${dependencyName}/node_modules/@modelcontextprotocol/sdk/package.json`,
-			import.meta.url,
-		),
+async function findNestedSdkInstallPaths(dependencyName: string) {
+	const dependencyRootUrl = new URL(
+		`../node_modules/${dependencyName}/`,
+		import.meta.url,
 	)
+	if (!existsSync(dependencyRootUrl)) {
+		return [] as Array<string>
+	}
+
+	const dependencyRootPath = fileURLToPath(dependencyRootUrl)
+	const glob = new Bun.Glob(
+		'**/node_modules/@modelcontextprotocol/sdk/package.json',
+	)
+	const paths: Array<string> = []
+	for await (const path of glob.scan({
+		cwd: dependencyRootPath,
+		absolute: true,
+		onlyFiles: true,
+	})) {
+		paths.push(path)
+	}
+
+	return paths.sort((left, right) => left.localeCompare(right))
 }
 
 export function expectedVersionFromPackage(packageJson: PackageJson) {
@@ -103,14 +121,25 @@ async function main() {
 	}
 
 	const sensitiveDependencies = ['agents', '@mcp-ui/server']
-	const dependenciesWithNestedSdk = sensitiveDependencies.filter((dependency) =>
-		hasNestedSdkInstall(dependency),
-	)
-	if (dependenciesWithNestedSdk.length > 0) {
+	const nestedSdkInstallsByDependency = new Map<string, Array<string>>()
+	for (const dependency of sensitiveDependencies) {
+		const nestedInstallPaths = await findNestedSdkInstallPaths(dependency)
+		if (nestedInstallPaths.length > 0) {
+			nestedSdkInstallsByDependency.set(dependency, nestedInstallPaths)
+		}
+	}
+	if (nestedSdkInstallsByDependency.size > 0) {
+		const projectRootPath = fileURLToPath(new URL('../', import.meta.url))
+		const details = Array.from(nestedSdkInstallsByDependency.entries())
+			.map(([dependency, paths]) => {
+				const relativePaths = paths.map((path) =>
+					relative(projectRootPath, path),
+				)
+				return `${dependency}: ${relativePaths.join(', ')}`
+			})
+			.join(' | ')
 		throw new Error(
-			`Found nested @modelcontextprotocol/sdk installs under sensitive dependencies: ${dependenciesWithNestedSdk.join(
-				', ',
-			)}.`,
+			`Found nested @modelcontextprotocol/sdk installs under sensitive dependencies: ${details}.`,
 		)
 	}
 
