@@ -67,6 +67,23 @@ export async function findNestedSdkInstallPathsFromRoot({
 	return paths.sort((left, right) => left.localeCompare(right))
 }
 
+export function formatNestedSdkInstallDetails({
+	workspaceRootPath,
+	nestedSdkInstallsByDependency,
+}: {
+	workspaceRootPath: string
+	nestedSdkInstallsByDependency: Map<string, Array<string>>
+}) {
+	return Array.from(nestedSdkInstallsByDependency.entries())
+		.map(([dependency, paths]) => {
+			const relativePaths = paths.map((path) =>
+				relative(workspaceRootPath, path),
+			)
+			return `${dependency}: ${relativePaths.join(', ')}`
+		})
+		.join(' | ')
+}
+
 export function resolveTopLevelSdkPackageJsonPath({
 	workspaceRootPath,
 }: {
@@ -163,14 +180,10 @@ async function main() {
 	}
 	if (nestedSdkInstallsByDependency.size > 0) {
 		const projectRootPath = fileURLToPath(new URL('../', import.meta.url))
-		const details = Array.from(nestedSdkInstallsByDependency.entries())
-			.map(([dependency, paths]) => {
-				const relativePaths = paths.map((path) =>
-					relative(projectRootPath, path),
-				)
-				return `${dependency}: ${relativePaths.join(', ')}`
-			})
-			.join(' | ')
+		const details = formatNestedSdkInstallDetails({
+			workspaceRootPath: projectRootPath,
+			nestedSdkInstallsByDependency,
+		})
 		throw new Error(
 			`Found nested @modelcontextprotocol/sdk installs under sensitive dependencies: ${details}.`,
 		)

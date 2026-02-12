@@ -6,6 +6,7 @@ import {
 	assertDependencyOverrideConsistency,
 	expectedSdkVersionFromPackageJson,
 	expectedVersionFromPackage,
+	formatNestedSdkInstallDetails,
 	findNestedSdkInstallPathsFromRoot,
 	isExactVersion,
 	readInstalledSdkVersions,
@@ -270,4 +271,31 @@ test('resolveTopLevelSdkPackageJsonPath throws when top-level sdk is missing', a
 	} finally {
 		await rm(workspaceRootPath, { recursive: true, force: true })
 	}
+})
+
+test('formatNestedSdkInstallDetails formats relative paths by dependency', () => {
+	const workspaceRootPath = '/workspace'
+	const nestedSdkInstallsByDependency = new Map<string, Array<string>>([
+		[
+			'agents',
+			[
+				'/workspace/node_modules/agents/node_modules/nested/node_modules/@modelcontextprotocol/sdk/package.json',
+			],
+		],
+		[
+			'@mcp-ui/server',
+			[
+				'/workspace/node_modules/@mcp-ui/server/node_modules/inner/node_modules/@modelcontextprotocol/sdk/package.json',
+			],
+		],
+	])
+
+	expect(
+		formatNestedSdkInstallDetails({
+			workspaceRootPath,
+			nestedSdkInstallsByDependency,
+		}),
+	).toBe(
+		'agents: node_modules/agents/node_modules/nested/node_modules/@modelcontextprotocol/sdk/package.json | @mcp-ui/server: node_modules/@mcp-ui/server/node_modules/inner/node_modules/@modelcontextprotocol/sdk/package.json',
+	)
 })
