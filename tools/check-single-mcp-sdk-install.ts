@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { relative } from 'node:path'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export type PackageJson = {
@@ -30,15 +30,28 @@ export function readInstalledSdkVersions(stdout: string) {
 }
 
 async function findNestedSdkInstallPaths(dependencyName: string) {
-	const dependencyRootUrl = new URL(
-		`../node_modules/${dependencyName}/`,
-		import.meta.url,
+	return findNestedSdkInstallPathsFromRoot({
+		dependencyName,
+		workspaceRootPath: fileURLToPath(new URL('../', import.meta.url)),
+	})
+}
+
+export async function findNestedSdkInstallPathsFromRoot({
+	dependencyName,
+	workspaceRootPath,
+}: {
+	dependencyName: string
+	workspaceRootPath: string
+}) {
+	const dependencyRootPath = join(
+		workspaceRootPath,
+		'node_modules',
+		dependencyName,
 	)
-	if (!existsSync(dependencyRootUrl)) {
+	if (!existsSync(dependencyRootPath)) {
 		return [] as Array<string>
 	}
 
-	const dependencyRootPath = fileURLToPath(dependencyRootUrl)
 	const glob = new Bun.Glob(
 		'**/node_modules/@modelcontextprotocol/sdk/package.json',
 	)

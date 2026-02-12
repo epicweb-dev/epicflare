@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test'
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
 	assertDependencyOverrideConsistency,
 	expectedVersionFromPackage,
+	findNestedSdkInstallPathsFromRoot,
 	isExactVersion,
 	readInstalledSdkVersions,
 	type PackageJson,
@@ -90,4 +94,44 @@ test('readInstalledSdkVersions deduplicates parsed versions', () => {
 ├── @modelcontextprotocol/sdk@1.26.0
 `
 	expect(readInstalledSdkVersions(output)).toEqual(['1.26.0'])
+})
+
+test('findNestedSdkInstallPathsFromRoot returns nested SDK installs', async () => {
+	const workspaceRootPath = await mkdtemp(join(tmpdir(), 'mcp-sdk-check-'))
+	try {
+		const nestedSdkPath = join(
+			workspaceRootPath,
+			'node_modules',
+			'agents',
+			'node_modules',
+			'inner-package',
+			'node_modules',
+			'@modelcontextprotocol',
+			'sdk',
+			'package.json',
+		)
+		await mkdir(join(nestedSdkPath, '..'), { recursive: true })
+		await writeFile(nestedSdkPath, '{"name":"@modelcontextprotocol/sdk"}')
+
+		const paths = await findNestedSdkInstallPathsFromRoot({
+			dependencyName: 'agents',
+			workspaceRootPath,
+		})
+		expect(paths).toEqual([nestedSdkPath])
+	} finally {
+		await rm(workspaceRootPath, { recursive: true, force: true })
+	}
+})
+
+test('findNestedSdkInstallPathsFromRoot returns empty for missing dependency', async () => {
+	const workspaceRootPath = await mkdtemp(join(tmpdir(), 'mcp-sdk-check-'))
+	try {
+		const paths = await findNestedSdkInstallPathsFromRoot({
+			dependencyName: 'agents',
+			workspaceRootPath,
+		})
+		expect(paths).toEqual([])
+	} finally {
+		await rm(workspaceRootPath, { recursive: true, force: true })
+	}
 })
