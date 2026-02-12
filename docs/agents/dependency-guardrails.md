@@ -29,6 +29,12 @@ Run the guardrail directly:
 bun run check:mcp-sdk
 ```
 
+Run unit tests for guardrail helpers:
+
+```bash
+bun run test:guardrails
+```
+
 Run the full local gate:
 
 ```bash

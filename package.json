@@ -25,11 +25,12 @@
     "check:mcp-sdk": "bun ./tools/check-single-mcp-sdk-install.ts",
     "typecheck": "bun run check:mcp-sdk && tsc -b --noEmit",
     "inspect": "bunx -p @mcpjam/inspector inspector",
-    "validate": "concurrently --kill-others-on-fail -n format,lint,build,typecheck,test,test:mcp -c green,yellow,blue,magenta,cyan,red \"bun run format:check\" \"bun run lint:fix\" \"bun run build\" \"bun run typecheck\" \"bun run test:e2e\" \"bun run test:mcp\"",
+    "validate": "concurrently --kill-others-on-fail -n format,lint,build,typecheck,test,test:mcp,test:guardrails -c green,yellow,blue,magenta,cyan,red,white \"bun run format:check\" \"bun run lint:fix\" \"bun run build\" \"bun run typecheck\" \"bun run test:e2e\" \"bun run test:mcp\" \"bun run test:guardrails\"",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install chromium --with-deps",
-    "test:mcp": "bun test mcp/mcp-server-e2e.test.ts"
+    "test:mcp": "bun test mcp/mcp-server-e2e.test.ts",
+    "test:guardrails": "bun test tools/check-single-mcp-sdk-install.test.ts"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.25.0",
