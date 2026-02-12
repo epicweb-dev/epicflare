@@ -45,6 +45,24 @@ jobs:
       - name: 🧪 Typecheck
         run: bun run typecheck
 
+  dependency-guardrails:
+    runs-on: ubuntu-latest
+    name: 🧱 Dependency Guardrails
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧱 Verify MCP SDK single-install guardrail
+        run: bun run check:mcp-sdk
+
   test:
     runs-on: ubuntu-latest
     name: ✅ Bun Tests
@@ -122,6 +140,7 @@ jobs:
     needs:
       - lint
       - typecheck
+      - dependency-guardrails
       - test
       - e2e
       - mcp-e2e
