@@ -1,7 +1,6 @@
 # Oxlint JS plugin pattern
 
-Use this repo's local plugin as the baseline pattern for custom oxlint
-rules.
+Use this repo's local plugin as the baseline pattern for custom oxlint rules.
 
 ## Files
 
