@@ -1,0 +1,6 @@
+{
+	"jsPlugins": ["./local-plugin.js"],
+	"rules": {
+		"epicflare-custom/no-example-identifier": "error"
+	}
+}
