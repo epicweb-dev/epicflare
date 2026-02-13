@@ -23,6 +23,8 @@ const skippedBrandingDirectories = new Set([
 	'dist',
 	'build',
 ])
+const skippedBrandingFiles = new Set(['docs/post-download.ts'])
+const protectedBrandingTokens = ['epicweb-dev/epicflare', 'create-epicflare']
 
 const color = {
 	reset: '\u001b[0m',
@@ -103,6 +105,24 @@ function replaceStringPropertySequence(
 	})
 }
 
+function replaceBrandingTokens(content: string, replacement: string) {
+	const placeholders = new Map<string, string>()
+	let next = content
+	for (const [index, token] of protectedBrandingTokens.entries()) {
+		if (!next.includes(token)) {
+			continue
+		}
+		const placeholder = `__EPICFLARE_TEMPLATE_${index}__`
+		placeholders.set(placeholder, token)
+		next = next.replaceAll(token, placeholder)
+	}
+	next = next.replaceAll(templateAppToken, replacement)
+	for (const [placeholder, token] of placeholders) {
+		next = next.replaceAll(placeholder, token)
+	}
+	return next
+}
+
 function logDryRun(message: string) {
 	console.log(`${paint('🧪 [dry-run]', 'dim')} ${message}`)
 }
@@ -157,6 +177,10 @@ function updateBrandingTokens({
 	const updatedFiles: Array<string> = []
 
 	for (const relativePath of candidateFiles) {
+		const normalizedPath = relativePath.replace(/\\/g, '/')
+		if (skippedBrandingFiles.has(normalizedPath)) {
+			continue
+		}
 		const filePath = join(rootDirectory, relativePath)
 		const fileBuffer = readFileSync(filePath)
 		if (fileBuffer.includes(0)) {
@@ -166,7 +190,7 @@ function updateBrandingTokens({
 		if (!original.includes(templateAppToken)) {
 			continue
 		}
-		const next = original.replaceAll(templateAppToken, replacement)
+		const next = replaceBrandingTokens(original, replacement)
 		if (next === original) {
 			continue
 		}
