@@ -14,7 +14,9 @@ Create or provide the following resources (prod + preview):
   - title (prod): `<app-name>-oauth`
   - title (preview): `<app-name>-oauth-preview`
 
-The post-download script will write the resulting IDs into `wrangler.jsonc`.
+The post-download script will write the resulting IDs into `wrangler.jsonc` and
+replace template `epicflare` branding tokens with your app name across text
+files.
 
 ## Rate limiting (Cloudflare dashboard)
 

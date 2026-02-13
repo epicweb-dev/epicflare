@@ -1,12 +1,28 @@
 import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+	existsSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { basename, join } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 
 const rl = createInterface({ input, output })
+const templateAppToken = 'epicflare'
+const skippedBrandingDirectories = new Set([
+	'.git',
+	'node_modules',
+	'.wrangler',
+	'.turbo',
+	'.next',
+	'dist',
+	'build',
+])
 
 const color = {
 	reset: '\u001b[0m',
@@ -89,6 +105,86 @@ function replaceStringPropertySequence(
 
 function logDryRun(message: string) {
 	console.log(`${paint('🧪 [dry-run]', 'dim')} ${message}`)
+}
+
+function collectFilesForBranding(
+	rootDirectory: string,
+	relativeDirectory = '',
+): Array<string> {
+	const directoryPath = join(rootDirectory, relativeDirectory)
+	const entries = readdirSync(directoryPath, { withFileTypes: true })
+	const files: Array<string> = []
+
+	for (const entry of entries) {
+		if (entry.name === '.' || entry.name === '..') {
+			continue
+		}
+
+		const relativePath = relativeDirectory
+			? join(relativeDirectory, entry.name)
+			: entry.name
+
+		if (entry.isDirectory()) {
+			if (skippedBrandingDirectories.has(entry.name)) {
+				continue
+			}
+			files.push(...collectFilesForBranding(rootDirectory, relativePath))
+			continue
+		}
+
+		if (entry.isFile()) {
+			files.push(relativePath)
+		}
+	}
+
+	return files
+}
+
+function updateBrandingTokens({
+	appName,
+	dryRun,
+}: {
+	appName: string
+	dryRun: boolean
+}) {
+	const replacement = toKebabCase(appName)
+	if (replacement.length === 0) {
+		return false
+	}
+
+	const rootDirectory = process.cwd()
+	const candidateFiles = collectFilesForBranding(rootDirectory)
+	const updatedFiles: Array<string> = []
+
+	for (const relativePath of candidateFiles) {
+		const filePath = join(rootDirectory, relativePath)
+		const fileBuffer = readFileSync(filePath)
+		if (fileBuffer.includes(0)) {
+			continue
+		}
+		const original = fileBuffer.toString('utf8')
+		if (!original.includes(templateAppToken)) {
+			continue
+		}
+		const next = original.replaceAll(templateAppToken, replacement)
+		if (next === original) {
+			continue
+		}
+		if (!dryRun) {
+			writeFileSync(filePath, next)
+		}
+		updatedFiles.push(relativePath)
+	}
+
+	const changed = updatedFiles.length > 0
+	if (dryRun) {
+		logDryRun(
+			changed
+				? `Would replace "${templateAppToken}" with "${replacement}" in ${updatedFiles.length} file(s).`
+				: `No "${templateAppToken}" tokens found for replacement.`,
+		)
+	}
+	return changed
 }
 
 function runWrangler(
@@ -657,7 +753,7 @@ async function cleanupCreatedResources(
 }
 
 async function run() {
-	console.log(paint('✨ epicflare post-download setup', 'bold'))
+	console.log(paint('✨ post-download setup', 'bold'))
 	console.log(`${paint('Tip:', 'dim')} Press Enter to accept defaults.\n`)
 
 	const args = parseArgs(process.argv.slice(2))
@@ -870,6 +966,7 @@ async function run() {
 	}
 
 	try {
+		const changedBranding = updateBrandingTokens({ appName, dryRun })
 		const changedWrangler = updateWrangler({
 			workerName,
 			databaseName,
@@ -898,6 +995,7 @@ async function run() {
 				cookieSecret: '(hidden)',
 			},
 			changes: {
+				brandingTokens: changedBranding,
 				wranglerJsonc: changedWrangler,
 				packageJson: changedPackageJson,
 				env: changedEnv,
@@ -930,6 +1028,7 @@ async function run() {
 							kvNamespacePreviewId,
 						},
 						changes: {
+							brandingTokens: changedBranding,
 							wranglerJsonc: changedWrangler,
 							packageJson: changedPackageJson,
 							env: changedEnv,
