@@ -24,11 +24,15 @@ We use bun for installing dependencies and running scripts. Do not use npm.
   architecture notes, or verification guidance have changed.
 - Treat documentation updates as part of done work so `docs/agents` stays
   current.
+- Keep `AGENTS.md` concise and map-like; put detailed guidance in focused docs.
+- When failures repeat, promote lessons from docs into tests, lint rules, or
+  scripts so improvements compound.
 
 ## References
 
 - [Setup](./docs/agents/setup.md)
 - [Code Style](./docs/agents/code-style.md)
+- [Harness Engineering](./docs/agents/harness-engineering.md)
 - [Remix Packages](./docs/agents/remix/index.md)
 - [Testing Principles](./docs/agents/testing-principles.md)
 - [End-to-End Testing](./docs/agents/end-to-end-testing.md)
