@@ -1,10 +1,10 @@
 /// <reference types="bun" />
 import { expect, test } from 'bun:test'
-import type {
-	AuthRequest,
-	ClientInfo,
-	CompleteAuthorizationOptions,
-	OAuthHelpers,
+import {
+	type AuthRequest,
+	type ClientInfo,
+	type CompleteAuthorizationOptions,
+	type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import {
 	createAuthCookie,

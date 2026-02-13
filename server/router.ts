@@ -1,5 +1,5 @@
 import { createRouter } from 'remix/fetch-router'
-import type { AppEnv } from '../types/env-schema.ts'
+import { type AppEnv } from '../types/env-schema.ts'
 import account from './handlers/account.ts'
 import { createAuthHandler } from './handlers/auth.ts'
 import health from './handlers/health.ts'

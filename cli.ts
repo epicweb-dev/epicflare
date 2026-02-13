@@ -128,7 +128,7 @@ function setupShutdown(
 		}
 		const server = getMockServer()
 		if (server) {
-			server[Symbol.dispose]()
+			server.stop()
 		}
 
 		setTimeout(() => {

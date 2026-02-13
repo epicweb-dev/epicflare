@@ -1,6 +1,6 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { z } from 'zod'
-import type { AppEnv } from '../../types/env-schema.ts'
+import { type AppEnv } from '../../types/env-schema.ts'
 import { createDb, sql } from '../../worker/db.ts'
 import { logAuditEvent, getRequestIp } from '../audit-log.ts'
 import { sendResendEmail } from '../email/resend.ts'

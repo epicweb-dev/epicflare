@@ -31,8 +31,8 @@ Requests are handled in this order:
 
 ## App server flow
 
-`server/handler.ts` validates environment variables and configures session cookie
-signing (`COOKIE_SECRET`) before creating the app router.
+`server/handler.ts` validates environment variables and configures session
+cookie signing (`COOKIE_SECRET`) before creating the app router.
 
 `server/router.ts` maps route patterns from `server/routes.ts` to handler
 modules (home, auth, account, session, logout, password reset, health).

@@ -5,13 +5,13 @@ import {
 	auth,
 	type OAuthClientProvider,
 } from '@modelcontextprotocol/sdk/client/auth.js'
-import type {
-	OAuthClientInformationMixed,
-	OAuthTokens,
+import {
+	type OAuthClientInformationMixed,
+	type OAuthTokens,
 } from '@modelcontextprotocol/sdk/shared/auth.js'
-import type {
-	CallToolResult,
-	ContentBlock,
+import {
+	type CallToolResult,
+	type ContentBlock,
 } from '@modelcontextprotocol/sdk/types.js'
 import getPort from 'get-port'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'

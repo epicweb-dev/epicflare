@@ -73,5 +73,5 @@ Continuous small cleanups are cheaper than periodic large rewrites.
 
 ## References
 
-- OpenAI Engineering, "Harness engineering: leveraging Codex in an agent-first world"
-  https://openai.com/index/harness-engineering/
+- OpenAI Engineering, "Harness engineering: leveraging Codex in an agent-first
+  world" https://openai.com/index/harness-engineering/
