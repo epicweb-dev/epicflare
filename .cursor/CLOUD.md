@@ -5,16 +5,16 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 
 ## Quick Reference
 
-| Task                           | Command                        |
-| ------------------------------ | ------------------------------ |
-| Start dev server               | `bun run dev`                  |
-| Full validation                | `bun run validate`             |
-| Lint                           | `bun run lint`                 |
-| Format                         | `bun run format`               |
-| Type check                     | `bun run typecheck`            |
-| Build                          | `bun run build`                |
-| E2E tests                      | `bun run test:e2e`             |
-| Sync Remix preview checkout    | `bun run sync:remix-preview`   |
+| Task                        | Command                      |
+| --------------------------- | ---------------------------- |
+| Start dev server            | `bun run dev`                |
+| Full validation             | `bun run validate`           |
+| Lint                        | `bun run lint`               |
+| Format                      | `bun run format`             |
+| Type check                  | `bun run typecheck`          |
+| Build                       | `bun run build`              |
+| E2E tests                   | `bun run test:e2e`           |
+| Sync Remix preview checkout | `bun run sync:remix-preview` |
 
 ## Services
 

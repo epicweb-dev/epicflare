@@ -142,23 +142,21 @@ async function rewriteProjectDependencies(
 		for (const [packageName, currentSpec] of Object.entries(
 			dependencies as Record<string, unknown>,
 		)) {
-			if (
-				packageName !== 'remix' &&
-				!packageName.startsWith('@remix-run/')
-			) {
+			if (packageName !== 'remix' && !packageName.startsWith('@remix-run/')) {
 				continue
 			}
 
 			const packageDirectoryPath = packageDirectoryByName.get(packageName)
 			if (!packageDirectoryPath) continue
 
-			const linkPath = toPosixPath(path.relative(projectRoot, packageDirectoryPath))
+			const linkPath = toPosixPath(
+				path.relative(projectRoot, packageDirectoryPath),
+			)
 			const normalizedLinkPath = linkPath.startsWith('.')
 				? linkPath
 				: `./${linkPath}`
 			const nextSpec = `file:${normalizedLinkPath}`
 			if (currentSpec === nextSpec) continue
-
 			;(dependencies as Record<string, string>)[packageName] = nextSpec
 			changed = true
 		}
@@ -228,7 +226,10 @@ async function rewritePreviewPackageManifests() {
 
 		if (!changed) continue
 
-		await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+		await writeFile(
+			packageJsonPath,
+			`${JSON.stringify(packageJson, null, 2)}\n`,
+		)
 	}
 }
 
