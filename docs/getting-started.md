@@ -30,7 +30,8 @@ The setup flow assumes:
 - Bun is installed (uses `bun`/`bunx`).
 - You run commands from the repo root (needs `wrangler.jsonc` and
   `package.json`).
-- You can write to `wrangler.jsonc`, `package.json`, `.env`, and `docs/`.
+- You can write to files in the repository (the script updates config files and
+  replaces template `epicflare` tokens across text files).
 - Wrangler is available. If you are not logged in, the script prints
   `bunx wrangler login` and stops. In interactive mode, it can run the login for
   you.
