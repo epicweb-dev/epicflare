@@ -80,7 +80,11 @@ async function resolveExtractedPackagesPath(tempRoot: string) {
 
 	for (const dir of directories) {
 		const packagesPath = path.join(tempRoot, dir, 'packages')
-		const remixPackageJsonPath = path.join(packagesPath, 'remix', 'package.json')
+		const remixPackageJsonPath = path.join(
+			packagesPath,
+			'remix',
+			'package.json',
+		)
 		try {
 			await access(remixPackageJsonPath)
 			return packagesPath
@@ -92,7 +96,9 @@ async function resolveExtractedPackagesPath(tempRoot: string) {
 
 async function readdirDirectories(dirPath: string) {
 	const entries = await readdir(dirPath, { withFileTypes: true })
-	return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+	return entries
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => entry.name)
 }
 
 async function rewritePreviewDependencySpecs(packagesPath: string) {
@@ -103,10 +109,15 @@ async function rewritePreviewDependencySpecs(packagesPath: string) {
 		'peerDependencies',
 		'optionalDependencies',
 	] as const
-	const previewReferencePattern = /^remix-run\/remix#preview\/main&path:packages\/(.+)$/
+	const previewReferencePattern =
+		/^remix-run\/remix#preview\/main&path:packages\/(.+)$/
 
 	for (const packageDirName of packageDirs) {
-		const packageJsonPath = path.join(packagesPath, packageDirName, 'package.json')
+		const packageJsonPath = path.join(
+			packagesPath,
+			packageDirName,
+			'package.json',
+		)
 		try {
 			const fileInfo = await stat(packageJsonPath)
 			if (!fileInfo.isFile()) continue
@@ -114,10 +125,9 @@ async function rewritePreviewDependencySpecs(packagesPath: string) {
 			continue
 		}
 
-		const currentJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as Record<
-			string,
-			unknown
-		>
+		const currentJson = JSON.parse(
+			await readFile(packageJsonPath, 'utf8'),
+		) as Record<string, unknown>
 		let didChange = false
 		if ('devDependencies' in currentJson) {
 			delete currentJson.devDependencies
@@ -141,7 +151,10 @@ async function rewritePreviewDependencySpecs(packagesPath: string) {
 		}
 
 		if (didChange) {
-			await writeFilePromise(packageJsonPath, `${JSON.stringify(currentJson, null, 2)}\n`)
+			await writeFilePromise(
+				packageJsonPath,
+				`${JSON.stringify(currentJson, null, 2)}\n`,
+			)
 		}
 	}
 }

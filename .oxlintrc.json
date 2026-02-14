@@ -4,7 +4,5 @@
 		"./node_modules/@epic-web/config/oxlint-config.json",
 		"./tools/oxlint/oxlint-rules.json"
 	],
-	"ignorePatterns": [
-		"vendor/remix-preview/**"
-	]
+	"ignorePatterns": ["vendor/remix-preview/**"]
 }
