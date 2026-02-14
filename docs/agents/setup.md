@@ -35,8 +35,8 @@ Quick notes for getting a local epicflare environment running.
 ## CI deploy behavior
 
 - Pushes to `main` deploy to Cloudflare `production`.
-- Pushes to all other branches deploy to Cloudflare `preview`.
-- Pull request workflows run checks only and skip Cloudflare deploy steps.
+- Pull requests targeting `main` deploy to Cloudflare `preview`.
+- Preview deploys run only for pull requests opened from the same repository.
 
 ## Remix package docs
 
