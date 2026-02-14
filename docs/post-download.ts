@@ -333,7 +333,7 @@ function updateDeployWorkflow({
 	const original = readFileSync(workflowPath, 'utf8')
 	const next = original.replace(
 		/(\bd1 migrations apply )([^\s]+)( --remote)/g,
-		`$1${databaseName}$3`,
+		(...match) => `${match[1]}${databaseName}${match[3]}`,
 	)
 	const changed = next !== original
 
