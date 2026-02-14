@@ -56,6 +56,8 @@ async function clonePreviewCheckout() {
 }
 
 async function updatePreviewCheckout() {
+	runCommand('git', ['reset', '--hard', 'HEAD'], checkoutPath)
+
 	let lastError: Error | null = null
 
 	for (const ref of preferredPreviewRefs) {
@@ -85,6 +87,20 @@ async function updatePreviewCheckout() {
 			checkoutPath,
 		)
 		if (pullResult.status !== 0) {
+			const isForcePushDivergence =
+				pullResult.stderr.includes('Not possible to fast-forward') ||
+				pullResult.stderr.includes('Diverging branches')
+			if (isForcePushDivergence) {
+				const resetResult = runCommand(
+					'git',
+					['reset', '--hard', `origin/${ref}`],
+					checkoutPath,
+				)
+				if (resetResult.status === 0) {
+					return
+				}
+			}
+
 			lastError = new Error(
 				`Failed to pull remix preview branch "${ref}": ${pullResult.stderr}`,
 			)
