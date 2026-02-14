@@ -1,0 +1,43 @@
+{
+  "name": "@remix-run/lazy-file",
+  "version": "5.0.1",
+  "description": "Lazy, streaming files for JavaScript",
+  "author": "Michael Jackson <mjijackson@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/remix-run/remix.git",
+    "directory": "packages/lazy-file"
+  },
+  "homepage": "https://github.com/remix-run/remix/tree/main/packages/lazy-file#readme",
+  "license": "MIT",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist",
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@remix-run/mime": "file:../mime"
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "clean": "git clean -fdX",
+    "prepublishOnly": "pnpm run build",
+    "test": "node --disable-warning=ExperimentalWarning --test",
+    "typecheck": "tsgo --noEmit"
+  },
+  "keywords": [
+    "file",
+    "buffer",
+    "blob"
+  ]
+}

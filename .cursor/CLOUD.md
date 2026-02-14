@@ -1,7 +1,7 @@
 # epicflare Cloud Agent Guide
 
 A full-stack web application starter built on Cloudflare Workers with Remix 3
-(alpha).
+(preview branch snapshot).
 
 ## Quick Reference
 
@@ -14,6 +14,7 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 | Type check       | `bun run typecheck` |
 | Build            | `bun run build`     |
 | E2E tests        | `bun run test:e2e`  |
+| Refresh Remix preview snapshot | `bun run remix:preview:update` |
 
 ## Services
 
@@ -24,7 +25,7 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 ## Architecture
 
 - **Server**: Cloudflare Workers (see `worker/` and `server/`)
-- **Client**: Remix 3 components bundled with esbuild (see `client/`)
+- **Client**: Remix 3 preview components bundled with esbuild (see `client/`)
 - **Database**: Cloudflare D1 (SQLite, auto-handled locally by Wrangler)
 - **MCP Server**: Available at `/mcp` endpoint when worker runs
 

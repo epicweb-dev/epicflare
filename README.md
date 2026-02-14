@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
     <img src="https://img.shields.io/badge/Bun-run-f9f1e1?style=flat-square&logo=bun&logoColor=white" alt="Bun" />
     <img src="https://img.shields.io/badge/Cloudflare-Workers-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
-    <img src="https://img.shields.io/badge/Remix-3.0_alpha-000000?style=flat-square&logo=remix&logoColor=white" alt="Remix" />
+    <img src="https://img.shields.io/badge/Remix-3.0_preview-000000?style=flat-square&logo=remix&logoColor=white" alt="Remix" />
   </p>
 </div>
 
@@ -32,12 +32,25 @@ start the dev server.
 See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup
 paths and expectations.
 
+## Remix preview workflow
+
+This template tracks Remix from the upstream `preview/main` branch via
+`vendor/remix-preview/packages/*` so Bun can install it without pnpm's
+`&path:` Git dependency syntax.
+
+Refresh the vendored preview snapshot with:
+
+```bash
+bun run remix:preview:update
+bun install
+```
+
 ## Tech Stack
 
 | Layer           | Technology                                                            |
 | --------------- | --------------------------------------------------------------------- |
 | Runtime         | [Cloudflare Workers](https://workers.cloudflare.com/)                 |
-| UI Framework    | [Remix 3](https://remix.run/) (alpha)                                 |
+| UI Framework    | [Remix 3](https://remix.run/) (preview branch snapshot)               |
 | Package Manager | [Bun](https://bun.sh/)                                                |
 | Database        | [Cloudflare D1](https://developers.cloudflare.com/d1/)                |
 | Session/OAuth   | [Cloudflare KV](https://developers.cloudflare.com/kv/)                |

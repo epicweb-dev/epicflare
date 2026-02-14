@@ -2,6 +2,10 @@
 
 Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 
+In this repo, Bun consumes Remix preview builds from the vendored snapshot at
+`vendor/remix-preview/packages/*` because pnpm's `&path:` Git install syntax is
+not currently supported by Bun.
+
 ## Table of contents
 
 - [Start here](#start-here)
