@@ -31,7 +31,7 @@ test('navigates between app routes without full document reload', async ({
 	await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 	await expect.poll(() => documentRequests).toBe(1)
 
-	await page.getByRole('link', { name: 'Home' }).click()
+	await page.getByRole('link', { name: 'Home', exact: true }).click()
 	await expect(page).toHaveURL(/\/$/)
 	await expect(
 		page.getByRole('heading', { name: 'epicflare Remix 3' }),
