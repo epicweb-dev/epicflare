@@ -319,6 +319,39 @@ function updateWrangler({
 	return changed
 }
 
+function updateDeployWorkflow({
+	databaseName,
+	dryRun,
+}: {
+	databaseName: string
+	dryRun: boolean
+}) {
+	const workflowPath = join(process.cwd(), '.github/workflows/deploy.yml')
+	if (!existsSync(workflowPath)) {
+		return false
+	}
+	const original = readFileSync(workflowPath, 'utf8')
+	const next = original.replace(
+		/(\bd1 migrations apply )([^\s]+)( --remote)/g,
+		`$1${databaseName}$3`,
+	)
+	const changed = next !== original
+
+	if (dryRun) {
+		logDryRun(
+			changed
+				? 'Would update deploy workflow D1 database name.'
+				: 'deploy workflow already matches the provided database name.',
+		)
+		return changed
+	}
+
+	if (changed) {
+		writeFileSync(workflowPath, next)
+	}
+	return changed
+}
+
 function updatePackageJson({
 	packageName,
 	dryRun,
@@ -991,6 +1024,7 @@ async function run() {
 
 	try {
 		const changedBranding = updateBrandingTokens({ appName, dryRun })
+		const changedDeployWorkflow = updateDeployWorkflow({ databaseName, dryRun })
 		const changedWrangler = updateWrangler({
 			workerName,
 			databaseName,
@@ -1020,6 +1054,7 @@ async function run() {
 			},
 			changes: {
 				brandingTokens: changedBranding,
+				deployWorkflow: changedDeployWorkflow,
 				wranglerJsonc: changedWrangler,
 				packageJson: changedPackageJson,
 				env: changedEnv,
@@ -1053,6 +1088,7 @@ async function run() {
 						},
 						changes: {
 							brandingTokens: changedBranding,
+							deployWorkflow: changedDeployWorkflow,
 							wranglerJsonc: changedWrangler,
 							packageJson: changedPackageJson,
 							env: changedEnv,
