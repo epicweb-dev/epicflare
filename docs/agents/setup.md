@@ -32,6 +32,12 @@ Quick notes for getting a local epicflare environment running.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
 
+## CI deploy behavior
+
+- Pushes to `main` deploy to Cloudflare `production`.
+- Pushes to all other branches deploy to Cloudflare `preview`.
+- Pull request workflows run checks only and skip Cloudflare deploy steps.
+
 ## Remix package docs
 
 Use the Remix package index for quick navigation:
