@@ -14,7 +14,10 @@ test('navigates between app routes without full document reload', async ({
 	let documentRequests = 0
 
 	page.on('request', (request) => {
-		if (request.isNavigationRequest() && request.resourceType() === 'document') {
+		if (
+			request.isNavigationRequest() &&
+			request.resourceType() === 'document'
+		) {
 			documentRequests += 1
 		}
 	})
@@ -28,7 +31,9 @@ test('navigates between app routes without full document reload', async ({
 
 	await page.getByRole('link', { name: 'Login' }).click()
 	await expect(page).toHaveURL(/\/login$/)
-	await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+	await expect(
+		page.getByRole('heading', { name: 'Welcome back' }),
+	).toBeVisible()
 	await expect.poll(() => documentRequests).toBe(1)
 
 	await page.getByRole('link', { name: 'Home', exact: true }).click()
