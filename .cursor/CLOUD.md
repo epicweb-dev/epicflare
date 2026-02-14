@@ -14,7 +14,7 @@ A full-stack web application starter built on Cloudflare Workers with Remix 3
 | Type check                     | `bun run typecheck`            |
 | Build                          | `bun run build`                |
 | E2E tests                      | `bun run test:e2e`             |
-| Refresh Remix preview snapshot | `bun run remix:preview:update` |
+| Sync Remix preview checkout    | `bun run sync:remix-preview`   |
 
 ## Services
 

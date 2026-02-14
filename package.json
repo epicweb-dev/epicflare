@@ -9,6 +9,8 @@
     "url": "git+ssh://git@github.com/epicweb-dev/epicflare.git"
   },
   "scripts": {
+    "preinstall": "bun run sync:remix-preview",
+    "sync:remix-preview": "bun ./scripts/sync-remix-preview.ts",
     "dev": "bun cli.ts",
     "dev:client": "esbuild client/entry.tsx --bundle --format=esm --target=es2022 --outdir=public --entry-names=client-entry --chunk-names=assets/[name] --asset-names=assets/[name] --jsx=automatic --jsx-import-source=remix/component --watch",
     "dev:worker": "bun ./wrangler-env.ts dev --local",
@@ -21,7 +23,6 @@
     "format:check": "prettier --check .",
     "migrate:local": "bun ./wrangler-env.ts d1 migrations apply APP_DB --local",
     "preview": "bun run migrate:local && bun ./wrangler-env.ts dev --local",
-    "remix:preview:update": "bun ./tools/sync-remix-preview-packages.ts",
     "generate-types": "bun ./wrangler-env.ts types ./types/worker-configuration.d.ts",
     "typecheck": "tsc -b --noEmit",
     "inspect": "bunx -p @mcpjam/inspector inspector",
@@ -53,35 +54,7 @@
     "@modelcontextprotocol/sdk": "1.26.0",
     "agents": "^0.4.1",
     "get-port": "^7.1.0",
-    "remix": "file:vendor/remix-preview/packages/remix",
+    "remix": "^3.0.0-alpha.2",
     "zod": "^4.3.6"
-  },
-  "overrides": {
-    "@remix-run/async-context-middleware": "file:vendor/remix-preview/packages/async-context-middleware",
-    "@remix-run/component": "file:vendor/remix-preview/packages/component",
-    "@remix-run/compression-middleware": "file:vendor/remix-preview/packages/compression-middleware",
-    "@remix-run/cookie": "file:vendor/remix-preview/packages/cookie",
-    "@remix-run/data-schema": "file:vendor/remix-preview/packages/data-schema",
-    "@remix-run/fetch-proxy": "file:vendor/remix-preview/packages/fetch-proxy",
-    "@remix-run/fetch-router": "file:vendor/remix-preview/packages/fetch-router",
-    "@remix-run/file-storage": "file:vendor/remix-preview/packages/file-storage",
-    "@remix-run/form-data-middleware": "file:vendor/remix-preview/packages/form-data-middleware",
-    "@remix-run/form-data-parser": "file:vendor/remix-preview/packages/form-data-parser",
-    "@remix-run/fs": "file:vendor/remix-preview/packages/fs",
-    "@remix-run/headers": "file:vendor/remix-preview/packages/headers",
-    "@remix-run/html-template": "file:vendor/remix-preview/packages/html-template",
-    "@remix-run/interaction": "file:vendor/remix-preview/packages/interaction",
-    "@remix-run/lazy-file": "file:vendor/remix-preview/packages/lazy-file",
-    "@remix-run/logger-middleware": "file:vendor/remix-preview/packages/logger-middleware",
-    "@remix-run/method-override-middleware": "file:vendor/remix-preview/packages/method-override-middleware",
-    "@remix-run/mime": "file:vendor/remix-preview/packages/mime",
-    "@remix-run/multipart-parser": "file:vendor/remix-preview/packages/multipart-parser",
-    "@remix-run/node-fetch-server": "file:vendor/remix-preview/packages/node-fetch-server",
-    "@remix-run/response": "file:vendor/remix-preview/packages/response",
-    "@remix-run/route-pattern": "file:vendor/remix-preview/packages/route-pattern",
-    "@remix-run/session": "file:vendor/remix-preview/packages/session",
-    "@remix-run/session-middleware": "file:vendor/remix-preview/packages/session-middleware",
-    "@remix-run/static-middleware": "file:vendor/remix-preview/packages/static-middleware",
-    "@remix-run/tar-parser": "file:vendor/remix-preview/packages/tar-parser"
   }
 }

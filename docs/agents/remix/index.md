@@ -2,8 +2,8 @@
 
 Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 
-In this repo, Remix preview builds are sourced from the vendored snapshot at
-`vendor/remix-preview/packages/*`.
+In this repo, Remix preview builds are sourced from a local `.remix-preview`
+checkout.
 
 ## Table of contents
 

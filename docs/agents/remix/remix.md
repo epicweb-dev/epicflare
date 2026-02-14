@@ -12,12 +12,12 @@ The Remix Web Framework
 
 ## Preview branch in this repo
 
-This repo sources Remix preview packages from `preview/main` into
-`vendor/remix-preview/packages/*`.
+This repo syncs Remix preview packages from `remix-run/remix` into the local
+`.remix-preview` checkout.
 
 ### Refresh command (Bun)
 
 ```sh
-bun run remix:preview:update
+bun run sync:remix-preview
 bun install
 ```

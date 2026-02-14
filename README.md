@@ -34,13 +34,12 @@ paths and expectations.
 
 ## Remix preview workflow
 
-This template tracks Remix from the upstream `preview/main` branch in
-`vendor/remix-preview/packages/*`.
+This template tracks Remix from an upstream checkout in `.remix-preview`.
 
-Refresh the vendored preview snapshot with:
+Sync the preview checkout with:
 
 ```bash
-bun run remix:preview:update
+bun run sync:remix-preview
 bun install
 ```
 

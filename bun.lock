@@ -12,7 +12,7 @@
         "@modelcontextprotocol/sdk": "1.26.0",
         "agents": "^0.4.1",
         "get-port": "^7.1.0",
-        "remix": "file:vendor/remix-preview/packages/remix",
+        "remix": "^3.0.0-alpha.2",
         "zod": "^4.3.6",
       },
       "devDependencies": {
@@ -29,34 +29,6 @@
         "wrangler": "^4.65.0",
       },
     },
-  },
-  "overrides": {
-    "@remix-run/async-context-middleware": "file:vendor/remix-preview/packages/async-context-middleware",
-    "@remix-run/component": "file:vendor/remix-preview/packages/component",
-    "@remix-run/compression-middleware": "file:vendor/remix-preview/packages/compression-middleware",
-    "@remix-run/cookie": "file:vendor/remix-preview/packages/cookie",
-    "@remix-run/data-schema": "file:vendor/remix-preview/packages/data-schema",
-    "@remix-run/fetch-proxy": "file:vendor/remix-preview/packages/fetch-proxy",
-    "@remix-run/fetch-router": "file:vendor/remix-preview/packages/fetch-router",
-    "@remix-run/file-storage": "file:vendor/remix-preview/packages/file-storage",
-    "@remix-run/form-data-middleware": "file:vendor/remix-preview/packages/form-data-middleware",
-    "@remix-run/form-data-parser": "file:vendor/remix-preview/packages/form-data-parser",
-    "@remix-run/fs": "file:vendor/remix-preview/packages/fs",
-    "@remix-run/headers": "file:vendor/remix-preview/packages/headers",
-    "@remix-run/html-template": "file:vendor/remix-preview/packages/html-template",
-    "@remix-run/interaction": "file:vendor/remix-preview/packages/interaction",
-    "@remix-run/lazy-file": "file:vendor/remix-preview/packages/lazy-file",
-    "@remix-run/logger-middleware": "file:vendor/remix-preview/packages/logger-middleware",
-    "@remix-run/method-override-middleware": "file:vendor/remix-preview/packages/method-override-middleware",
-    "@remix-run/mime": "file:vendor/remix-preview/packages/mime",
-    "@remix-run/multipart-parser": "file:vendor/remix-preview/packages/multipart-parser",
-    "@remix-run/node-fetch-server": "file:vendor/remix-preview/packages/node-fetch-server",
-    "@remix-run/response": "file:vendor/remix-preview/packages/response",
-    "@remix-run/route-pattern": "file:vendor/remix-preview/packages/route-pattern",
-    "@remix-run/session": "file:vendor/remix-preview/packages/session",
-    "@remix-run/session-middleware": "file:vendor/remix-preview/packages/session-middleware",
-    "@remix-run/static-middleware": "file:vendor/remix-preview/packages/static-middleware",
-    "@remix-run/tar-parser": "file:vendor/remix-preview/packages/tar-parser",
   },
   "packages": {
     "@ai-sdk/gateway": ["@ai-sdk/gateway@3.0.38", "", { "dependencies": { "@ai-sdk/provider": "3.0.8", "@ai-sdk/provider-utils": "4.0.14", "@vercel/oidc": "3.1.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-+Fg9IPI/wxE8mHiwiGrLwpLVsosibAQEzVzux2hAivw3nAFTl0dqLN6sT35WqLXk+wzeAfNmZwJ60lpJ+1sPRg=="],
@@ -330,6 +302,56 @@
     "@poppinss/dumper": ["@poppinss/dumper@0.6.5", "", { "dependencies": { "@poppinss/colors": "^4.1.5", "@sindresorhus/is": "^7.0.2", "supports-color": "^10.0.0" } }, "sha512-NBdYIb90J7LfOI32dOewKI1r7wnkiH6m920puQ3qHUeZkxNkQiFnXVWoE6YtFSv6QOiPPf7ys6i+HWWecDz7sw=="],
 
     "@poppinss/exception": ["@poppinss/exception@1.2.3", "", {}, "sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw=="],
+
+    "@remix-run/async-context-middleware": ["@remix-run/async-context-middleware@0.1.2", "", { "dependencies": { "@remix-run/fetch-router": "^0.16.0" } }, "sha512-E5jgZYayn3jYcnjaEXEhK32U3F+IBWARFdgPMMTEEzjlH+Ubz0tJ4MEIqTsM/a/hKYcIsutAMf9BqieN12khZg=="],
+
+    "@remix-run/component": ["@remix-run/component@0.4.0", "", { "dependencies": { "@remix-run/interaction": "^0.5.0" } }, "sha512-5xJLIrlH1Tcx6+h+ZG6BEpNkpt8upK4l82exE107Elw2QyToHf69v1aGlaTPQ8fpGr6Ke7gHta7s3fypJwaIsg=="],
+
+    "@remix-run/compression-middleware": ["@remix-run/compression-middleware@0.1.2", "", { "dependencies": { "@remix-run/fetch-router": "^0.16.0", "@remix-run/mime": "^0.3.0", "@remix-run/response": "^0.3.1" } }, "sha512-QYW9kn5srM3N51wBGecaDTR5dmNZU6gsJKrI2rw2EZumBp5n4ae3WZEUrAMmQ98Uqvy+zfeyGt3UlkhNRMMnCA=="],
+
+    "@remix-run/cookie": ["@remix-run/cookie@0.5.1", "", { "dependencies": { "@remix-run/headers": "^0.19.0" } }, "sha512-gbeZfVd1AKRlFj3IJWcIcR6zqVGz2XGJhR+mcqYiWnYt6KM8oUGtc82dsc4qZnWWA1f0nM4/He9wrU4GjB0pag=="],
+
+    "@remix-run/fetch-proxy": ["@remix-run/fetch-proxy@0.7.1", "", { "dependencies": { "@remix-run/headers": "^0.19.0" } }, "sha512-rPLfOpAaCXtm1dLI45uIPKERNbXbrh0P9AJc1sliz8pWd/McaFYjdr5KzB4QrFSfPvEt/Wmy6F2521qB1kK0ug=="],
+
+    "@remix-run/fetch-router": ["@remix-run/fetch-router@0.16.0", "", { "dependencies": { "@remix-run/route-pattern": "^0.18.0", "@remix-run/session": "^0.4.1" } }, "sha512-7X4sBkL3/64X0GJdOwP5f+sW8GrcAG1vBAX55Ysimafj/JaP4ibNgYQVZBg5ebG9cuumO3Gqzo4FCUUJp9uP3g=="],
+
+    "@remix-run/file-storage": ["@remix-run/file-storage@0.13.2", "", { "dependencies": { "@remix-run/fs": "^0.4.1", "@remix-run/lazy-file": "^5.0.1" } }, "sha512-1j2ZFdXjuLraMcEqU/bQFhkDwERlZNF5IuYiDmMpubOQXqwA1gIWNyWQnPO+iaRZPcxHWuZhWYSR5477BsT76A=="],
+
+    "@remix-run/form-data-middleware": ["@remix-run/form-data-middleware@0.1.3", "", { "dependencies": { "@remix-run/fetch-router": "^0.16.0", "@remix-run/form-data-parser": "^0.15.0" } }, "sha512-lurRXQuvMglZagg3n7gdzUL7QKoBgMt1ToklX1HMbiYeqBoikv5LlleLgfU/aMPhQDPcCWvcnBKAZPRA7x0c3A=="],
+
+    "@remix-run/form-data-parser": ["@remix-run/form-data-parser@0.15.0", "", { "dependencies": { "@remix-run/multipart-parser": "^0.14.2" } }, "sha512-sQP4r9218TWmow6Nt252VjKE674dRi4Z8WTnWUxJJG8I/qNfnGZubZ8LgyE0dR9z1gfaEpkd19MfYMLiOTOkJQ=="],
+
+    "@remix-run/fs": ["@remix-run/fs@0.4.1", "", { "dependencies": { "@remix-run/lazy-file": "^5.0.1", "@remix-run/mime": "^0.3.0" } }, "sha512-uroe7TnOWpKzyy8zA+sfJkAqsnS0+k5YVwlv3Reo5Hw4FKrKT6w9euk+Dc9E6yFkjJubxRAUt+qSRSgm+zwPiw=="],
+
+    "@remix-run/headers": ["@remix-run/headers@0.19.0", "", {}, "sha512-+62NbkXuXm9r/NdG6KfH9OCKofCWm8VjkrVPICiHKtRl8Gf2Vi6eFTN4mGgBlZRhd5mmEVRV4hTIn/JUSHDAOw=="],
+
+    "@remix-run/html-template": ["@remix-run/html-template@0.3.0", "", {}, "sha512-aAMx68udtIk0fmCpCXHYscVeCDsRVEmEgh4XvtusPr3vkHu3jn4gx5oAxgsPXPdDmmD/d75SYyI0m/F+aLz5iQ=="],
+
+    "@remix-run/interaction": ["@remix-run/interaction@0.5.0", "", {}, "sha512-Z2ja9/7TfMHt/wzWq425GI2xj6QxW4E3OHZ8In81uytZKIuWaI6Pn3v8qyMrInwnBEaLcfcbeQVCiExgHU8D4A=="],
+
+    "@remix-run/lazy-file": ["@remix-run/lazy-file@5.0.1", "", { "dependencies": { "@remix-run/mime": "^0.3.0" } }, "sha512-jYMnzj9Pt/SkBYFvIZWDcucaTrM+LQONTeBJalV/+3IA7ej+PPAwBuAXYggc0Uoti9cWiXEraNnhefgUlouxMg=="],
+
+    "@remix-run/logger-middleware": ["@remix-run/logger-middleware@0.1.2", "", { "dependencies": { "@remix-run/fetch-router": "^0.16.0" } }, "sha512-DlhRgaKDPpxP2JFZvPRRHZsviyc1WOl1JYAFuVi8ZTJxnrR1PcxX9dP5Lif2DO/0IS2KA301tVJU4NUUVbHqqQ=="],
+
+    "@remix-run/method-override-middleware": ["@remix-run/method-override-middleware@0.1.3", "", { "dependencies": { "@remix-run/fetch-router": "^0.16.0" } }, "sha512-QcdGpcSkbXDeDih5S9Z4MaBtQVggpaCFG1QfVdvbVQjpxlYBoLbyfUy56Fn9HfuYZZX7bIm6G9c1wKN4pWwBJA=="],
+
+    "@remix-run/mime": ["@remix-run/mime@0.3.0", "", {}, "sha512-/t4gg4oOSXuI41HTdl4xbrV6VhjFiyGpA7eU7498EcaFfZ1flKdi5EqKrybH0plompB1mukCQhM9lLwiKGqOug=="],
+
+    "@remix-run/multipart-parser": ["@remix-run/multipart-parser@0.14.2", "", { "dependencies": { "@remix-run/headers": "^0.19.0" } }, "sha512-yDq9ql4Xz92bRG/Sgl4cg2dRlxxC6A40XBy/oyDhy76hJtTQvgyzx9sfPXYPxcfL1BtqljC+sYHE0PvjmQhSfw=="],
+
+    "@remix-run/node-fetch-server": ["@remix-run/node-fetch-server@0.13.0", "", {}, "sha512-1EsNo0ZpgXu/90AWoRZf/oE3RVTUS80tiTUpt+hv5pjtAkw7icN4WskDwz/KdAw5ARbJLMhZBrO1NqThmy/McA=="],
+
+    "@remix-run/response": ["@remix-run/response@0.3.1", "", { "dependencies": { "@remix-run/headers": "^0.19.0", "@remix-run/html-template": "^0.3.0", "@remix-run/mime": "^0.3.0" } }, "sha512-qNKHznfcmLPe393CF40wHAzB08I5AID0ma6C5T31dgJQrOdCMAPR8ME4CEWYbwuASxulLBnimIVy0lI85i+MeQ=="],
+
+    "@remix-run/route-pattern": ["@remix-run/route-pattern@0.18.0", "", {}, "sha512-m0ySsUen9Xczzduiscms57rw5whE7HpqPW7SzjSEyWkLFV3sTbKairTildVDRlypLSyb34wKxCrYTRnsgdlhDA=="],
+
+    "@remix-run/session": ["@remix-run/session@0.4.1", "", {}, "sha512-Bm6aKYgutb/raHZ3laloz8g/Qu7f3CeK3o4gUVDMxtEiAdWCzJamwHoTpGOc5+g1Kuy7z85v4M6nGrF06MFDSg=="],
+
+    "@remix-run/session-middleware": ["@remix-run/session-middleware@0.1.3", "", { "dependencies": { "@remix-run/cookie": "^0.5.1", "@remix-run/fetch-router": "^0.16.0", "@remix-run/session": "^0.4.1" } }, "sha512-eWIeC4IKvLQPjRro/aStF6nME1Cs7vZN4xHi/Mh9WIaLWdO/EC+v1Z/hdHJU6OlLqjTcuhKzATSmCFUY40VyiA=="],
+
+    "@remix-run/static-middleware": ["@remix-run/static-middleware@0.4.3", "", { "dependencies": { "@remix-run/fetch-router": "^0.16.0", "@remix-run/fs": "^0.4.1", "@remix-run/html-template": "^0.3.0", "@remix-run/mime": "^0.3.0", "@remix-run/response": "^0.3.1" } }, "sha512-0pO3CFc1ojP8agNCsDcJdgQdJpzzek7OpO1U3v6hc632DiANTHzJlkv0PJrq44pXj9ioA7N202iddkc/wNfRXg=="],
+
+    "@remix-run/tar-parser": ["@remix-run/tar-parser@0.7.0", "", {}, "sha512-PW8JxEUzaGcnqxC5hBI8L9lK/Qz3oad6IGKZ+NExI3L7urVJUux+yCBrsme79DMBgS6hL+lgd/5LPFA5fSwF9A=="],
 
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.57.1", "", { "os": "android", "cpu": "arm" }, "sha512-A6ehUVSiSaaliTxai040ZpZ2zTevHYbvu/lDoeAteHI8QnaosIzm4qwtezfRg1jOYaUmnzLX1AOD6Z+UJjtifg=="],
 
@@ -949,7 +971,7 @@
 
     "regexp.prototype.flags": ["regexp.prototype.flags@1.5.4", "", { "dependencies": { "call-bind": "^1.0.8", "define-properties": "^1.2.1", "es-errors": "^1.3.0", "get-proto": "^1.0.1", "gopd": "^1.2.0", "set-function-name": "^2.0.2" } }, "sha512-dYqgNSZbDwkaJ2ceRd9ojCGjBq+mOm9LmtXnAnEGyHhN/5R7iDW2TRw3h+o/jCFxus3P2LfWIIiwowAjANm7IA=="],
 
-    "remix": ["remix@file:vendor/remix-preview/packages/remix", { "dependencies": { "@remix-run/async-context-middleware": "file:../async-context-middleware", "@remix-run/component": "file:../component", "@remix-run/compression-middleware": "file:../compression-middleware", "@remix-run/cookie": "file:../cookie", "@remix-run/data-schema": "file:../data-schema", "@remix-run/fetch-proxy": "file:../fetch-proxy", "@remix-run/fetch-router": "file:../fetch-router", "@remix-run/file-storage": "file:../file-storage", "@remix-run/form-data-middleware": "file:../form-data-middleware", "@remix-run/form-data-parser": "file:../form-data-parser", "@remix-run/fs": "file:../fs", "@remix-run/headers": "file:../headers", "@remix-run/html-template": "file:../html-template", "@remix-run/interaction": "file:../interaction", "@remix-run/lazy-file": "file:../lazy-file", "@remix-run/logger-middleware": "file:../logger-middleware", "@remix-run/method-override-middleware": "file:../method-override-middleware", "@remix-run/mime": "file:../mime", "@remix-run/multipart-parser": "file:../multipart-parser", "@remix-run/node-fetch-server": "file:../node-fetch-server", "@remix-run/response": "file:../response", "@remix-run/route-pattern": "file:../route-pattern", "@remix-run/session": "file:../session", "@remix-run/session-middleware": "file:../session-middleware", "@remix-run/static-middleware": "file:../static-middleware", "@remix-run/tar-parser": "file:../tar-parser" } }],
+    "remix": ["remix@3.0.0-alpha.2", "", { "dependencies": { "@remix-run/async-context-middleware": "^0.1.2", "@remix-run/component": "^0.4.0", "@remix-run/compression-middleware": "^0.1.2", "@remix-run/cookie": "^0.5.1", "@remix-run/fetch-proxy": "^0.7.1", "@remix-run/fetch-router": "^0.16.0", "@remix-run/file-storage": "^0.13.2", "@remix-run/form-data-middleware": "^0.1.3", "@remix-run/form-data-parser": "^0.15.0", "@remix-run/fs": "^0.4.1", "@remix-run/headers": "^0.19.0", "@remix-run/html-template": "^0.3.0", "@remix-run/interaction": "^0.5.0", "@remix-run/lazy-file": "^5.0.1", "@remix-run/logger-middleware": "^0.1.2", "@remix-run/method-override-middleware": "^0.1.3", "@remix-run/mime": "^0.3.0", "@remix-run/multipart-parser": "^0.14.2", "@remix-run/node-fetch-server": "^0.13.0", "@remix-run/response": "^0.3.1", "@remix-run/route-pattern": "^0.18.0", "@remix-run/session": "^0.4.1", "@remix-run/session-middleware": "^0.1.3", "@remix-run/static-middleware": "^0.4.3", "@remix-run/tar-parser": "^0.7.0" } }, "sha512-OFvIKLvucBgwMife+fBaG5IUl++ofeNgzj2x6uvNa+pzUx0rxqxScurZyK9qrWfrRzCgpso+AJYptckkPmjTTQ=="],
 
     "require-directory": ["require-directory@2.1.1", "", {}, "sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q=="],
 
@@ -1154,58 +1176,6 @@
     "playwright/fsevents": ["fsevents@2.3.2", "", { "os": "darwin" }, "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA=="],
 
     "postcss/nanoid": ["nanoid@3.3.11", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w=="],
-
-    "remix/@remix-run/async-context-middleware": ["@remix-run/async-context-middleware@file:vendor/remix-preview/packages/async-context-middleware", {}],
-
-    "remix/@remix-run/component": ["@remix-run/component@file:vendor/remix-preview/packages/component", {}],
-
-    "remix/@remix-run/compression-middleware": ["@remix-run/compression-middleware@file:vendor/remix-preview/packages/compression-middleware", {}],
-
-    "remix/@remix-run/cookie": ["@remix-run/cookie@file:vendor/remix-preview/packages/cookie", {}],
-
-    "remix/@remix-run/data-schema": ["@remix-run/data-schema@file:vendor/remix-preview/packages/data-schema", {}],
-
-    "remix/@remix-run/fetch-proxy": ["@remix-run/fetch-proxy@file:vendor/remix-preview/packages/fetch-proxy", {}],
-
-    "remix/@remix-run/fetch-router": ["@remix-run/fetch-router@file:vendor/remix-preview/packages/fetch-router", {}],
-
-    "remix/@remix-run/file-storage": ["@remix-run/file-storage@file:vendor/remix-preview/packages/file-storage", {}],
-
-    "remix/@remix-run/form-data-middleware": ["@remix-run/form-data-middleware@file:vendor/remix-preview/packages/form-data-middleware", {}],
-
-    "remix/@remix-run/form-data-parser": ["@remix-run/form-data-parser@file:vendor/remix-preview/packages/form-data-parser", {}],
-
-    "remix/@remix-run/fs": ["@remix-run/fs@file:vendor/remix-preview/packages/fs", {}],
-
-    "remix/@remix-run/headers": ["@remix-run/headers@file:vendor/remix-preview/packages/headers", {}],
-
-    "remix/@remix-run/html-template": ["@remix-run/html-template@file:vendor/remix-preview/packages/html-template", {}],
-
-    "remix/@remix-run/interaction": ["@remix-run/interaction@file:vendor/remix-preview/packages/interaction", {}],
-
-    "remix/@remix-run/lazy-file": ["@remix-run/lazy-file@file:vendor/remix-preview/packages/lazy-file", {}],
-
-    "remix/@remix-run/logger-middleware": ["@remix-run/logger-middleware@file:vendor/remix-preview/packages/logger-middleware", {}],
-
-    "remix/@remix-run/method-override-middleware": ["@remix-run/method-override-middleware@file:vendor/remix-preview/packages/method-override-middleware", {}],
-
-    "remix/@remix-run/mime": ["@remix-run/mime@file:vendor/remix-preview/packages/mime", {}],
-
-    "remix/@remix-run/multipart-parser": ["@remix-run/multipart-parser@file:vendor/remix-preview/packages/multipart-parser", {}],
-
-    "remix/@remix-run/node-fetch-server": ["@remix-run/node-fetch-server@file:vendor/remix-preview/packages/node-fetch-server", {}],
-
-    "remix/@remix-run/response": ["@remix-run/response@file:vendor/remix-preview/packages/response", {}],
-
-    "remix/@remix-run/route-pattern": ["@remix-run/route-pattern@file:vendor/remix-preview/packages/route-pattern", {}],
-
-    "remix/@remix-run/session": ["@remix-run/session@file:vendor/remix-preview/packages/session", {}],
-
-    "remix/@remix-run/session-middleware": ["@remix-run/session-middleware@file:vendor/remix-preview/packages/session-middleware", {}],
-
-    "remix/@remix-run/static-middleware": ["@remix-run/static-middleware@file:vendor/remix-preview/packages/static-middleware", {}],
-
-    "remix/@remix-run/tar-parser": ["@remix-run/tar-parser@file:vendor/remix-preview/packages/tar-parser", {}],
 
     "router/path-to-regexp": ["path-to-regexp@8.3.0", "", {}, "sha512-7jdwVIRtsP8MYpdXSwOS0YdD0Du+qOoF/AEPIt88PcCFrZCzx41oxku1jD88hZBwbNUIEfpqvuhjFaMAqMTWnA=="],
 

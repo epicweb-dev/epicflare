@@ -13,4 +13,4 @@ yarn.lock
 pnpm-lock.yaml
 **/worker-configuration.d.ts
 public/client-entry.js
-vendor/remix-preview
+.remix-preview

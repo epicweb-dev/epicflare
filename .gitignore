@@ -25,6 +25,7 @@ package-lock.json
 *.sw?
 .wrangler
 .env
+.remix-preview
 mock-data
 playwright-report
 test-results

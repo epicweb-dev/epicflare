@@ -48,13 +48,13 @@ If a package is added or removed upstream, update `docs/agents/remix/index.md`:
 - Update the "Start here" section if new docs are important.
 - If a package moves to a folder, update links to `./<package>/index.md`.
 
-## 5) Refresh the Bun preview snapshot
+## 5) Refresh the Bun preview checkout
 
-After updating Remix docs or package guidance, refresh the vendored preview
-snapshot used by Bun installs:
+After updating Remix docs or package guidance, refresh the preview checkout used
+by Bun installs:
 
 ```sh
-bun run remix:preview:update
+bun run sync:remix-preview
 bun install
 ```
 
