@@ -34,9 +34,8 @@ paths and expectations.
 
 ## Remix preview workflow
 
-This template tracks Remix from the upstream `preview/main` branch via
-`vendor/remix-preview/packages/*` so Bun can install it without pnpm's `&path:`
-Git dependency syntax.
+This template tracks Remix from the upstream `preview/main` branch in
+`vendor/remix-preview/packages/*`.
 
 Refresh the vendored preview snapshot with:
 

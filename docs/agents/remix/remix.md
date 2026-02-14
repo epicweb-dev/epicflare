@@ -12,13 +12,8 @@ The Remix Web Framework
 
 ## Preview branch in this repo
 
-Remix publishes installable preview builds to the `preview/main` branch using
-pnpm's Git subdirectory syntax:
-
-`remix-run/remix#preview/main&path:packages/remix`
-
-Bun currently cannot install that `&path:` format directly, so this repo uses a
-vendored snapshot under `vendor/remix-preview/packages/*`.
+This repo sources Remix preview packages from `preview/main` into
+`vendor/remix-preview/packages/*`.
 
 ### Refresh command (Bun)
 
