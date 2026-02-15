@@ -13,6 +13,8 @@ magic.
 - Build helpers that return ready-to-run objects (factory pattern), not globals.
 - Keep test intent obvious in the name: "auth handler returns 400 for invalid
   JSON".
+- Write tests so they could run offline if necessary: avoid relying on the
+  public internet and third-party services; prefer local fakes/fixtures.
 - Prefer fast unit tests for server logic; keep e2e tests focused on journeys.
 - Run server tests with `bun test server` to avoid Playwright spec discovery.
 
