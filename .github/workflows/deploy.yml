@@ -8,6 +8,14 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: deploy-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -125,6 +133,7 @@ jobs:
       - test
       - e2e
       - mcp-e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -138,7 +147,6 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: 🔐 Sync Cloudflare Secrets
-        if: github.ref == 'refs/heads/main'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
@@ -148,13 +156,118 @@ jobs:
           echo "$APP_BASE_URL" | bunx wrangler secret put APP_BASE_URL --env production
 
       - name: 🗄️ Apply D1 Migrations
-        if: github.ref == 'refs/heads/main'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun ./wrangler-env.ts d1 migrations apply epicflare --remote
 
       - name: ☁️ Deploy to Cloudflare Workers
-        if: github.ref == 'refs/heads/main'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun run deploy
+
+  deploy-preview:
+    runs-on: ubuntu-latest
+    name: 🔎 Deploy PR Preview
+    needs:
+      - lint
+      - typecheck
+      - test
+      - e2e
+      - mcp-e2e
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false && github.event.pull_request.draft == false
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🔐 Sync Cloudflare Secrets (preview)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+        run: |
+          set -euo pipefail
+          WORKER_NAME="epicflare-pr-${{ github.event.pull_request.number }}"
+          echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env preview --name "$WORKER_NAME"
+          if [ -n "${RESEND_API_KEY:-}" ]; then
+            echo "$RESEND_API_KEY" | bunx wrangler secret put RESEND_API_KEY --env preview --name "$WORKER_NAME"
+          fi
+          if [ -n "${RESEND_FROM_EMAIL:-}" ]; then
+            echo "$RESEND_FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env preview --name "$WORKER_NAME"
+          fi
+
+      - name: 🗄️ Apply D1 Migrations (preview)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENV: preview
+        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+
+      - name: ☁️ Deploy PR Preview Worker
+        id: deploy_preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENV: preview
+        run: |
+          set -euo pipefail
+          WORKER_NAME="epicflare-pr-${{ github.event.pull_request.number }}"
+          echo "worker_name=$WORKER_NAME" >> "$GITHUB_OUTPUT"
+
+          bun run deploy -- --name "$WORKER_NAME" 2>&1 | tee deploy.log
+
+          # Wrangler prints the published URL; scrape it so we can post it to the PR.
+          PREVIEW_URL="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync('deploy.log','utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')")"
+          if [ -n "$PREVIEW_URL" ]; then
+            echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 💬 Comment Preview URL on PR
+        if: steps.deploy_preview.outputs.url != ''
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+          WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
+        with:
+          script: |
+            const marker = "<!-- epicflare-preview-url -->";
+            const body = [
+              marker,
+              `🔎 Preview deployed: ${process.env.PREVIEW_URL}`,
+              "",
+              `Worker: \`${process.env.WORKER_NAME}\``,
+            ].join("\n");
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((c) => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }

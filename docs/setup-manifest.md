@@ -53,3 +53,7 @@ Configure these secrets for deploy workflows:
 - `COOKIE_SECRET` (same format as local)
 - `RESEND_API_KEY` (optional, required to send via Resend)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
+
+Preview deploys for pull requests create a separate Worker per PR named
+`<app-name>-pr-<number>` (for epicflare: `epicflare-pr-123`). The same
+`CLOUDFLARE_API_TOKEN` must be able to create/update and delete those Workers.
