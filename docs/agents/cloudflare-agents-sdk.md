@@ -9,12 +9,21 @@ Primary docs:
 
 - https://developers.cloudflare.com/agents/
 
+Installed in this repo as `agents` in `package.json` (currently `^0.4.1`).
+
 ## Quick pointers for this repo
 
 - MCP server uses `McpAgent` in `mcp/index.ts` and is served via
   `MCP.serve(...)` in `worker/index.ts`.
 - This project is not organized around the React hook APIs from the SDK; for
   non-React clients, use `AgentClient` from `agents/client`.
+
+## Required configuration (Durable Objects + SQLite)
+
+Agents require Durable Objects and (for persisted state) SQLite-backed storage.
+Cloudflare's setup checklist lives here:
+
+- https://developers.cloudflare.com/agents/api-reference/configuration/
 
 ## Docs map (what Cloudflare documents)
 
