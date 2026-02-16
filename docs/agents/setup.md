@@ -24,6 +24,10 @@ Quick notes for getting a local epicflare environment running.
 - Set `CLOUDFLARE_ENV` to switch Wrangler environments (defaults to
   `production`). Playwright sets this to `test`.
 
+## Optional services
+
+- Postgres via Docker Compose: `docs/agents/postgres-docker-compose.md`
+
 ## Checks
 
 - `bun run validate` runs format check, lint fix, build, typecheck, Playwright
