@@ -3,7 +3,7 @@
 // Runtime types generated with workerd@1.20260205.0 2026-01-31 global_fetch_strictly_public,nodejs_compat
 declare namespace Cloudflare {
 	interface GlobalProps {
-		mainModule: typeof import("../worker/index");
+		mainModule: typeof import("#worker/index");
 		durableNamespaces: "MCP";
 	}
 	interface Env {
@@ -11,7 +11,7 @@ declare namespace Cloudflare {
 		APP_DB: D1Database;
 		ASSETS: Fetcher;
 		COOKIE_SECRET: string;
-		MCP_OBJECT: DurableObjectNamespace<import("../worker/index").MCP>;
+		MCP_OBJECT: DurableObjectNamespace<import("#worker/index").MCP>;
 	}
 }
 interface Env extends Cloudflare.Env {}

@@ -1,13 +1,13 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { z } from 'zod'
-import { type AppEnv } from '../../types/env-schema.ts'
-import { createDb, sql } from '../../worker/db.ts'
-import { logAuditEvent, getRequestIp } from '../audit-log.ts'
-import { sendResendEmail } from '../email/resend.ts'
-import { toHex } from '../hex.ts'
-import { normalizeEmail } from '../normalize-email.ts'
-import { createPasswordHash } from '../password-hash.ts'
-import type routes from '../routes.ts'
+import { type AppEnv } from '#types/env-schema.ts'
+import { createDb, sql } from '#worker/db.ts'
+import { logAuditEvent, getRequestIp } from '#server/audit-log.ts'
+import { sendResendEmail } from '#server/email/resend.ts'
+import { toHex } from '#server/hex.ts'
+import { normalizeEmail } from '#server/normalize-email.ts'
+import { createPasswordHash } from '#server/password-hash.ts'
+import type routes from '#server/routes.ts'
 
 const resetTokenBytes = 32
 const resetTokenExpiryMs = 60 * 60 * 1000

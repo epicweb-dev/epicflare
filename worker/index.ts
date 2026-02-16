@@ -1,6 +1,6 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider'
-import { MCP } from '../mcp/index.ts'
-import { handleRequest } from '../server/handler.ts'
+import { MCP } from '#mcp/index.ts'
+import { handleRequest } from '#server/handler.ts'
 import {
 	apiHandler,
 	handleAuthorizeRequest,

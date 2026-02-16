@@ -1,4 +1,4 @@
-import { resendEmailSchema } from '../shared/resend-email.ts'
+import { resendEmailSchema } from '#shared/resend-email.ts'
 import { createMockApiServer, type MockApiServer } from './mock-api-server.ts'
 
 export type MockResendServer = MockApiServer & {

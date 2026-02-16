@@ -3,16 +3,13 @@ import {
 	type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import { z } from 'zod'
-import { getRequestIp, logAuditEvent } from '../server/audit-log.ts'
-import {
-	readAuthSession,
-	setAuthSessionSecret,
-} from '../server/auth-session.ts'
-import { getEnv } from '../server/env.ts'
-import { toHex } from '../server/hex.ts'
-import { verifyPassword } from '../server/password-hash.ts'
-import { Layout } from '../server/layout.ts'
-import { render } from '../server/render.ts'
+import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
+import { readAuthSession, setAuthSessionSecret } from '#server/auth-session.ts'
+import { getEnv } from '#server/env.ts'
+import { toHex } from '#server/hex.ts'
+import { verifyPassword } from '#server/password-hash.ts'
+import { Layout } from '#server/layout.ts'
+import { render } from '#server/render.ts'
 import { createDb, sql } from './db.ts'
 import { wantsJson } from './utils.ts'
 

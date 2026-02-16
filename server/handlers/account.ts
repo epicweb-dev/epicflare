@@ -1,9 +1,9 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { readAuthSession } from '../auth-session.ts'
-import { redirectToLogin } from '../auth-redirect.ts'
-import { Layout } from '../layout.ts'
-import { render } from '../render.ts'
-import type routes from '../routes.ts'
+import { readAuthSession } from '#server/auth-session.ts'
+import { redirectToLogin } from '#server/auth-redirect.ts'
+import { Layout } from '#server/layout.ts'
+import { render } from '#server/render.ts'
+import type routes from '#server/routes.ts'
 
 export default {
 	middleware: [],
