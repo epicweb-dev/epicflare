@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-const databaseUrl =
-	process.env.DATABASE_URL ?? 'pglite:./.tmp/pglite-test'
+const databaseUrl = process.env.DATABASE_URL ?? 'pglite:./.tmp/pglite-test'
 
 if (databaseUrl.startsWith('pglite:')) {
 	const dataDir = databaseUrl.slice('pglite:'.length).trim()

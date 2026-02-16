@@ -141,7 +141,9 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 
 		// sql.js expects `self.location.href` in some worker-like runtimes, but
 		// Cloudflare's workerd doesn't expose `location` (service-worker style).
-		if (typeof (globalThis as { location?: unknown }).location === 'undefined') {
+		if (
+			typeof (globalThis as { location?: unknown }).location === 'undefined'
+		) {
 			;(globalThis as { location?: unknown }).location = {
 				href: 'http://localhost/',
 			}

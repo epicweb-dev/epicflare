@@ -158,11 +158,10 @@ async function startDevServer() {
 		env: {
 			...process.env,
 			CLOUDFLARE_ENV: 'test',
-			EXPOSE_INTERNAL_ERRORS: 'true',
 			COOKIE_SECRET:
 				process.env.COOKIE_SECRET ??
 				'test-cookie-secret-0123456789abcdef0123456789',
-			DATABASE_URL: process.env.DATABASE_URL ?? 'pglite:',
+			DATABASE_URL: process.env.DATABASE_URL ?? 'sqlite:',
 		},
 	})
 
