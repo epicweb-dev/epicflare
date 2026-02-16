@@ -38,6 +38,9 @@ The setup flow assumes:
 
 See `docs/setup-manifest.md` for required resources and secrets.
 
+For optional Cloudflare offerings (R2, Workers AI, AI Gateway, extra KV), see
+`docs/cloudflare-offerings.md`.
+
 ## Preflight checks
 
 Run a quick validation of your environment and Wrangler login:
