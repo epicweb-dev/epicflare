@@ -99,9 +99,6 @@ jobs:
       - name: 🎭 Install Playwright Browsers
         run: bun run test:e2e:install
 
-      - name: 🗄️ Apply D1 Migrations
-        run: bun run migrate:local
-
       - name: 🧪 Playwright Tests
         run: bun run test:e2e
 
@@ -119,9 +116,6 @@ jobs:
 
       - name: 📥 Install Dependencies
         run: bun install --frozen-lockfile
-
-      - name: 🗄️ Apply D1 Migrations
-        run: bun run migrate:local
 
       - name: 🧩 MCP E2E Tests
         run: bun run test:mcp
@@ -154,14 +148,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env production
           echo "$APP_BASE_URL" | bunx wrangler secret put APP_BASE_URL --env production
+          echo "$DATABASE_URL" | bunx wrangler secret put DATABASE_URL --env production
 
-      - name: 🗄️ Apply D1 Migrations
+      - name: 🗄️ Run database migrations (production)
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: bun ./wrangler-env.ts d1 migrations apply epicflare --remote
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun run db:migrate
 
       - name: ☁️ Deploy to Cloudflare Workers
         env:
@@ -197,12 +193,17 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: |
           set -euo pipefail
           WORKER_NAME="epicflare-pr-${{ github.event.pull_request.number }}"
           echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env preview --name "$WORKER_NAME"
+          if [ -z "${DATABASE_URL:-}" ]; then
+            DATABASE_URL="${{ secrets.DATABASE_URL }}"
+          fi
+          echo "$DATABASE_URL" | bunx wrangler secret put DATABASE_URL --env preview --name "$WORKER_NAME"
           if [ -n "${RESEND_API_KEY:-}" ]; then
             echo "$RESEND_API_KEY" | bunx wrangler secret put RESEND_API_KEY --env preview --name "$WORKER_NAME"
           fi
@@ -210,11 +211,15 @@ jobs:
             echo "$RESEND_FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env preview --name "$WORKER_NAME"
           fi
 
-      - name: 🗄️ Apply D1 Migrations (preview)
+      - name: 🗄️ Run database migrations (preview)
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ENV: preview
-        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+          fi
+          bun run db:migrate
 
       - name: ☁️ Deploy PR Preview Worker
         id: deploy_preview

@@ -28,14 +28,6 @@
 					},
 				],
 			},
-			"d1_databases": [
-				{
-					"binding": "APP_DB",
-					"database_name": "epicflare",
-					"database_id": "16601d74-b13d-441c-96d7-53095b856cde",
-					"migrations_dir": "migrations",
-				},
-			],
 			"kv_namespaces": [
 				{
 					"binding": "OAUTH_KV",
@@ -57,14 +49,6 @@
 					},
 				],
 			},
-			"d1_databases": [
-				{
-					"binding": "APP_DB",
-					"database_name": "epicflare-preview",
-					"database_id": "3c511f1e-fc84-439e-818a-0884dab2b0e8",
-					"migrations_dir": "migrations",
-				},
-			],
 			"kv_namespaces": [
 				{
 					"binding": "OAUTH_KV",
@@ -86,14 +70,6 @@
 					},
 				],
 			},
-			"d1_databases": [
-				{
-					"binding": "APP_DB",
-					"database_name": "epicflare-preview",
-					"database_id": "3c511f1e-fc84-439e-818a-0884dab2b0e8",
-					"migrations_dir": "migrations",
-				},
-			],
 			"kv_namespaces": [
 				{
 					"binding": "OAUTH_KV",

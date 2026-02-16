@@ -2,7 +2,7 @@
 
 epicflare ships with:
 
-- D1 (`APP_DB`) for relational storage
+- Postgres (Neon) (`DATABASE_URL`) for relational storage
 - KV (`OAUTH_KV`) for OAuth/session state (owned by
   `@cloudflare/workers-oauth-provider`)
 - Durable Objects (`MCP_OBJECT`) for MCP server state
@@ -37,11 +37,10 @@ Cloudflare's API token UI changes over time, but the shape is stable:
 - You grant **Read**/**Edit** per product area
 - Wrangler deploys, creates resources, and sets secrets via the API token
 
-Recommended baseline permissions for this template (deploy + existing D1/KV):
+Recommended baseline permissions for this template (deploy + existing KV):
 
 - `Workers Scripts:Edit` (deploy, update, delete preview Workers)
 - `Workers KV Storage:Edit` (OAuth/session KV)
-- `D1:Edit` (migrations, database operations)
 
 Add these permissions when you add the corresponding offering:
 

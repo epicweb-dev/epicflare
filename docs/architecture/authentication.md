@@ -28,7 +28,7 @@ signing and verification are available to handlers.
 `POST /auth` is implemented by `server/handlers/auth.ts`.
 
 - Accepts JSON body with `email`, `password`, and `mode` (`login` or `signup`)
-- Uses D1 (`users` table) for user lookups and inserts
+- Uses Postgres (`users` table) for user lookups and inserts
 - Hashes passwords with `server/password-hash.ts`
 - Returns signed session cookie via `Set-Cookie` on success
 - Emits structured audit events through `server/audit-log.ts`

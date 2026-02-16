@@ -10,7 +10,8 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 ## Agent setup
 
 - Install dependencies with `bun install`.
-- Apply local D1 migrations with `bun run migrate:local` before DB-backed tests.
+- Apply Drizzle migrations with `bun run db:migrate` when using Postgres
+  locally.
 - Copy `.env.test` to `.env` before running dev or tests.
 
 ## Verification before commit

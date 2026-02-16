@@ -1,7 +1,7 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { z } from 'zod'
 import { type AppEnv } from '#types/env-schema.ts'
-import { createDb, sql } from '#worker/db.ts'
+import { createDb, sql } from '#src/db/client.ts'
 import { logAuditEvent, getRequestIp } from '#server/audit-log.ts'
 import { sendResendEmail } from '#server/email/resend.ts'
 import { toHex } from '#server/hex.ts'
@@ -29,7 +29,10 @@ const resetUserSchema = z.object({
 const resetTokenSchema = z.object({
 	id: z.number(),
 	user_id: z.number(),
-	expires_at: z.number(),
+	expires_at: z.preprocess((value) => {
+		if (typeof value === 'string') return Number(value)
+		return value
+	}, z.number()),
 })
 
 function buildResetEmail(resetUrl: string) {
@@ -80,7 +83,7 @@ function logMissingEmailConfig(payload: {
 }
 
 export function createPasswordResetRequestHandler(appEnv: AppEnv) {
-	const db = createDb(appEnv.APP_DB)
+	const db = createDb(appEnv)
 
 	return {
 		middleware: [],
@@ -204,7 +207,7 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 }
 
 export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
-	const db = createDb(appEnv.APP_DB)
+	const db = createDb(appEnv)
 
 	return {
 		middleware: [],

@@ -34,16 +34,16 @@ paths and expectations.
 
 ## Tech Stack
 
-| Layer           | Technology                                                            |
-| --------------- | --------------------------------------------------------------------- |
-| Runtime         | [Cloudflare Workers](https://workers.cloudflare.com/)                 |
-| UI Framework    | [Remix 3](https://remix.run/) (alpha)                                 |
-| Package Manager | [Bun](https://bun.sh/)                                                |
-| Database        | [Cloudflare D1](https://developers.cloudflare.com/d1/)                |
-| Session/OAuth   | [Cloudflare KV](https://developers.cloudflare.com/kv/)                |
-| MCP State       | [Durable Objects](https://developers.cloudflare.com/durable-objects/) |
-| E2E Testing     | [Playwright](https://playwright.dev/)                                 |
-| Bundler         | [esbuild](https://esbuild.github.io/)                                 |
+| Layer           | Technology                                                                     |
+| --------------- | ------------------------------------------------------------------------------ |
+| Runtime         | [Cloudflare Workers](https://workers.cloudflare.com/)                          |
+| UI Framework    | [Remix 3](https://remix.run/) (alpha)                                          |
+| Package Manager | [Bun](https://bun.sh/)                                                         |
+| Database        | [Neon Postgres](https://neon.tech/) + [Drizzle ORM](https://orm.drizzle.team/) |
+| Session/OAuth   | [Cloudflare KV](https://developers.cloudflare.com/kv/)                         |
+| MCP State       | [Durable Objects](https://developers.cloudflare.com/durable-objects/)          |
+| E2E Testing     | [Playwright](https://playwright.dev/)                                          |
+| Bundler         | [esbuild](https://esbuild.github.io/)                                          |
 
 ## How It Works
 

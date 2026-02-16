@@ -8,6 +8,7 @@ import {
 } from '@cloudflare/workers-oauth-provider'
 import { createAuthCookie, setAuthSessionSecret } from '#server/auth-session.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
+import { createDb, sql } from '#src/db/client.ts'
 import {
 	handleAuthorizeInfo,
 	handleAuthorizeRequest,
@@ -52,34 +53,25 @@ function createHelpers(overrides: Partial<OAuthHelpers> = {}): OAuthHelpers {
 }
 
 async function createDatabase(password: string) {
+	const databaseUrl = `sqlite:file:oauth-handlers-${crypto.randomUUID()}?mode=memory&cache=shared`
+	const db = createDb({ DATABASE_URL: databaseUrl })
 	const passwordHash = await createPasswordHash(password)
-	return {
-		prepare() {
-			return {
-				bind() {
-					return {
-						async first() {
-							return { id: 1, password_hash: passwordHash }
-						},
-						async run() {
-							return { success: true }
-						},
-					}
-				},
-			}
-		},
-	} as unknown as D1Database
+	await db.exec(
+		sql`INSERT INTO users (username, email, password_hash) VALUES (${'user'}, ${'user@example.com'}, ${passwordHash});`,
+	)
+	return databaseUrl
 }
 
 function createEnv(
 	helpers: OAuthHelpers,
-	appDb?: D1Database,
+	databaseUrl?: string,
 	cookieSecretValue: string = cookieSecret,
 ) {
-	const resolvedDb = appDb ?? ({} as D1Database)
 	return {
 		OAUTH_PROVIDER: helpers,
-		APP_DB: resolvedDb,
+		DATABASE_URL:
+			databaseUrl ??
+			`sqlite:file:oauth-handlers-${crypto.randomUUID()}?mode=memory&cache=shared`,
 		COOKIE_SECRET: cookieSecretValue,
 	} as unknown as Env
 }

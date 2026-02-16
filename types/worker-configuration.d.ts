@@ -8,7 +8,6 @@ declare namespace Cloudflare {
 	}
 	interface Env {
 		OAUTH_KV: KVNamespace;
-		APP_DB: D1Database;
 		ASSETS: Fetcher;
 		COOKIE_SECRET: string;
 		APP_BASE_URL: string;
