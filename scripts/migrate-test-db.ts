@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createDb, sql } from '../src/db/client'
+import { createDb, sql } from '#src/db/client.ts'
 
 const databaseUrl = process.env.DATABASE_URL ?? 'sqlite:./.tmp/test.sqlite'
 
