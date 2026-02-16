@@ -13,7 +13,9 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: deploy-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    deploy-${{ github.event_name }}-${{ github.event.pull_request.number ||
+    github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -133,7 +135,8 @@ jobs:
       - test
       - e2e
       - mcp-e2e
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -174,7 +177,10 @@ jobs:
       - test
       - e2e
       - mcp-e2e
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false && github.event.pull_request.draft == false
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.fork == false &&
+      github.event.pull_request.draft == false
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
