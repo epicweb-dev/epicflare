@@ -23,7 +23,8 @@ type QueryResultRow = Record<string, unknown>
 
 type InternalClient = {
 	dialect: 'postgres' | 'sqlite' | 'pglite'
-	execute: (query: unknown) => Promise<unknown>
+	all: (query: unknown) => Promise<Array<QueryResultRow>>
+	run: (query: unknown) => Promise<void>
 	ensureSchema?: () => Promise<void>
 }
 
@@ -66,21 +67,25 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 
 		const bunSqliteModule = 'bun:' + 'sqlite'
 		const drizzleBunModule = 'drizzle-orm/' + 'bun-sqlite'
-		const [{ Database }, { drizzle }] = await Promise.all([
-			import(bunSqliteModule) as Promise<{ Database: typeof import('bun:sqlite').Database }>,
-			import(drizzleBunModule) as Promise<{ drizzle: typeof import('drizzle-orm/bun-sqlite').drizzle }>,
-		])
+		const bunSqlite = (await import(bunSqliteModule)) as any
+		const drizzleBun = (await import(drizzleBunModule)) as any
+		const Database = bunSqlite.Database as new (filename: string) => unknown
+		const drizzle = drizzleBun.drizzle as (client: unknown) => any
 
 		const filename = databaseUrl.slice('sqlite:'.length) || ':memory:'
 		const sqlite = new Database(filename)
 		const db = drizzle(sqlite)
-		const execute = (query: unknown) => db.execute(query as never)
+		const all = async (query: unknown) =>
+			db.all(query as never) as Array<QueryResultRow>
+		const run = async (query: unknown) => {
+			db.run(query as never)
+		}
 		let schemaPromise: Promise<void> | null = null
 
 		async function ensureSchema() {
 			if (!schemaPromise) {
 				schemaPromise = (async () => {
-					await execute(sql`
+					await run(sql`
 						CREATE TABLE IF NOT EXISTS users (
 							id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 							username TEXT NOT NULL UNIQUE,
@@ -90,14 +95,14 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 							updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 						);
 					`)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);`,
 					)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`,
 					)
 
-					await execute(sql`
+					await run(sql`
 						CREATE TABLE IF NOT EXISTS password_resets (
 							id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 							user_id INTEGER NOT NULL,
@@ -107,10 +112,10 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 							FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 						);
 					`)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);`,
 					)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash);`,
 					)
 				})()
@@ -120,7 +125,8 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 
 		return {
 			dialect: 'sqlite',
-			execute,
+			all,
+			run,
 			ensureSchema,
 		}
 	}
@@ -133,13 +139,17 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 		const client = dataDir ? new PGlite({ dataDir }) : new PGlite()
 		const db = drizzle(client)
 		const execute = (query: unknown) => db.execute(query as never)
+		const all = async (query: unknown) => extractRows(await execute(query))
+		const run = async (query: unknown) => {
+			await execute(query)
+		}
 		let schemaPromise: Promise<void> | null = null
 
 		async function ensureSchema() {
 			if (!schemaPromise) {
 				schemaPromise = (async () => {
 					// Postgres-compatible bootstrap for local/offline runs.
-					await execute(sql`
+					await run(sql`
 						CREATE TABLE IF NOT EXISTS users (
 							id serial PRIMARY KEY NOT NULL,
 							username text NOT NULL UNIQUE,
@@ -149,14 +159,14 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 							updated_at timestamp with time zone DEFAULT now() NOT NULL
 						);
 					`)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users USING btree (username);`,
 					)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users USING btree (email);`,
 					)
 
-					await execute(sql`
+					await run(sql`
 						CREATE TABLE IF NOT EXISTS password_resets (
 							id serial PRIMARY KEY NOT NULL,
 							user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -165,10 +175,10 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 							created_at timestamp with time zone DEFAULT now() NOT NULL
 						);
 					`)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets USING btree (user_id);`,
 					)
-					await execute(
+					await run(
 						sql`CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets USING btree (token_hash);`,
 					)
 				})()
@@ -178,7 +188,8 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 
 		return {
 			dialect: 'pglite',
-			execute,
+			all,
+			run,
 			ensureSchema,
 		}
 	}
@@ -199,18 +210,28 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 
 		const pool = new Pool({ connectionString: databaseUrl })
 		const db = drizzle(pool)
+		const execute = (query: unknown) => db.execute(query as never)
+		const all = async (query: unknown) => extractRows(await execute(query))
+		const run = async (query: unknown) => {
+			await execute(query)
+		}
 
 		return {
 			dialect: 'postgres',
-			execute: (query) => db.execute(query as never),
+			all,
+			run,
 		}
 	}
 
 	const query = neon(databaseUrl)
 	const db = drizzleNeonHttp(query)
+	const execute = (queryToRun: unknown) => db.execute(queryToRun as never)
 	return {
 		dialect: 'postgres',
-		execute: (queryToRun) => db.execute(queryToRun as never),
+		all: async (queryToRun: unknown) => extractRows(await execute(queryToRun)),
+		run: async (queryToRun: unknown) => {
+			await execute(queryToRun)
+		},
 	}
 }
 
@@ -236,22 +257,20 @@ export function createDb(env: DatabaseEnv) {
 		): Promise<T | null> {
 			const client = await getClient()
 			await client.ensureSchema?.()
-			const result = await client.execute(query)
-			const rows = extractRows(result)
+			const rows = await client.all(query)
 			if (rows.length === 0) return null
 			return schema.parse(rows[0])
 		},
 		async queryAll<T>(query: unknown, schema: ZodSchema<T>): Promise<Array<T>> {
 			const client = await getClient()
 			await client.ensureSchema?.()
-			const result = await client.execute(query)
-			const rows = extractRows(result)
+			const rows = await client.all(query)
 			return schema.array().parse(rows)
 		},
 		async exec(query: unknown) {
 			const client = await getClient()
 			await client.ensureSchema?.()
-			await client.execute(query)
+			await client.run(query)
 		},
 	}
 }

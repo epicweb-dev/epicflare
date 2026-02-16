@@ -91,20 +91,6 @@ function replaceAllStringProperty(content: string, key: string, value: string) {
 	return content.replace(regex, `"${key}": "${value}"`)
 }
 
-function replaceStringPropertySequence(
-	content: string,
-	key: string,
-	values: Array<string>,
-) {
-	const regex = new RegExp(`"${key}"\\s*:\\s*"[^"]*"`, 'g')
-	let index = 0
-	return content.replace(regex, () => {
-		const value = values[Math.min(index, values.length - 1)]
-		index += 1
-		return `"${key}": "${value}"`
-	})
-}
-
 function replaceBrandingTokens(content: string, replacement: string) {
 	const placeholders = new Map<string, string>()
 	let next = content
