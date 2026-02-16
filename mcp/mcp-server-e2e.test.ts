@@ -160,6 +160,10 @@ async function startDevServer() {
 		env: {
 			...process.env,
 			CLOUDFLARE_ENV: 'test',
+			COOKIE_SECRET:
+				process.env.COOKIE_SECRET ??
+				'test-cookie-secret-0123456789abcdef0123456789',
+			DATABASE_URL: process.env.DATABASE_URL ?? 'pglite:',
 		},
 	})
 
@@ -170,6 +174,8 @@ async function startDevServer() {
 
 	return {
 		origin,
+		getStdout,
+		getStderr,
 		[Symbol.asyncDispose]: async () => {
 			await stopProcess(proc)
 		},
@@ -320,10 +326,10 @@ async function createMcpClient(
 }
 
 async function ensureUserExists(
-	origin: string,
+	server: { origin: string; getStdout: () => string; getStderr: () => string },
 	user: { email: string; password: string },
 ) {
-	const response = await fetch(new URL('/auth', origin), {
+	const response = await fetch(new URL('/auth', server.origin), {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -335,7 +341,9 @@ async function ensureUserExists(
 		return
 	}
 	const payload = await response.text().catch(() => '')
-	throw new Error(`Failed to seed user (${response.status}). ${payload}`)
+	throw new Error(
+		`Failed to seed user (${response.status}). ${payload}\n\nwrangler stdout:\n${server.getStdout()}\n\nwrangler stderr:\n${server.getStderr()}`,
+	)
 }
 
 test(
@@ -346,7 +354,7 @@ test(
 			password: `pw-${crypto.randomUUID()}`,
 		}
 		await using server = await startDevServer()
-		await ensureUserExists(server.origin, user)
+		await ensureUserExists(server, user)
 		await using mcpClient = await createMcpClient(server.origin, user)
 
 		const result = await mcpClient.client.listTools()
@@ -365,7 +373,7 @@ test(
 			password: `pw-${crypto.randomUUID()}`,
 		}
 		await using server = await startDevServer()
-		await ensureUserExists(server.origin, user)
+		await ensureUserExists(server, user)
 		await using mcpClient = await createMcpClient(server.origin, user)
 
 		const result = await mcpClient.client.callTool({
