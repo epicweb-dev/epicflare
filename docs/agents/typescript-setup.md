@@ -47,7 +47,6 @@ The root `tsconfig.json` is the **solution** file:
 
 The CLI `typecheck` runs:
 
-- `bun run generate-types` (writes `types/worker-configuration.d.ts`)
 - `tsc -b --noEmit` (build mode, using the root `tsconfig.json`)
 
 ## Generated worker types (`types/worker-configuration.d.ts`)
@@ -56,6 +55,8 @@ The CLI `typecheck` runs:
 hand.
 
 - To update it, run `bun run generate-types`.
+- `bun run generate-types` runs `wrangler types` and then normalizes a small
+  portion of the output so the file uses our repo-root `#...` import aliases.
 - If you see this file change in a PR, it should be explainable by changes to
   Worker bindings/config (for example `wrangler.jsonc`) or by re-running the
   generation script.
