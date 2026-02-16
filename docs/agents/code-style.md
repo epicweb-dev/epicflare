@@ -19,6 +19,14 @@ file style first, then run the formatter.
 - Prefer named exports.
 - Use default exports only when a framework contract requires them.
 
+## Imports
+
+- Prefer repo-root `#...` imports (configured via `package.json` `"imports"`)
+  over parent-relative `../...` paths.
+- Keep `./...` imports for same-folder files.
+- Generated files (for example `types/worker-configuration.d.ts`) are allowed to
+  be exceptions; do not edit them by hand.
+
 ## Type conventions
 
 - Prefer `type` aliases for object shapes and unions.

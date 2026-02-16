@@ -1,7 +1,4 @@
-import {
-	resendEmailSchema,
-	type ResendEmail,
-} from '../../shared/resend-email.ts'
+import { resendEmailSchema, type ResendEmail } from '#shared/resend-email.ts'
 
 type ResendClientConfig = {
 	apiBaseUrl: string

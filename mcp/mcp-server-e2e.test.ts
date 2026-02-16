@@ -258,6 +258,15 @@ async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
 
 async function startDevServer(persistDir: string) {
 	const port = await getPort({ host: '127.0.0.1' })
+	const inspectorPortBase =
+		port + 10_000 <= 65_535 ? port + 10_000 : Math.max(1, port - 10_000)
+	const inspectorPort = await getPort({
+		host: '127.0.0.1',
+		port: Array.from(
+			{ length: 10 },
+			(_, index) => inspectorPortBase + index,
+		).filter((candidate) => candidate > 0 && candidate <= 65_535),
+	})
 	const origin = `http://127.0.0.1:${port}`
 	const proc = Bun.spawn({
 		cmd: [
@@ -270,6 +279,8 @@ async function startDevServer(persistDir: string) {
 			'test',
 			'--port',
 			String(port),
+			'--inspector-port',
+			String(inspectorPort),
 			'--ip',
 			'127.0.0.1',
 			'--persist-to',

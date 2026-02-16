@@ -1,5 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
-import type routes from '../routes.ts'
+import type routes from '#server/routes.ts'
 
 export default {
 	middleware: [],

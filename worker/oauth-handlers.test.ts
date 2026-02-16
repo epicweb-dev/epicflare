@@ -6,11 +6,8 @@ import {
 	type CompleteAuthorizationOptions,
 	type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
-import {
-	createAuthCookie,
-	setAuthSessionSecret,
-} from '../server/auth-session.ts'
-import { createPasswordHash } from '../server/password-hash.ts'
+import { createAuthCookie, setAuthSessionSecret } from '#server/auth-session.ts'
+import { createPasswordHash } from '#server/password-hash.ts'
 import {
 	handleAuthorizeInfo,
 	handleAuthorizeRequest,

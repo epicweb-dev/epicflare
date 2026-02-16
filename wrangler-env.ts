@@ -11,6 +11,9 @@ const args = process.argv.slice(2)
 const hasEnvFlag = args.includes('--env') || args.includes('-e')
 const isDevCommand = args[0] === 'dev'
 const hasPortFlag = args.includes('--port')
+const hasInspectorPortFlag = args.some(
+	(arg) => arg === '--inspector-port' || arg.startsWith('--inspector-port='),
+)
 
 const commandArgs = [...args]
 
@@ -19,6 +22,10 @@ if (!hasEnvFlag) {
 }
 
 let resolvedPort = process.env.PORT
+
+if (isDevCommand && hasPortFlag) {
+	resolvedPort = getPortArg(args) ?? resolvedPort
+}
 
 if (isDevCommand && !hasPortFlag) {
 	if (process.env.PORT) {
@@ -36,6 +43,30 @@ if (isDevCommand && !hasPortFlag) {
 		)
 	}
 	commandArgs.push('--port', resolvedPort)
+}
+
+if (isDevCommand && !hasInspectorPortFlag) {
+	const parsedPort = resolvedPort ? Number.parseInt(resolvedPort, 10) : NaN
+	const inspectorPortRange = Number.isFinite(parsedPort)
+		? (() => {
+				const preferredBase =
+					parsedPort + 10_000 <= 65_535
+						? parsedPort + 10_000
+						: parsedPort - 10_000
+				const safeBase = Math.max(1, preferredBase)
+				return Array.from(
+					{ length: 10 },
+					(_, index) => safeBase + index,
+				).filter((port) => port > 0 && port <= 65_535)
+			})()
+		: undefined
+	const resolvedInspectorPort = String(
+		await getPort({
+			host: '127.0.0.1',
+			...(inspectorPortRange ? { port: inspectorPortRange } : {}),
+		}),
+	)
+	commandArgs.push('--inspector-port', resolvedInspectorPort)
 }
 
 const processEnv = {
@@ -91,6 +122,22 @@ if (isDevCommand && resolvedPort) {
 	}
 }
 process.exit(exitCode)
+
+function getPortArg(argumentList: ReadonlyArray<string>) {
+	const inlinePortArg = argumentList.find((arg) => arg.startsWith('--port='))
+	if (inlinePortArg) {
+		const [, value] = inlinePortArg.split('=')
+		return value || undefined
+	}
+
+	const portIndex = argumentList.findIndex((arg) => arg === '--port')
+	if (portIndex >= 0) {
+		const value = argumentList[portIndex + 1]
+		return value || undefined
+	}
+
+	return undefined
+}
 
 async function waitForPortFree(port: number, timeoutMs: number) {
 	const start = Date.now()

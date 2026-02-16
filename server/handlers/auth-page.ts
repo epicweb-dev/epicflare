@@ -1,6 +1,6 @@
-import { readAuthSession } from '../auth-session.ts'
-import { Layout } from '../layout.ts'
-import { render } from '../render.ts'
+import { readAuthSession } from '#server/auth-session.ts'
+import { Layout } from '#server/layout.ts'
+import { render } from '#server/render.ts'
 
 function normalizeRedirectTo(value: string | null) {
 	if (!value) return null
