@@ -55,9 +55,21 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 	const databaseUrl = env.DATABASE_URL
 
 	if (databaseUrl.startsWith('sqlite:')) {
-		// Bun-only unit test / local script path
-		const { Database } = await import('bun:sqlite')
-		const { drizzle } = await import('drizzle-orm/bun-sqlite')
+		// Bun-only unit test / local script path.
+		// Keep module specifiers non-literal so Wrangler/esbuild does not try to
+		// resolve/bundle Bun built-ins for Workers builds.
+		if (typeof (globalThis as { Bun?: unknown }).Bun === 'undefined') {
+			throw new Error(
+				'SQLite DATABASE_URL is only supported when running under Bun.',
+			)
+		}
+
+		const bunSqliteModule = 'bun:' + 'sqlite'
+		const drizzleBunModule = 'drizzle-orm/' + 'bun-sqlite'
+		const [{ Database }, { drizzle }] = await Promise.all([
+			import(bunSqliteModule) as Promise<{ Database: typeof import('bun:sqlite').Database }>,
+			import(drizzleBunModule) as Promise<{ drizzle: typeof import('drizzle-orm/bun-sqlite').drizzle }>,
+		])
 
 		const filename = databaseUrl.slice('sqlite:'.length) || ':memory:'
 		const sqlite = new Database(filename)
