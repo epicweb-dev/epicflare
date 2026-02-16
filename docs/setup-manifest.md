@@ -6,17 +6,22 @@ This document describes the infrastructure and secrets that epicflare expects.
 
 Create or provide the following resources (prod + preview):
 
-- D1 database
-  - `database_name`: `<app-name>`
-  - `database_name` (preview): `<app-name>-preview`
 - KV namespace for OAuth/session storage
   - `binding`: `OAUTH_KV`
   - title (prod): `<app-name>-oauth`
   - title (preview): `<app-name>-oauth-preview`
 
-The post-download script will write the resulting IDs into `wrangler.jsonc` and
-replace template `epicflare` branding tokens with your app name across text
-files.
+The post-download script can write the KV IDs into `wrangler.jsonc` and replace
+template `epicflare` branding tokens with your app name across text files.
+
+## Neon resources
+
+Create Neon Postgres databases/branches for:
+
+- production
+- preview (PR deploys)
+
+You will use the resulting connection strings as `DATABASE_URL` (Worker secret).
 
 ## Optional Cloudflare offerings
 
@@ -44,6 +49,8 @@ Use Cloudflare's built-in rate limiting rules instead of custom Worker logic.
 Local development uses `.env`, which Wrangler loads automatically:
 
 - `COOKIE_SECRET` (generate with `openssl rand -hex 32`)
+- `DATABASE_URL` (required; Postgres connection string or local `pglite:` for
+  tests)
 - `APP_BASE_URL` (optional; defaults to request origin, example
   `https://app.example.com`)
 - `RESEND_API_BASE_URL` (optional, defaults to `https://api.resend.com`)
@@ -56,9 +63,10 @@ Tests use `.env.test` when `CLOUDFLARE_ENV=test` (set by Playwright).
 
 Configure these secrets for deploy workflows:
 
-- `CLOUDFLARE_API_TOKEN` (Workers deploy + D1 edit access on the correct
-  account)
+- `CLOUDFLARE_API_TOKEN` (Workers deploy access on the correct account)
 - `COOKIE_SECRET` (same format as local)
+- `DATABASE_URL` (Neon Postgres connection string for production)
+- `DATABASE_URL_PREVIEW` (optional; Neon Postgres connection string for preview)
 - `RESEND_API_KEY` (optional, required to send via Resend)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
 

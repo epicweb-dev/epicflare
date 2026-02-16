@@ -3,7 +3,9 @@ import { beforeAll, expect, test } from 'bun:test'
 import { RequestContext } from 'remix/fetch-router'
 import { setAuthSessionSecret } from '#server/auth-session.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
+import { createDb, sql } from '#src/db/client.ts'
 import { createAuthHandler } from './auth.ts'
+import { z } from 'zod'
 
 const testCookieSecret = 'test-cookie-secret-0123456789abcdef0123456789'
 
@@ -25,115 +27,41 @@ function createAuthRequest(
 }
 
 type TestUser = {
-	id: number
 	email: string
-	username: string
 	password_hash: string
 }
 
-function createTestDb() {
-	let nextId = 1
-	const users = new Map<string, TestUser>()
-	const db = {
-		prepare(query: string) {
-			return {
-				bind(...params: Array<unknown>) {
-					const normalizedQuery = query
-						.replace(/\s+/g, ' ')
-						.trim()
-						.toLowerCase()
-					return {
-						async first() {
-							if (normalizedQuery.startsWith('select id from users')) {
-								const email = String(params[0] ?? '').toLowerCase()
-								const user = users.get(email)
-								return user ? { id: user.id } : null
-							}
-							if (
-								normalizedQuery.startsWith(
-									'select id, password_hash from users where email = ?',
-								)
-							) {
-								const email = String(params[0] ?? '').toLowerCase()
-								const user = users.get(email)
-								return user
-									? { id: user.id, password_hash: user.password_hash }
-									: null
-							}
-							if (
-								normalizedQuery.startsWith('insert into users') &&
-								normalizedQuery.includes('returning id')
-							) {
-								const [username, email, passwordHash] = params as Array<string>
-								const normalizedEmail = String(email).toLowerCase()
-								if (users.has(normalizedEmail)) {
-									throw new Error('UNIQUE constraint failed: users.email')
-								}
-								const user: TestUser = {
-									id: nextId,
-									email: String(email),
-									username: String(username),
-									password_hash: String(passwordHash),
-								}
-								nextId += 1
-								users.set(normalizedEmail, user)
-								return { id: user.id }
-							}
-							return null
-						},
-						async run() {
-							if (normalizedQuery.startsWith('insert into users')) {
-								const [username, email, passwordHash] = params as Array<string>
-								const normalizedEmail = String(email).toLowerCase()
-								if (users.has(normalizedEmail)) {
-									throw new Error('UNIQUE constraint failed: users.email')
-								}
-								const user: TestUser = {
-									id: nextId,
-									email: String(email),
-									username: String(username),
-									password_hash: String(passwordHash),
-								}
-								nextId += 1
-								users.set(normalizedEmail, user)
-								return { success: true }
-							}
-							if (
-								normalizedQuery.startsWith(
-									'update users set password_hash = ? where id = ?',
-								)
-							) {
-								const [passwordHash, id] = params as Array<unknown>
-								const user = Array.from(users.values()).find(
-									(entry) => entry.id === Number(id),
-								)
-								if (user) {
-									user.password_hash = String(passwordHash)
-								}
-								return { success: true }
-							}
-							return { success: true }
-						},
-					}
-				},
-			}
-		},
-	} as unknown as D1Database
-
-	async function addUser(email: string, password: string) {
-		const passwordHash = await createPasswordHash(password)
-		const user: TestUser = {
-			id: nextId,
-			email,
-			username: email,
-			password_hash: passwordHash,
-		}
-		nextId += 1
-		users.set(email.toLowerCase(), user)
-		return user
+function createTestEnv() {
+	const databaseId = crypto.randomUUID()
+	return {
+		COOKIE_SECRET: testCookieSecret,
+		// Use a named in-memory database so multiple connections share state.
+		DATABASE_URL: `sqlite:file:auth-handler-${databaseId}?mode=memory&cache=shared`,
 	}
+}
 
-	return { db, users, addUser }
+const userLookupSchema = z.object({
+	id: z.number(),
+	email: z.string(),
+	password_hash: z.string(),
+})
+
+async function insertUser(
+	env: ReturnType<typeof createTestEnv>,
+	user: {
+		email: string
+		password: string
+	},
+) {
+	const db = createDb(env)
+	const passwordHash = await createPasswordHash(user.password)
+	await db.exec(
+		sql`INSERT INTO users (username, email, password_hash) VALUES (${user.email}, ${user.email}, ${passwordHash});`,
+	)
+	return {
+		email: user.email,
+		password_hash: passwordHash,
+	} satisfies TestUser
 }
 
 beforeAll(() => {
@@ -141,10 +69,9 @@ beforeAll(() => {
 })
 
 test('auth handler returns 400 for invalid JSON', async () => {
-	const testDb = createTestDb()
+	const env = createTestEnv()
 	const handler = createAuthHandler({
-		COOKIE_SECRET: testCookieSecret,
-		APP_DB: testDb.db,
+		...env,
 	})
 	const authRequest = createAuthRequest('{', 'http://example.com/auth', handler)
 	const response = await authRequest.run()
@@ -154,11 +81,8 @@ test('auth handler returns 400 for invalid JSON', async () => {
 })
 
 test('auth handler returns 400 for missing fields', async () => {
-	const testDb = createTestDb()
-	const handler = createAuthHandler({
-		COOKIE_SECRET: testCookieSecret,
-		APP_DB: testDb.db,
-	})
+	const env = createTestEnv()
+	const handler = createAuthHandler(env)
 	const authRequest = createAuthRequest(
 		{ email: 'a@b.com' },
 		'http://example.com/auth',
@@ -173,11 +97,8 @@ test('auth handler returns 400 for missing fields', async () => {
 })
 
 test('auth handler rejects login with unknown user', async () => {
-	const testDb = createTestDb()
-	const handler = createAuthHandler({
-		COOKIE_SECRET: testCookieSecret,
-		APP_DB: testDb.db,
-	})
+	const env = createTestEnv()
+	const handler = createAuthHandler(env)
 	const authRequest = createAuthRequest(
 		{ email: 'a@b.com', password: 'secret', mode: 'login' },
 		'http://example.com/auth',
@@ -190,11 +111,8 @@ test('auth handler rejects login with unknown user', async () => {
 })
 
 test('auth handler creates a user and cookie for signup', async () => {
-	const testDb = createTestDb()
-	const handler = createAuthHandler({
-		COOKIE_SECRET: testCookieSecret,
-		APP_DB: testDb.db,
-	})
+	const env = createTestEnv()
+	const handler = createAuthHandler(env)
 	const authRequest = createAuthRequest(
 		{ email: 'new@b.com', password: 'secret', mode: 'signup' },
 		'http://example.com/auth',
@@ -204,18 +122,20 @@ test('auth handler creates a user and cookie for signup', async () => {
 	expect(response.status).toBe(200)
 	const payload = await response.json()
 	expect(payload).toEqual({ ok: true, mode: 'signup' })
-	expect(testDb.users.has('new@b.com')).toBe(true)
+	const db = createDb(env)
+	const user = await db.queryFirst(
+		sql`SELECT id, email, password_hash FROM users WHERE email = ${'new@b.com'}`,
+		userLookupSchema,
+	)
+	expect(user?.email).toBe('new@b.com')
 	const setCookie = response.headers.get('Set-Cookie') ?? ''
 	expect(setCookie).toContain('epicflare_session=')
 })
 
 test('auth handler returns ok with a session cookie for login', async () => {
-	const testDb = createTestDb()
-	const handler = createAuthHandler({
-		COOKIE_SECRET: testCookieSecret,
-		APP_DB: testDb.db,
-	})
-	await testDb.addUser('a@b.com', 'secret')
+	const env = createTestEnv()
+	const handler = createAuthHandler(env)
+	await insertUser(env, { email: 'a@b.com', password: 'secret' })
 	const authRequest = createAuthRequest(
 		{ email: 'a@b.com', password: 'secret', mode: 'login' },
 		'http://example.com/auth',
@@ -230,12 +150,9 @@ test('auth handler returns ok with a session cookie for login', async () => {
 })
 
 test('auth handler sets Secure cookie over https', async () => {
-	const testDb = createTestDb()
-	const handler = createAuthHandler({
-		COOKIE_SECRET: testCookieSecret,
-		APP_DB: testDb.db,
-	})
-	await testDb.addUser('secure@b.com', 'secret')
+	const env = createTestEnv()
+	const handler = createAuthHandler(env)
+	await insertUser(env, { email: 'secure@b.com', password: 'secret' })
 	const authRequest = createAuthRequest(
 		{ email: 'secure@b.com', password: 'secret', mode: 'login' },
 		'https://example.com/auth',

@@ -35,7 +35,9 @@
 		"../cli.ts",
 		"../docs/post-download.ts",
 		"../mcp/mcp-server-e2e.test.ts",
+		"../scripts/**/*.ts",
 		"../tools/**/*.ts",
+		"../src/**/*.ts",
 		"../shared/**/*.ts"
 	]
 }

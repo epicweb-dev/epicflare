@@ -5,7 +5,7 @@ import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
 import { type AppEnv } from '#types/env-schema.ts'
-import { createDb, sql } from '#worker/db.ts'
+import { createDb, sql } from '#src/db/client.ts'
 import type routes from '#server/routes.ts'
 
 type AuthMode = 'login' | 'signup'
@@ -15,9 +15,22 @@ function isAuthMode(value: string): value is AuthMode {
 }
 
 function isUniqueConstraintError(error: unknown) {
-	return (
-		error instanceof Error && /unique constraint failed/i.test(error.message)
-	)
+	if (
+		error instanceof Error &&
+		/unique constraint failed/i.test(error.message)
+	) {
+		return true
+	}
+	if (
+		error instanceof Error &&
+		/duplicate key value violates unique constraint/i.test(error.message)
+	) {
+		return true
+	}
+	if (error && typeof error === 'object' && 'code' in error) {
+		return (error as { code?: unknown }).code === '23505'
+	}
+	return false
 }
 
 const userLookupSchema = z.object({ id: z.number(), password_hash: z.string() })
@@ -26,7 +39,7 @@ const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 
 export function createAuthHandler(appEnv: AppEnv) {
-	const db = createDb(appEnv.APP_DB)
+	const db = createDb(appEnv)
 
 	return {
 		middleware: [],

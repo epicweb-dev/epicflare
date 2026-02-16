@@ -8,7 +8,7 @@ This folder documents the important runtime architecture for `epicflare`.
   Worker.
 - [Authentication](./authentication.md): app session auth and OAuth-protected
   MCP auth.
-- [Data Storage](./data-storage.md): what is stored in D1, KV, and Durable
+- [Data Storage](./data-storage.md): what is stored in Postgres, KV, and Durable
   Objects.
 
 ## Source of truth in code

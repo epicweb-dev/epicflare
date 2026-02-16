@@ -10,7 +10,7 @@ import { toHex } from '#server/hex.ts'
 import { verifyPassword } from '#server/password-hash.ts'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
-import { createDb, sql } from './db.ts'
+import { createDb, sql } from '#src/db/client.ts'
 import { wantsJson } from './utils.ts'
 
 export const oauthPaths = {
@@ -238,7 +238,7 @@ export async function handleAuthorizeRequest(
 
 	let approvedEmail = ''
 	if (hasFormCredentials) {
-		const db = createDb(env.APP_DB)
+		const db = createDb(env)
 		const userRecord = await db.queryFirst(
 			sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
 			userRecordSchema,

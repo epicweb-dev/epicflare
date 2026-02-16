@@ -12,4 +12,14 @@ declare global {
 	}
 }
 
+// Worker builds include `src/db/client.ts`, which contains Bun-only code paths
+// guarded behind `DATABASE_URL` schemes. Provide minimal module declarations so
+// worker typechecking does not require Bun's ambient types.
+declare module 'bun:sqlite' {
+	// Minimal surface used by `src/db/client.ts` and `drizzle-orm/bun-sqlite`.
+	export class Database {
+		constructor(filename?: string)
+	}
+}
+
 export {}

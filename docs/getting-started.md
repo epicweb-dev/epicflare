@@ -73,9 +73,10 @@ bun ./docs/post-download.ts --guided
 
 2. Configure GitHub Actions secrets for deploy:
 
-- `CLOUDFLARE_API_TOKEN` (Workers deploy + D1 edit access on the correct
-  account)
+- `CLOUDFLARE_API_TOKEN` (Workers deploy access on the correct account)
 - `COOKIE_SECRET` (generate with `openssl rand -hex 32` or similar)
+- `DATABASE_URL` (Neon Postgres connection string for production)
+- `DATABASE_URL_PREVIEW` (optional; Neon Postgres connection string for preview)
 
 3. Deploy:
 
@@ -86,11 +87,11 @@ bun run deploy
 ## Agent/CI setup
 
 Use non-interactive flags or `--defaults`. The `--defaults` flag skips prompts
-and uses defaults based on the current directory name (worker/package/database
-names), plus a generated cookie secret.
+and uses defaults based on the current directory name (worker/package names),
+plus a generated cookie secret.
 
 ```
-bun ./docs/post-download.ts --defaults --database-id <id> --preview-database-id <id> --kv-namespace-id <id>
+bun ./docs/post-download.ts --defaults --kv-namespace-id <id>
 ```
 
 To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
@@ -104,8 +105,6 @@ To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
 - `--dry-run`: show changes without writing or deleting the script.
 - `--json`: print a JSON summary.
 - `--app-name`, `--worker-name`, `--package-name`
-- `--database-name`, `--database-id`
-- `--preview-database-name`, `--preview-database-id`
 - `--kv-namespace-id`, `--kv-namespace-preview-id`
 - `--kv-namespace-title`, `--kv-namespace-preview-title` (used when creating)
 

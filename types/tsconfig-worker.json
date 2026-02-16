@@ -32,6 +32,7 @@
 		"./env.d.ts",
 		"./env-schema.ts",
 		"./worker-configuration.d.ts",
+		"../src/**/*.ts",
 		"../shared/**/*.ts",
 		"../worker/**/*.ts",
 		"../server/**/*.ts",

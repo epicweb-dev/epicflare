@@ -14,147 +14,14 @@ import {
 	type ContentBlock,
 } from '@modelcontextprotocol/sdk/types.js'
 import getPort from 'get-port'
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))
-const migrationsDir = join(projectRoot, 'migrations')
 const bunBin = process.execPath
 const defaultTimeoutMs = 60_000
 
-const passwordHashPrefix = 'pbkdf2_sha256'
-const passwordSaltBytes = 16
-const passwordHashBytes = 32
-const passwordHashIterations = 100_000
-
 function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function toHex(bytes: Uint8Array) {
-	return Array.from(bytes)
-		.map((value) => value.toString(16).padStart(2, '0'))
-		.join('')
-}
-
-async function createPasswordHash(password: string) {
-	const salt = crypto.getRandomValues(new Uint8Array(passwordSaltBytes))
-	const key = await crypto.subtle.importKey(
-		'raw',
-		new TextEncoder().encode(password),
-		'PBKDF2',
-		false,
-		['deriveBits'],
-	)
-	const derivedBits = await crypto.subtle.deriveBits(
-		{
-			name: 'PBKDF2',
-			salt,
-			iterations: passwordHashIterations,
-			hash: 'SHA-256',
-		},
-		key,
-		passwordHashBytes * 8,
-	)
-	return `${passwordHashPrefix}$${passwordHashIterations}$${toHex(salt)}$${toHex(
-		new Uint8Array(derivedBits),
-	)}`
-}
-
-function escapeSql(value: string) {
-	return value.replace(/'/g, "''")
-}
-
-async function runWrangler(args: Array<string>) {
-	const proc = Bun.spawn({
-		cmd: [bunBin, 'x', 'wrangler', ...args],
-		cwd: projectRoot,
-		stdout: 'pipe',
-		stderr: 'pipe',
-	})
-	const stdoutPromise = proc.stdout
-		? new Response(proc.stdout).text()
-		: Promise.resolve('')
-	const stderrPromise = proc.stderr
-		? new Response(proc.stderr).text()
-		: Promise.resolve('')
-	const exitCode = await proc.exited
-	const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise])
-	if (exitCode !== 0) {
-		throw new Error(
-			`wrangler ${args.join(' ')} failed (${exitCode}). ${stderr || stdout}`,
-		)
-	}
-	return { stdout, stderr }
-}
-
-async function createTestDatabase() {
-	const persistDir = await mkdtemp(join(tmpdir(), 'epicflare-mcp-e2e-'))
-	const user = {
-		email: `mcp-${crypto.randomUUID()}@example.com`,
-		password: `pw-${crypto.randomUUID()}`,
-	}
-
-	await applyMigrations(persistDir)
-
-	const passwordHash = await createPasswordHash(user.password)
-	const username = user.email.split('@')[0] || 'user'
-	const insertSql = `INSERT INTO users (username, email, password_hash) VALUES ('${escapeSql(
-		username,
-	)}', '${escapeSql(user.email)}', '${escapeSql(passwordHash)}');`
-
-	await runWrangler([
-		'd1',
-		'execute',
-		'APP_DB',
-		'--local',
-		'--env',
-		'test',
-		'--persist-to',
-		persistDir,
-		'--command',
-		insertSql,
-	])
-
-	return {
-		persistDir,
-		user,
-		[Symbol.asyncDispose]: async () => {
-			await rm(persistDir, { recursive: true, force: true })
-		},
-	}
-}
-
-async function applyMigrations(persistDir: string) {
-	const migrationFiles = await listMigrationFiles()
-	if (migrationFiles.length === 0) {
-		throw new Error('No migration files found in migrations directory.')
-	}
-
-	for (const migrationFile of migrationFiles) {
-		await runWrangler([
-			'd1',
-			'execute',
-			'APP_DB',
-			'--local',
-			'--env',
-			'test',
-			'--persist-to',
-			persistDir,
-			'--file',
-			join('migrations', migrationFile),
-		])
-	}
-}
-
-async function listMigrationFiles() {
-	const entries = await readdir(migrationsDir, { withFileTypes: true })
-	return entries
-		.filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-		.map((entry) => entry.name)
-		.sort((left, right) => left.localeCompare(right))
 }
 
 function captureOutput(stream: ReadableStream<Uint8Array> | null) {
@@ -256,7 +123,7 @@ async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
 	}
 }
 
-async function startDevServer(persistDir: string) {
+async function startDevServer() {
 	const port = await getPort({ host: '127.0.0.1' })
 	const inspectorPortBase =
 		port + 10_000 <= 65_535 ? port + 10_000 : Math.max(1, port - 10_000)
@@ -283,8 +150,6 @@ async function startDevServer(persistDir: string) {
 			String(inspectorPort),
 			'--ip',
 			'127.0.0.1',
-			'--persist-to',
-			persistDir,
 			'--show-interactive-dev-session=false',
 			'--log-level',
 			'error',
@@ -454,12 +319,35 @@ async function createMcpClient(
 	}
 }
 
+async function ensureUserExists(
+	origin: string,
+	user: { email: string; password: string },
+) {
+	const response = await fetch(new URL('/auth', origin), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ ...user, mode: 'signup' }),
+	})
+	if (response.ok || response.status === 409) {
+		await response.body?.cancel()
+		return
+	}
+	const payload = await response.text().catch(() => '')
+	throw new Error(`Failed to seed user (${response.status}). ${payload}`)
+}
+
 test(
 	'mcp server lists tools after oauth flow',
 	async () => {
-		await using database = await createTestDatabase()
-		await using server = await startDevServer(database.persistDir)
-		await using mcpClient = await createMcpClient(server.origin, database.user)
+		const user = {
+			email: `mcp-${crypto.randomUUID()}@example.com`,
+			password: `pw-${crypto.randomUUID()}`,
+		}
+		await using server = await startDevServer()
+		await ensureUserExists(server.origin, user)
+		await using mcpClient = await createMcpClient(server.origin, user)
 
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
@@ -472,9 +360,13 @@ test(
 test(
 	'mcp server executes do_math tool',
 	async () => {
-		await using database = await createTestDatabase()
-		await using server = await startDevServer(database.persistDir)
-		await using mcpClient = await createMcpClient(server.origin, database.user)
+		const user = {
+			email: `mcp-${crypto.randomUUID()}@example.com`,
+			password: `pw-${crypto.randomUUID()}`,
+		}
+		await using server = await startDevServer()
+		await ensureUserExists(server.origin, user)
+		await using mcpClient = await createMcpClient(server.origin, user)
 
 		const result = await mcpClient.client.callTool({
 			name: 'do_math',
