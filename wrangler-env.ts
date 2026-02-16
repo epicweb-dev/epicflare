@@ -23,6 +23,10 @@ if (!hasEnvFlag) {
 
 let resolvedPort = process.env.PORT
 
+if (isDevCommand && hasPortFlag) {
+	resolvedPort = getPortArg(args) ?? resolvedPort
+}
+
 if (isDevCommand && !hasPortFlag) {
 	if (process.env.PORT) {
 		resolvedPort = process.env.PORT
@@ -118,6 +122,22 @@ if (isDevCommand && resolvedPort) {
 	}
 }
 process.exit(exitCode)
+
+function getPortArg(argumentList: ReadonlyArray<string>) {
+	const inlinePortArg = argumentList.find((arg) => arg.startsWith('--port='))
+	if (inlinePortArg) {
+		const [, value] = inlinePortArg.split('=')
+		return value || undefined
+	}
+
+	const portIndex = argumentList.findIndex((arg) => arg === '--port')
+	if (portIndex >= 0) {
+		const value = argumentList[portIndex + 1]
+		return value || undefined
+	}
+
+	return undefined
+}
 
 async function waitForPortFree(port: number, timeoutMs: number) {
 	const start = Date.now()
