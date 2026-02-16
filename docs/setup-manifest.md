@@ -18,6 +18,14 @@ The post-download script will write the resulting IDs into `wrangler.jsonc` and
 replace template `epicflare` branding tokens with your app name across text
 files.
 
+## Optional Cloudflare offerings
+
+The starter intentionally keeps the default footprint small. If you want to add
+additional Cloudflare offerings (R2, Workers AI, AI Gateway, or a separate KV
+namespace for app data), see:
+
+- `docs/cloudflare-offerings.md`
+
 ## Rate limiting (Cloudflare dashboard)
 
 Use Cloudflare's built-in rate limiting rules instead of custom Worker logic.

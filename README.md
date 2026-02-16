@@ -67,6 +67,7 @@ Request → worker/index.ts
 | ------------------------------------------------------------------ | ------------------------------------ |
 | [`docs/getting-started.md`](./docs/getting-started.md)             | Setup, environment variables, deploy |
 | [`docs/environment-variables.md`](./docs/environment-variables.md) | Adding new env vars                  |
+| [`docs/cloudflare-offerings.md`](./docs/cloudflare-offerings.md)   | Optional Cloudflare integrations     |
 | [`docs/agents/setup.md`](./docs/agents/setup.md)                   | Local development and verification   |
 
 ---
