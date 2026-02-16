@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: epicflare
+    ports:
+      - "5432:5432"
+    volumes:
+      - epicflare_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d epicflare"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  epicflare_postgres_data:

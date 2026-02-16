@@ -15,9 +15,9 @@ Quick notes for getting a local epicflare environment running.
 
 - Copy `.env.test` to `.env` before starting any work, then update secrets as
   needed.
-- Ensure `DATABASE_URL` is set in `.env` (Neon connection string for dev, or use
-  the local Postgres Docker setup described in `docs/agents/neon-drizzle.md`).
-- When using Postgres locally, run `bun run db:migrate` before starting the app.
+- Ensure `DATABASE_URL` is set in `.env` (Neon for dev, `pglite:` for fully
+  offline dev, or local Postgres via Docker). See `docs/agents/neon-drizzle.md`.
+- When using Postgres, run `bun run db:migrate` before starting the app.
 - `bun run dev` (starts mock API servers automatically and sets
   `RESEND_API_BASE_URL` to the local mock host).
 - Add new mock API servers by following `docs/agents/mock-api-servers.md`.
