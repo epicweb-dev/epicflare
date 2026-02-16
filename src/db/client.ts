@@ -56,24 +56,91 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 	const databaseUrl = env.DATABASE_URL
 
 	if (databaseUrl.startsWith('sqlite:')) {
-		// Bun-only unit test / local script path.
-		// Keep module specifiers non-literal so Wrangler/esbuild does not try to
-		// resolve/bundle Bun built-ins for Workers builds.
-		if (typeof (globalThis as { Bun?: unknown }).Bun === 'undefined') {
+		const filename = databaseUrl.slice('sqlite:'.length) || ':memory:'
+
+		if (typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined') {
+			// Bun-only unit test / local script path.
+			// Keep module specifiers non-literal so Wrangler/esbuild does not try to
+			// resolve/bundle Bun built-ins for Workers builds.
+			const bunSqliteModule = 'bun:' + 'sqlite'
+			const drizzleBunModule = 'drizzle-orm/' + 'bun-sqlite'
+			const bunSqlite = (await import(bunSqliteModule)) as any
+			const drizzleBun = (await import(drizzleBunModule)) as any
+			const Database = bunSqlite.Database as new (filename: string) => unknown
+			const drizzle = drizzleBun.drizzle as (client: unknown) => any
+
+			const sqlite = new Database(filename)
+			const db = drizzle(sqlite)
+			const all = async (query: unknown) =>
+				db.all(query as never) as Array<QueryResultRow>
+			const run = async (query: unknown) => {
+				db.run(query as never)
+			}
+			let schemaPromise: Promise<void> | null = null
+
+			async function ensureSchema() {
+				if (!schemaPromise) {
+					schemaPromise = (async () => {
+						await run(sql`
+							CREATE TABLE IF NOT EXISTS users (
+								id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+								username TEXT NOT NULL UNIQUE,
+								email TEXT NOT NULL UNIQUE,
+								password_hash TEXT NOT NULL,
+								created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+								updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+							);
+						`)
+						await run(
+							sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);`,
+						)
+						await run(
+							sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`,
+						)
+
+						await run(sql`
+							CREATE TABLE IF NOT EXISTS password_resets (
+								id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+								user_id INTEGER NOT NULL,
+								token_hash TEXT NOT NULL UNIQUE,
+								expires_at INTEGER NOT NULL,
+								created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+								FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+							);
+						`)
+						await run(
+							sql`CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);`,
+						)
+						await run(
+							sql`CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash);`,
+						)
+					})()
+				}
+				return schemaPromise
+			}
+
+			return {
+				dialect: 'sqlite',
+				all,
+				run,
+				ensureSchema,
+			}
+		}
+
+		// Workers/Node fallback: use SQL.js (SQLite in JS) so E2E tests can run
+		// fully offline under `wrangler dev --local`.
+		if (filename.trim() && filename.trim() !== ':memory:') {
 			throw new Error(
-				'SQLite DATABASE_URL is only supported when running under Bun.',
+				'File-backed sqlite: URLs are only supported under Bun. Use `sqlite:` (in-memory) for Workers.',
 			)
 		}
 
-		const bunSqliteModule = 'bun:' + 'sqlite'
-		const drizzleBunModule = 'drizzle-orm/' + 'bun-sqlite'
-		const bunSqlite = (await import(bunSqliteModule)) as any
-		const drizzleBun = (await import(drizzleBunModule)) as any
-		const Database = bunSqlite.Database as new (filename: string) => unknown
-		const drizzle = drizzleBun.drizzle as (client: unknown) => any
+		const { drizzle } = await import('drizzle-orm/sql-js')
+		const initSqlJs = (await import('sql.js/dist/sql-asm.js'))
+			.default as unknown as (config?: unknown) => Promise<any>
 
-		const filename = databaseUrl.slice('sqlite:'.length) || ':memory:'
-		const sqlite = new Database(filename)
+		const SQL = await initSqlJs({})
+		const sqlite = new SQL.Database()
 		const db = drizzle(sqlite)
 		const all = async (query: unknown) =>
 			db.all(query as never) as Array<QueryResultRow>

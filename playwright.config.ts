@@ -28,7 +28,7 @@ export default defineConfig({
 			COOKIE_SECRET:
 				process.env.COOKIE_SECRET ??
 				'TEST_ONLY_COOKIE_SECRET_32_CHARS_MINIMUM____',
-			DATABASE_URL: process.env.DATABASE_URL ?? 'pglite:',
+			DATABASE_URL: process.env.DATABASE_URL ?? 'sqlite:',
 		},
 	},
 	projects: [
