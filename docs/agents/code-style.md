@@ -19,6 +19,12 @@ file style first, then run the formatter.
 - Prefer named exports.
 - Use default exports only when a framework contract requires them.
 
+## Imports
+
+- Prefer repo-root `#...` imports (configured via `package.json` `"imports"`)
+  over parent-relative `../...` paths.
+- Keep `./...` imports for same-folder files.
+
 ## Type conventions
 
 - Prefer `type` aliases for object shapes and unions.
