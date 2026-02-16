@@ -229,6 +229,109 @@ Add a second entry in `kv_namespaces` alongside `OAUTH_KV`:
 
 ## If you want a higher-level AI integration
 
-If you're looking for a good way to integrate AI (streaming, tool calls, typed
-outputs, UI state coordination), consider TanStack AI and specifically the
-Cloudflare adapter.
+If you're looking for a higher-level way to integrate AI (streaming responses,
+tool/function calling, typed outputs, and a clean client/server contract),
+consider TanStack AI.
+
+This starter is not a React app, so the main thing to know is: TanStack AI is
+framework-agnostic at its core. You can use:
+
+- `@tanstack/ai` on the server (Workers) to run models and tools
+- `@tanstack/ai-client` in any UI (headless) to manage chat state + streaming
+
+You only need the React/Solid packages if your UI framework benefits from their
+hooks.
+
+### Cloudflare integration: `@cloudflare/tanstack-ai`
+
+Cloudflare maintains an official integration package that makes TanStack AI work
+well with both:
+
+- Workers AI (`env.AI` binding)
+- AI Gateway (`env.AI.gateway("<gateway-id>")`)
+
+It includes ready-to-use adapters for chat, image generation, transcription,
+text-to-speech, and summarization for Workers AI models, plus AI Gateway routing
+for OpenAI/Anthropic/Gemini/Grok/OpenRouter. See:
+
+- https://github.com/cloudflare/ai/tree/main/packages/tanstack-ai
+
+#### Install (Bun)
+
+- `bun add @tanstack/ai @tanstack/ai-client @cloudflare/tanstack-ai`
+
+If you want to route to third-party providers through AI Gateway, also install
+the TanStack provider packages you use (for example OpenAI or Anthropic):
+
+- `bun add @tanstack/ai-openai`
+- `bun add @tanstack/ai-anthropic`
+
+#### Bindings (`wrangler.jsonc`)
+
+Add the Workers AI binding in each environment you want:
+
+```jsonc
+"ai": { "binding": "AI" }
+```
+
+Then your Worker receives `env.AI` at runtime.
+
+#### Server-first usage (no React required)
+
+TanStack AI supports multiple streaming formats. A common pattern is:
+
+1. A Worker endpoint accepts `{ messages, conversationId? }` as JSON
+2. Server runs `chat(...)` and returns a streaming `Response`
+3. Your UI uses `@tanstack/ai-client` with either:
+   - `fetchHttpStream("/api/chat")` (newline-delimited JSON), or
+   - `fetchServerSentEvents("/api/chat")` (SSE)
+
+Workers AI example (direct binding, no third-party API keys):
+
+```ts
+import { createWorkersAiChat } from '@cloudflare/tanstack-ai'
+import { chat, toHttpResponse } from '@tanstack/ai'
+
+const adapter = createWorkersAiChat('@cf/meta/llama-4-scout-17b-16e-instruct', {
+	binding: env.AI,
+})
+
+const stream = chat({
+	adapter,
+	stream: true,
+	messages,
+	conversationId,
+})
+
+return toHttpResponse(stream)
+```
+
+AI Gateway example (route OpenAI requests through your gateway):
+
+```ts
+import { createOpenAiChat } from '@cloudflare/tanstack-ai'
+import { chat, toHttpResponse } from '@tanstack/ai'
+
+const adapter = createOpenAiChat('gpt-4o', {
+	binding: env.AI.gateway('my-gateway-id'),
+	// Depending on your gateway mode, you may not need to pass an API key here.
+	// apiKey: env.OPENAI_API_KEY,
+})
+
+const stream = chat({ adapter, stream: true, messages, conversationId })
+return toHttpResponse(stream)
+```
+
+Client usage (headless, works with any UI toolkit) looks like:
+
+```ts
+import { ChatClient, fetchHttpStream } from '@tanstack/ai-client'
+
+const client = new ChatClient({
+	connection: fetchHttpStream('/api/chat'),
+	onMessagesChange: (next) => {
+		// Render however your app renders (not tied to React)
+		console.log(next)
+	},
+})
+```
