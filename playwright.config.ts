@@ -20,10 +20,15 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: true,
 		env: {
+			...process.env,
 			CLOUDFLARE_ENV: 'test',
 			PORT: playwrightPort,
 			WRANGLER_LOG_PATH: './logs.local',
 			WRANGLER_DISABLE_REQUEST_BODY_DRAINING: 'true',
+			COOKIE_SECRET:
+				process.env.COOKIE_SECRET ??
+				'TEST_ONLY_COOKIE_SECRET_32_CHARS_MINIMUM____',
+			DATABASE_URL: process.env.DATABASE_URL ?? 'pglite:',
 		},
 	},
 	projects: [

@@ -13,7 +13,7 @@ export type DatabaseEnv = {
 	 * `drizzle-orm/neon-http`.
 	 *
 	 * Example value: `localhost:6543/v1`
-	 * (protocol intentionally omitted; `@neondatabase/serverless` chooses ws/wss)
+	 * (protocol intentionally omitted; this code uses insecure `ws://` for local dev)
 	 */
 	DATABASE_WS_PROXY?: string
 }
@@ -202,18 +202,29 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 		const { Pool } = await import('@neondatabase/serverless')
 
 		neonConfig.wsProxy = env.DATABASE_WS_PROXY
+		// Local wsproxy runs without TLS by default.
+		neonConfig.useSecureWebSocket = false
 		// `neon-serverless` needs a WebSocket implementation (Workers provide this).
 		// Avoid relying on DOM lib types for tooling TS configs.
 		neonConfig.webSocketConstructor = (
 			globalThis as unknown as { WebSocket?: unknown }
 		).WebSocket as any
 
-		const pool = new Pool({ connectionString: databaseUrl })
-		const db = drizzle(pool)
-		const execute = (query: unknown) => db.execute(query as never)
-		const all = async (query: unknown) => extractRows(await execute(query))
+		async function executeOnce(query: unknown) {
+			// Cloudflare Workers cannot keep outbound WebSockets alive across
+			// requests. Create/close a pool per operation when using wsproxy.
+			const pool = new Pool({ connectionString: databaseUrl })
+			const db = drizzle(pool)
+			try {
+				return await db.execute(query as never)
+			} finally {
+				await pool.end()
+			}
+		}
+
+		const all = async (query: unknown) => extractRows(await executeOnce(query))
 		const run = async (query: unknown) => {
-			await execute(query)
+			await executeOnce(query)
 		}
 
 		return {

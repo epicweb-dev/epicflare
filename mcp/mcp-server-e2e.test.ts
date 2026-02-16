@@ -151,8 +151,6 @@ async function startDevServer() {
 			'--ip',
 			'127.0.0.1',
 			'--show-interactive-dev-session=false',
-			'--log-level',
-			'error',
 		],
 		cwd: projectRoot,
 		stdout: 'pipe',
