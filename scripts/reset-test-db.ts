@@ -1,22 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-const databaseUrl = process.env.DATABASE_URL ?? 'pglite:./.tmp/pglite-test'
-
-if (databaseUrl.startsWith('pglite:')) {
-	const dataDir = databaseUrl.slice('pglite:'.length).trim()
-	if (!dataDir) {
-		throw new Error(
-			'Cannot reset an in-memory PGlite database. Set DATABASE_URL to a persistent directory like `pglite:./.tmp/pglite-test`.',
-		)
-	}
-
-	const resolvedDir = path.resolve(process.cwd(), dataDir)
-	await fs.rm(resolvedDir, { recursive: true, force: true })
-	await fs.mkdir(resolvedDir, { recursive: true })
-	console.log(`Reset PGlite database directory: ${resolvedDir}`)
-	process.exit(0)
-}
+const databaseUrl = process.env.DATABASE_URL ?? 'sqlite:./.tmp/test.sqlite'
 
 if (databaseUrl.startsWith('sqlite:')) {
 	const filename = databaseUrl.slice('sqlite:'.length).trim()
@@ -38,5 +23,5 @@ if (databaseUrl.startsWith('sqlite:')) {
 }
 
 throw new Error(
-	`Reset is only supported for offline test DBs (sqlite:/pglite:). Got: ${databaseUrl}`,
+	`Reset is only supported for offline sqlite: test DBs. Got: ${databaseUrl}`,
 )

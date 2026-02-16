@@ -22,7 +22,7 @@ type ZodSchema<T> = z.ZodType<T>
 type QueryResultRow = Record<string, unknown>
 
 type InternalClient = {
-	dialect: 'postgres' | 'sqlite' | 'pglite'
+	dialect: 'postgres' | 'sqlite'
 	all: (query: unknown) => Promise<Array<QueryResultRow>>
 	run: (query: unknown) => Promise<void>
 	ensureSchema?: () => Promise<void>
@@ -202,69 +202,6 @@ async function createInternalClient(env: DatabaseEnv): Promise<InternalClient> {
 
 		return {
 			dialect: 'sqlite',
-			all,
-			run,
-			ensureSchema,
-		}
-	}
-
-	if (databaseUrl.startsWith('pglite:')) {
-		const { drizzle } = await import('drizzle-orm/pglite')
-		const { PGlite } = await import('@electric-sql/pglite')
-
-		const dataDir = databaseUrl.slice('pglite:'.length).trim()
-		const client = dataDir ? new PGlite({ dataDir }) : new PGlite()
-		const db = drizzle(client)
-		const execute = (query: unknown) => db.execute(query as never)
-		const all = async (query: unknown) => extractRows(await execute(query))
-		const run = async (query: unknown) => {
-			await execute(query)
-		}
-		let schemaPromise: Promise<void> | null = null
-
-		async function ensureSchema() {
-			if (!schemaPromise) {
-				schemaPromise = (async () => {
-					// Postgres-compatible bootstrap for local/offline runs.
-					await run(sql`
-						CREATE TABLE IF NOT EXISTS users (
-							id serial PRIMARY KEY NOT NULL,
-							username text NOT NULL UNIQUE,
-							email text NOT NULL UNIQUE,
-							password_hash text NOT NULL,
-							created_at timestamp with time zone DEFAULT now() NOT NULL,
-							updated_at timestamp with time zone DEFAULT now() NOT NULL
-						);
-					`)
-					await run(
-						sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users USING btree (username);`,
-					)
-					await run(
-						sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users USING btree (email);`,
-					)
-
-					await run(sql`
-						CREATE TABLE IF NOT EXISTS password_resets (
-							id serial PRIMARY KEY NOT NULL,
-							user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-							token_hash text NOT NULL UNIQUE,
-							expires_at bigint NOT NULL,
-							created_at timestamp with time zone DEFAULT now() NOT NULL
-						);
-					`)
-					await run(
-						sql`CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets USING btree (user_id);`,
-					)
-					await run(
-						sql`CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets USING btree (token_hash);`,
-					)
-				})()
-			}
-			return schemaPromise
-		}
-
-		return {
-			dialect: 'pglite',
 			all,
 			run,
 			ensureSchema,

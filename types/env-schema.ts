@@ -25,11 +25,10 @@ const databaseUrlSchema = z
 		(value) =>
 			value.startsWith('postgres://') ||
 			value.startsWith('postgresql://') ||
-			value.startsWith('sqlite:') ||
-			value.startsWith('pglite:'),
+			value.startsWith('sqlite:'),
 		{
 			message:
-				'DATABASE_URL must start with postgres://, postgresql://, sqlite:, or pglite:.',
+				'DATABASE_URL must start with postgres://, postgresql://, or sqlite:.',
 		},
 	)
 

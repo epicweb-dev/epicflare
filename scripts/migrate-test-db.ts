@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { createDb, sql } from '../src/db/client'
 
-const databaseUrl = process.env.DATABASE_URL ?? 'pglite:./.tmp/pglite-test'
+const databaseUrl = process.env.DATABASE_URL ?? 'sqlite:./.tmp/test.sqlite'
 
 const db = createDb({
 	DATABASE_URL: databaseUrl,

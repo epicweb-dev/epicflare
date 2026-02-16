@@ -8,9 +8,8 @@ fully-offline development/testing using local databases.
 - `DATABASE_URL` (required)
   - Production/preview: Neon Postgres connection string (`postgres://` or
     `postgresql://`).
-  - Offline (recommended): `pglite:` (in-memory) or `pglite:./.tmp/pglite-dev`
-    (persistent directory).
-  - Unit tests under Bun: `sqlite::memory:` or `sqlite:./.tmp/test.sqlite`.
+  - Offline (recommended): `sqlite:` (in-memory).
+  - Offline (persistent, Bun-only): `sqlite:./.tmp/test.sqlite`.
 - `DATABASE_WS_PROXY` (optional)
   - When set, Workers connect to a non-Neon Postgres instance via a WebSocket
     proxy using `@neondatabase/serverless` (`neon-serverless` adapter).
@@ -29,13 +28,13 @@ Commands:
 
 ## Offline development options
 
-### Option A: PGlite (recommended, no Docker)
+### Option A: SQLite (recommended, no Docker)
 
-Set `DATABASE_URL=pglite:` (already the default in `.env.test`) and run:
+Set `DATABASE_URL=sqlite:` (already the default in `.env.test`) and run:
 
 - `bun run dev`
 
-Tables are bootstrapped automatically for PGlite.
+Tables are bootstrapped automatically for offline SQLite.
 
 ### Option B: Local Postgres via Docker
 
@@ -62,9 +61,9 @@ your proxy address (for example `localhost:6543/v1`).
 
 ## Offline test DB scripts
 
-When using a persistent local test DB (for example `pglite:./.tmp/pglite-test`
-or a file-backed `sqlite:` DB), helpers are available:
+When using a persistent local test DB (for example a file-backed `sqlite:` DB),
+helpers are available:
 
 - `bun run db:test:reset` removes the local DB directory/file (when supported).
-- `bun run db:test:migrate` bootstraps tables for `pglite:`/`sqlite:` by running
-  the app’s schema bootstrap.
+- `bun run db:test:migrate` bootstraps tables for `sqlite:` by running the app's
+  schema bootstrap.
