@@ -10,6 +10,14 @@ export async function handleRequest(request: Request, env: Env) {
 		return await router.fetch(request)
 	} catch (error) {
 		console.error('Remix server handler failed:', error)
-		return new Response('Internal Server Error', { status: 500 })
+		const debugErrors =
+			(env as unknown as { EXPOSE_INTERNAL_ERRORS?: unknown })
+				.EXPOSE_INTERNAL_ERRORS === 'true'
+		const details =
+			error instanceof Error ? error.stack ?? error.message : String(error)
+		return new Response(
+			debugErrors ? `Internal Server Error\n\n${details}` : 'Internal Server Error',
+			{ status: 500 },
+		)
 	}
 }

@@ -158,6 +158,7 @@ async function startDevServer() {
 		env: {
 			...process.env,
 			CLOUDFLARE_ENV: 'test',
+			EXPOSE_INTERNAL_ERRORS: 'true',
 			COOKIE_SECRET:
 				process.env.COOKIE_SECRET ??
 				'test-cookie-secret-0123456789abcdef0123456789',
