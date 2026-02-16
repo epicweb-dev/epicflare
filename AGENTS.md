@@ -32,6 +32,7 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 
 - [Setup](./docs/agents/setup.md)
 - [Code Style](./docs/agents/code-style.md)
+- [Cloudflare Agents SDK](./docs/agents/cloudflare-agents-sdk.md)
 - [Harness Engineering](./docs/agents/harness-engineering.md)
 - [Remix Packages](./docs/agents/remix/index.md)
 - [Testing Principles](./docs/agents/testing-principles.md)
