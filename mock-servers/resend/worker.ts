@@ -145,7 +145,10 @@ async function ensureSchema(db: D1Database) {
 						ON mock_resend_messages(token_hash, received_at DESC)`,
 				)
 				.run()
-		})()
+		})().catch((error) => {
+			schemaReady = null
+			throw error
+		})
 	}
 	await schemaReady
 }

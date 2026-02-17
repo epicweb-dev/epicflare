@@ -30,27 +30,33 @@ jobs:
           fetch-depth: 0
 
       - name: 🧾 Ensure validated SHA is main HEAD
+        id: sha_guard
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main
           HEAD_SHA="$(git rev-parse origin/main)"
           if [ "$HEAD_SHA" != "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
             echo "Skipping deploy: validated SHA is not current main HEAD."
             echo "validated=${{ github.event.workflow_run.head_sha }}"
             echo "head=$HEAD_SHA"
             exit 0
           fi
+          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
 
       - name: 🧰 Setup Bun
+        if: steps.sha_guard.outputs.should_deploy == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: 📥 Install Dependencies
+        if: steps.sha_guard.outputs.should_deploy == 'true'
         run: bun install --frozen-lockfile
 
       - name: 🔐 Sync Cloudflare Secrets (bulk)
+        if: steps.sha_guard.outputs.should_deploy == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
@@ -72,11 +78,13 @@ jobs:
           bunx wrangler secret bulk "$secrets_file" --env production
 
       - name: 🗄️ Apply D1 Migrations
+        if: steps.sha_guard.outputs.should_deploy == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun ./wrangler-env.ts d1 migrations apply epicflare --remote
 
       - name: ☁️ Deploy to Cloudflare Workers
+        if: steps.sha_guard.outputs.should_deploy == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun run deploy
