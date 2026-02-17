@@ -163,8 +163,6 @@ jobs:
             mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
           done
 
-          bun tools/ci/sync-worker-secrets.ts --env preview --name "$APP_WORKER_NAME" --from-dotenv "$ENV_FILE" --from-dotenv "$OVERRIDES_FILE" --generate-cookie-secret --include-empty
-
           if [ -n "$mock_summary" ]; then
             mock_summary="$(printf "%b" "$mock_summary" | sed '1{/^$/d;}')"
           fi
