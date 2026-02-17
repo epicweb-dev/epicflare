@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 
 type CliOptions = {
-	env: string
+	env?: string
 	name?: string
 	config?: string
 	dotenvPaths: Array<string>
@@ -21,7 +21,7 @@ function fail(message: string): never {
 
 function parseArgs(argv: Array<string>): CliOptions {
 	const options: CliOptions = {
-		env: '',
+		env: undefined,
 		dotenvPaths: [],
 		setPairs: [],
 		setFromEnv: [],
@@ -36,7 +36,11 @@ function parseArgs(argv: Array<string>): CliOptions {
 		if (!arg) continue
 		switch (arg) {
 			case '--env': {
-				options.env = argv[index + 1] ?? ''
+				const envName = argv[index + 1]
+				if (!envName) {
+					fail('Missing value for --env <environment>')
+				}
+				options.env = envName
 				index += 1
 				break
 			}
@@ -92,10 +96,6 @@ function parseArgs(argv: Array<string>): CliOptions {
 				}
 			}
 		}
-	}
-
-	if (!options.env) {
-		fail('Missing required flag: --env <environment>')
 	}
 
 	return options
@@ -209,7 +209,10 @@ function toDotenv(secrets: ReadonlyMap<string, string>) {
 
 async function runWranglerSecretBulk(options: CliOptions, dotenvText: string) {
 	const bunBin = process.execPath
-	const args = [bunBin, 'x', 'wrangler', 'secret', 'bulk', '--env', options.env]
+	const args = [bunBin, 'x', 'wrangler', 'secret', 'bulk']
+	if (options.env) {
+		args.push('--env', options.env)
+	}
 	if (options.name) {
 		args.push('--name', options.name)
 	}
@@ -238,8 +241,9 @@ async function main() {
 	}
 	const dotenvText = toDotenv(secrets)
 	await runWranglerSecretBulk(options, dotenvText)
+	const envLabel = options.env ?? 'default'
 	console.log(
-		`Synced ${secrets.size} secret(s) via bulk upload (${options.env}${options.name ? `, ${options.name}` : ''}).`,
+		`Synced ${secrets.size} secret(s) via bulk upload (${envLabel}${options.name ? `, ${options.name}` : ''}).`,
 	)
 }
 
