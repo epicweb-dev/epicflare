@@ -79,26 +79,33 @@ jobs:
       - name: 🧾 Resolve preview names
         id: names
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_PREVIEW_NAME: ${{ inputs.preview_name }}
         run: |
           set -euo pipefail
           APP_NAME="epicflare"
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ]; then
             PREVIEW_KIND="pr"
-            PREVIEW_ID="${{ github.event.pull_request.number }}"
+            PREVIEW_ID="$PR_NUMBER"
           else
-            PREVIEW_KIND="${{ inputs.target }}"
+            PREVIEW_KIND="$INPUT_TARGET"
             PREVIEW_ID=""
             if [ "$PREVIEW_KIND" = "pr" ]; then
-              PREVIEW_ID="${{ inputs.pr_number }}"
+              PREVIEW_ID="$INPUT_PR_NUMBER"
               if [ -z "$PREVIEW_ID" ]; then
                 echo "inputs.pr_number is required when inputs.target=pr" >&2
                 exit 1
               fi
             else
-              PREVIEW_ID="${{ inputs.preview_name }}"
+              PREVIEW_ID="$INPUT_PREVIEW_NAME"
               if [ -z "$PREVIEW_ID" ]; then
-                PREVIEW_ID="${{ github.ref_name }}"
+                PREVIEW_ID="$REF_NAME"
               fi
             fi
           fi
@@ -309,26 +316,33 @@ jobs:
       - name: 🧾 Resolve preview names
         id: names
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_PREVIEW_NAME: ${{ inputs.preview_name }}
         run: |
           set -euo pipefail
           APP_NAME="epicflare"
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ]; then
             PREVIEW_KIND="pr"
-            PREVIEW_ID="${{ github.event.pull_request.number }}"
+            PREVIEW_ID="$PR_NUMBER"
           else
-            PREVIEW_KIND="${{ inputs.target }}"
+            PREVIEW_KIND="$INPUT_TARGET"
             PREVIEW_ID=""
             if [ "$PREVIEW_KIND" = "pr" ]; then
-              PREVIEW_ID="${{ inputs.pr_number }}"
+              PREVIEW_ID="$INPUT_PR_NUMBER"
               if [ -z "$PREVIEW_ID" ]; then
                 echo "inputs.pr_number is required when inputs.target=pr" >&2
                 exit 1
               fi
             else
-              PREVIEW_ID="${{ inputs.preview_name }}"
+              PREVIEW_ID="$INPUT_PREVIEW_NAME"
               if [ -z "$PREVIEW_ID" ]; then
-                PREVIEW_ID="${{ github.ref_name }}"
+                PREVIEW_ID="$REF_NAME"
               fi
             fi
           fi
