@@ -120,22 +120,17 @@ jobs:
           CLOUDFLARE_ENV: preview
         run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
 
-      - name: 🧪 Deploy preview mock Workers + sync app secrets
+      - name: 🧪 Deploy preview mock Workers
         id: deploy_mocks
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
         run: |
           set -euo pipefail
-          ENV_FILE=".env.example"
-          if [ ! -f "$ENV_FILE" ]; then
-            echo "Missing $ENV_FILE (required for preview deploy secrets)." >&2
-            exit 1
-          fi
           MOCK_API_TOKEN="$(openssl rand -hex 32)"
           echo "::add-mask::$MOCK_API_TOKEN"
-          OVERRIDES_FILE="$(mktemp)"
-          trap 'rm -f "$OVERRIDES_FILE"' EXIT
+          OVERRIDES_FILE="preview-secrets-overrides.env"
+          : > "$OVERRIDES_FILE"
 
           mock_summary=""
 
@@ -178,7 +173,27 @@ jobs:
             echo "mock_summary<<EOF"
             printf "%b\n" "$mock_summary"
             echo "EOF"
+            echo "overrides_file=$OVERRIDES_FILE"
           } >> "$GITHUB_OUTPUT"
+
+      - name: 🔐 Sync preview app Worker secrets (bulk)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+          OVERRIDES_FILE: ${{ steps.deploy_mocks.outputs.overrides_file }}
+        run: |
+          set -euo pipefail
+          ENV_FILE=".env.example"
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "Missing $ENV_FILE (required for preview deploy secrets)." >&2
+            exit 1
+          fi
+          if [ ! -f "$OVERRIDES_FILE" ]; then
+            echo "Missing overrides file ($OVERRIDES_FILE) from mock deploy step." >&2
+            exit 1
+          fi
+
+          bun tools/ci/sync-worker-secrets.ts --env preview --name "$APP_WORKER_NAME" --from-dotenv "$ENV_FILE" --from-dotenv "$OVERRIDES_FILE" --generate-cookie-secret --include-empty
 
       - name: ☁️ Deploy preview app Worker
         id: deploy_preview
