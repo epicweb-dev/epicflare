@@ -258,6 +258,7 @@ function hasEnvValue(value: string | undefined) {
 async function isMockReady(baseUrl: string) {
 	try {
 		const response = await fetch(`${baseUrl}/__mocks/meta`)
+		await response.body?.cancel()
 		return response.ok
 	} catch {
 		return false
