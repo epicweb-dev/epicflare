@@ -276,10 +276,15 @@ async function ensureMockServers() {
 		: 'mock-resend-key'
 	mockResendProcess = runBunScript(
 		'dev:mock-resend',
-		['--port', String(mockPort), '--ip', '127.0.0.1'],
-		{
-			MOCK_API_TOKEN: apiKey,
-		},
+		[
+			'--port',
+			String(mockPort),
+			'--ip',
+			'127.0.0.1',
+			'--var',
+			`MOCK_API_TOKEN:${apiKey}`,
+		],
+		{},
 	)
 	mockResendProcess.once('exit', () => {
 		mockResendProcess = null

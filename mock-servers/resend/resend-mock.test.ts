@@ -131,6 +131,8 @@ async function startMockResendWorker(persistDir: string, token: string) {
 			'test',
 			'--config',
 			workerConfig,
+			'--var',
+			`MOCK_API_TOKEN:${token}`,
 			'--port',
 			String(port),
 			'--inspector-port',
@@ -149,7 +151,6 @@ async function startMockResendWorker(persistDir: string, token: string) {
 		env: {
 			...process.env,
 			CLOUDFLARE_ENV: 'test',
-			MOCK_API_TOKEN: token,
 		},
 	})
 
