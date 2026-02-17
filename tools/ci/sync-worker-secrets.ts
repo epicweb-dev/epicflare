@@ -254,7 +254,8 @@ async function main() {
 	}
 	const dotenvText = toDotenv(secrets)
 	await runWranglerSecretBulk(options, dotenvText)
-	const envLabel = options.env ?? 'default'
+	const envLabel =
+		options.env && options.env.length > 0 ? options.env : 'default'
 	console.log(
 		`Synced ${secrets.size} secret(s) via bulk upload (${envLabel}${options.name ? `, ${options.name}` : ''}).`,
 	)
