@@ -152,7 +152,7 @@ jobs:
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
             deploy_log="deploy-mock-${service}.log"
 
-            bun tools/ci/sync-worker-secrets.ts --name "$mock_worker_name" --config "$dir/wrangler.jsonc" --set "MOCK_API_TOKEN=$MOCK_API_TOKEN"
+            bun tools/ci/sync-worker-secrets.ts --env "" --name "$mock_worker_name" --config "$dir/wrangler.jsonc" --set "MOCK_API_TOKEN=$MOCK_API_TOKEN"
 
             bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
 
@@ -196,7 +196,7 @@ jobs:
             exit 1
           fi
 
-          bun tools/ci/sync-worker-secrets.ts --name "$APP_WORKER_NAME" --from-dotenv "$ENV_FILE" --from-dotenv "$OVERRIDES_FILE" --generate-cookie-secret --include-empty
+          bun tools/ci/sync-worker-secrets.ts --env "" --name "$APP_WORKER_NAME" --from-dotenv "$ENV_FILE" --from-dotenv "$OVERRIDES_FILE" --generate-cookie-secret --include-empty
 
       - name: ☁️ Deploy preview app Worker
         id: deploy_preview

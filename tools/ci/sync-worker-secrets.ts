@@ -1,5 +1,7 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, unlink, writeFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 type CliOptions = {
 	env?: string
@@ -37,7 +39,7 @@ function parseArgs(argv: Array<string>): CliOptions {
 		switch (arg) {
 			case '--env': {
 				const envName = argv[index + 1]
-				if (!envName) {
+				if (envName === undefined) {
 					fail('Missing value for --env <environment>')
 				}
 				options.env = envName
@@ -210,7 +212,16 @@ function toDotenv(secrets: ReadonlyMap<string, string>) {
 async function runWranglerSecretBulk(options: CliOptions, dotenvText: string) {
 	const bunBin = process.execPath
 	const args = [bunBin, 'x', 'wrangler', 'secret', 'bulk']
-	if (options.env) {
+	const secretsFilePath = join(
+		tmpdir(),
+		`wrangler-secrets-${Date.now()}-${randomBytes(6).toString('hex')}.env`,
+	)
+	await writeFile(secretsFilePath, dotenvText, {
+		encoding: 'utf8',
+		mode: 0o600,
+	})
+	args.push(secretsFilePath)
+	if (options.env !== undefined) {
 		args.push('--env', options.env)
 	}
 	if (options.name) {
@@ -220,16 +231,18 @@ async function runWranglerSecretBulk(options: CliOptions, dotenvText: string) {
 		args.push('--config', options.config)
 	}
 
-	const proc = Bun.spawn({
-		cmd: args,
-		stdio: ['pipe', 'inherit', 'inherit'],
-		env: process.env,
-	})
-	proc.stdin.write(dotenvText)
-	proc.stdin.end()
-	const exitCode = await proc.exited
-	if (exitCode !== 0) {
-		process.exit(exitCode)
+	try {
+		const proc = Bun.spawn({
+			cmd: args,
+			stdio: ['ignore', 'inherit', 'inherit'],
+			env: process.env,
+		})
+		const exitCode = await proc.exited
+		if (exitCode !== 0) {
+			process.exit(exitCode)
+		}
+	} finally {
+		await unlink(secretsFilePath).catch(() => {})
 	}
 }
 
