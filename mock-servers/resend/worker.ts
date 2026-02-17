@@ -123,8 +123,10 @@ function getTokenPartition(env: MockResendEnv) {
 async function ensureSchema(db: D1Database) {
 	if (!schemaReady) {
 		schemaReady = (async () => {
-			await db.exec(`
-				CREATE TABLE IF NOT EXISTS mock_resend_messages (
+			// Miniflare/D1 request metadata aggregation can be brittle with
+			// multi-statement exec() calls, so keep these separate.
+			await db.exec(
+				`CREATE TABLE IF NOT EXISTS mock_resend_messages (
 					id TEXT PRIMARY KEY,
 					token_hash TEXT NOT NULL,
 					received_at INTEGER NOT NULL,
@@ -133,10 +135,12 @@ async function ensureSchema(db: D1Database) {
 					subject TEXT NOT NULL,
 					html TEXT NOT NULL,
 					payload_json TEXT NOT NULL
-				);
-				CREATE INDEX IF NOT EXISTS mock_resend_messages_token_received_at
-					ON mock_resend_messages(token_hash, received_at DESC);
-			`)
+				)`,
+			)
+			await db.exec(
+				`CREATE INDEX IF NOT EXISTS mock_resend_messages_token_received_at
+					ON mock_resend_messages(token_hash, received_at DESC)`,
+			)
 		})()
 	}
 	await schemaReady
