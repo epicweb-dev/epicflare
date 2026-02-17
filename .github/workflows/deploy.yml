@@ -50,7 +50,7 @@ jobs:
       - name: 📥 Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: 🔐 Sync Cloudflare Secrets
+      - name: 🔐 Sync Cloudflare Secrets (bulk)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
@@ -58,14 +58,18 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: |
-          echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env production
-          echo "$APP_BASE_URL" | bunx wrangler secret put APP_BASE_URL --env production
+          set -euo pipefail
+          secrets_file="$(mktemp)"
+          trap 'rm -f "$secrets_file"' EXIT
+          printf "COOKIE_SECRET=%s\n" "$COOKIE_SECRET" >> "$secrets_file"
+          printf "APP_BASE_URL=%s\n" "${APP_BASE_URL:-}" >> "$secrets_file"
           if [ -n "${RESEND_API_KEY:-}" ]; then
-            echo "$RESEND_API_KEY" | bunx wrangler secret put RESEND_API_KEY --env production
+            printf "RESEND_API_KEY=%s\n" "$RESEND_API_KEY" >> "$secrets_file"
           fi
           if [ -n "${RESEND_FROM_EMAIL:-}" ]; then
-            echo "$RESEND_FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env production
+            printf "RESEND_FROM_EMAIL=%s\n" "$RESEND_FROM_EMAIL" >> "$secrets_file"
           fi
+          bunx wrangler secret bulk "$secrets_file" --env production
 
       - name: 🗄️ Apply D1 Migrations
         env:

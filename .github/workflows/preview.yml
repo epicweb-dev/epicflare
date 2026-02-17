@@ -114,7 +114,14 @@ jobs:
           echo "preview_id=$PREVIEW_ID" >> "$GITHUB_OUTPUT"
           echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: 🔐 Sync preview secrets from .env.example
+      - name: 🗄️ Apply D1 Migrations (preview)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENV: preview
+        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+
+      - name: 🧪 Deploy preview mock Workers
+        id: deploy_mocks
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
@@ -125,6 +132,10 @@ jobs:
             echo "Missing $ENV_FILE (required for preview deploy secrets)." >&2
             exit 1
           fi
+
+          declare -A app_secrets
+          declare -a app_secret_keys
+          declare -a extra_secret_keys
 
           while IFS= read -r raw_line || [ -n "$raw_line" ]; do
             line="$(echo "$raw_line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
@@ -147,13 +158,6 @@ jobs:
             key="$(echo "$key" | sed -E 's/[[:space:]]+$//')"
             value="$(echo "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
 
-            if [[ "$value" == \"*\" ]] && [[ "$value" == *\" ]]; then
-              value="${value:1:${#value}-2}"
-            fi
-            if [[ "$value" == \'*\' ]]; then
-              value="${value:1:${#value}-2}"
-            fi
-
             if [ -z "$key" ]; then
               continue
             fi
@@ -161,33 +165,15 @@ jobs:
               continue
             fi
 
-            if [ "$key" = "COOKIE_SECRET" ] && [ "${#value}" -lt 32 ]; then
-              value="$(openssl rand -hex 32)"
-              echo "::add-mask::$value"
-            fi
-
-            # Use a single space for empty values so Zod preprocessors treat them as undefined
-            # while still overwriting any previously-set secret.
-            if [ -z "$value" ]; then
-              value=" "
-            fi
-
-            printf "%s" "$value" | bunx wrangler secret put "$key" --env preview --name "$APP_WORKER_NAME"
+            app_secret_keys+=("$key")
+            app_secrets["$key"]="$value"
           done < "$ENV_FILE"
 
-      - name: 🗄️ Apply D1 Migrations (preview)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ENV: preview
-        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+          # Always generate a fresh session secret for previews.
+          cookie_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$cookie_secret"
+          app_secrets["COOKIE_SECRET"]="$cookie_secret"
 
-      - name: 🧪 Deploy preview mock Workers
-        id: deploy_mocks
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
-        run: |
-          set -euo pipefail
           MOCK_API_TOKEN="$(openssl rand -hex 32)"
           echo "::add-mask::$MOCK_API_TOKEN"
 
@@ -206,7 +192,7 @@ jobs:
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
             deploy_log="deploy-mock-${service}.log"
 
-            echo "$MOCK_API_TOKEN" | bunx wrangler secret put MOCK_API_TOKEN --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc"
+            printf "MOCK_API_TOKEN=%s\n" "$MOCK_API_TOKEN" | bunx wrangler secret bulk --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc"
 
             bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
 
@@ -216,12 +202,31 @@ jobs:
               exit 1
             fi
 
-            # Point the app preview at the mock service and use the shared token.
-            echo "$mock_url" | bunx wrangler secret put "${service_key}_API_BASE_URL" --env preview --name "$APP_WORKER_NAME"
-            echo "$MOCK_API_TOKEN" | bunx wrangler secret put "${service_key}_API_KEY" --env preview --name "$APP_WORKER_NAME"
+            base_key="${service_key}_API_BASE_URL"
+            key_key="${service_key}_API_KEY"
+            if [ -z "${app_secrets[$base_key]+x}" ]; then
+              extra_secret_keys+=("$base_key")
+            fi
+            if [ -z "${app_secrets[$key_key]+x}" ]; then
+              extra_secret_keys+=("$key_key")
+            fi
+            app_secrets["$base_key"]="$mock_url"
+            app_secrets["$key_key"]="$MOCK_API_TOKEN"
 
             mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
           done
+
+          APP_SECRETS_FILE="$(mktemp)"
+          trap 'rm -f "$APP_SECRETS_FILE"' EXIT
+
+          for key in "${app_secret_keys[@]}"; do
+            printf "%s=%s\n" "$key" "${app_secrets[$key]}" >> "$APP_SECRETS_FILE"
+          done
+          for key in "${extra_secret_keys[@]}"; do
+            printf "%s=%s\n" "$key" "${app_secrets[$key]}" >> "$APP_SECRETS_FILE"
+          done
+
+          bunx wrangler secret bulk "$APP_SECRETS_FILE" --env preview --name "$APP_WORKER_NAME"
 
           if [ -n "$mock_summary" ]; then
             mock_summary="$(printf "%b" "$mock_summary" | sed '1{/^$/d;}')"
