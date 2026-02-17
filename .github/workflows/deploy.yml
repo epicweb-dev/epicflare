@@ -63,19 +63,11 @@ jobs:
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
-        run: |
-          set -euo pipefail
-          secrets_file="$(mktemp)"
-          trap 'rm -f "$secrets_file"' EXIT
-          printf "COOKIE_SECRET=%s\n" "$COOKIE_SECRET" >> "$secrets_file"
-          printf "APP_BASE_URL=%s\n" "${APP_BASE_URL:-}" >> "$secrets_file"
-          if [ -n "${RESEND_API_KEY:-}" ]; then
-            printf "RESEND_API_KEY=%s\n" "$RESEND_API_KEY" >> "$secrets_file"
-          fi
-          if [ -n "${RESEND_FROM_EMAIL:-}" ]; then
-            printf "RESEND_FROM_EMAIL=%s\n" "$RESEND_FROM_EMAIL" >> "$secrets_file"
-          fi
-          bunx wrangler secret bulk "$secrets_file" --env production
+        run: >
+          bun tools/ci/sync-worker-secrets.ts --env production --set-from-env
+          COOKIE_SECRET --set-from-env-optional APP_BASE_URL
+          --set-from-env-optional RESEND_API_KEY --set-from-env-optional
+          RESEND_FROM_EMAIL
 
       - name: 🗄️ Apply D1 Migrations
         if: steps.sha_guard.outputs.should_deploy == 'true'

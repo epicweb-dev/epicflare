@@ -132,50 +132,10 @@ jobs:
             echo "Missing $ENV_FILE (required for preview deploy secrets)." >&2
             exit 1
           fi
-
-          declare -A app_secrets
-          declare -a app_secret_keys
-          declare -a extra_secret_keys
-
-          while IFS= read -r raw_line || [ -n "$raw_line" ]; do
-            line="$(echo "$raw_line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
-            if [ -z "$line" ]; then
-              continue
-            fi
-            case "$line" in
-              \#*) continue ;;
-            esac
-            if [[ "$line" == export\ * ]]; then
-              line="${line#export }"
-            fi
-            if [[ "$line" != *"="* ]]; then
-              continue
-            fi
-
-            key="${line%%=*}"
-            value="${line#*=}"
-
-            key="$(echo "$key" | sed -E 's/[[:space:]]+$//')"
-            value="$(echo "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
-
-            if [ -z "$key" ]; then
-              continue
-            fi
-            if [ "$key" = "CLOUDFLARE_API_TOKEN" ]; then
-              continue
-            fi
-
-            app_secret_keys+=("$key")
-            app_secrets["$key"]="$value"
-          done < "$ENV_FILE"
-
-          # Always generate a fresh session secret for previews.
-          cookie_secret="$(openssl rand -hex 32)"
-          echo "::add-mask::$cookie_secret"
-          app_secrets["COOKIE_SECRET"]="$cookie_secret"
-
           MOCK_API_TOKEN="$(openssl rand -hex 32)"
           echo "::add-mask::$MOCK_API_TOKEN"
+          OVERRIDES_FILE="$(mktemp)"
+          trap 'rm -f "$OVERRIDES_FILE"' EXIT
 
           mock_summary=""
 
@@ -192,7 +152,7 @@ jobs:
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
             deploy_log="deploy-mock-${service}.log"
 
-            printf "MOCK_API_TOKEN=%s\n" "$MOCK_API_TOKEN" | bunx wrangler secret bulk --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc"
+            bun tools/ci/sync-worker-secrets.ts --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" --set "MOCK_API_TOKEN=$MOCK_API_TOKEN"
 
             bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
 
@@ -202,31 +162,13 @@ jobs:
               exit 1
             fi
 
-            base_key="${service_key}_API_BASE_URL"
-            key_key="${service_key}_API_KEY"
-            if [ -z "${app_secrets[$base_key]+x}" ]; then
-              extra_secret_keys+=("$base_key")
-            fi
-            if [ -z "${app_secrets[$key_key]+x}" ]; then
-              extra_secret_keys+=("$key_key")
-            fi
-            app_secrets["$base_key"]="$mock_url"
-            app_secrets["$key_key"]="$MOCK_API_TOKEN"
+            echo "${service_key}_API_BASE_URL=$mock_url" >> "$OVERRIDES_FILE"
+            echo "${service_key}_API_KEY=$MOCK_API_TOKEN" >> "$OVERRIDES_FILE"
 
             mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
           done
 
-          APP_SECRETS_FILE="$(mktemp)"
-          trap 'rm -f "$APP_SECRETS_FILE"' EXIT
-
-          for key in "${app_secret_keys[@]}"; do
-            printf "%s=%s\n" "$key" "${app_secrets[$key]}" >> "$APP_SECRETS_FILE"
-          done
-          for key in "${extra_secret_keys[@]}"; do
-            printf "%s=%s\n" "$key" "${app_secrets[$key]}" >> "$APP_SECRETS_FILE"
-          done
-
-          bunx wrangler secret bulk "$APP_SECRETS_FILE" --env preview --name "$APP_WORKER_NAME"
+          bun tools/ci/sync-worker-secrets.ts --env preview --name "$APP_WORKER_NAME" --from-dotenv "$ENV_FILE" --from-dotenv "$OVERRIDES_FILE" --generate-cookie-secret --include-empty --empty-as-space
 
           if [ -n "$mock_summary" ]; then
             mock_summary="$(printf "%b" "$mock_summary" | sed '1{/^$/d;}')"
