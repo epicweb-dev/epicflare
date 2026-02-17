@@ -1,0 +1,147 @@
+name: ✅ Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: >-
+    validate-${{ github.event_name }}-${{ github.event.pull_request.number ||
+    github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: 🧹 Lint
+    if: >-
+      github.event_name != 'pull_request' || github.event.pull_request.draft ==
+      false
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧹 Lint
+        run: bun run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    name: 🧪 Typecheck
+    if: >-
+      github.event_name != 'pull_request' || github.event.pull_request.draft ==
+      false
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧪 Typecheck
+        run: bun run typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    name: ✅ Bun Tests
+    if: >-
+      github.event_name != 'pull_request' || github.event.pull_request.draft ==
+      false
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: ✅ Run Bun Tests
+        run: bun test server mock-servers
+
+  e2e:
+    runs-on: ubuntu-latest
+    name: 🎭 E2E
+    if: >-
+      github.event_name != 'pull_request' || github.event.pull_request.draft ==
+      false
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 🎭 Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🎭 Install Playwright Browsers
+        run: bun run test:e2e:install
+
+      - name: 🗄️ Apply D1 Migrations
+        run: bun run migrate:local
+
+      - name: 🧪 Playwright Tests
+        run: bun run test:e2e
+
+  mcp-e2e:
+    runs-on: ubuntu-latest
+    name: 🧩 MCP E2E
+    if: >-
+      github.event_name != 'pull_request' || github.event.pull_request.draft ==
+      false
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🗄️ Apply D1 Migrations
+        run: bun run migrate:local
+
+      - name: 🧩 MCP E2E Tests
+        run: bun run test:mcp

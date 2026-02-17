@@ -1,0 +1,332 @@
+name: 🔎 Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - closed
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Deploy or cleanup preview resources
+        required: true
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - cleanup
+      target:
+        description: Preview naming strategy
+        required: true
+        type: choice
+        default: branch
+        options:
+          - branch
+          - pr
+      pr_number:
+        description: PR number (required when target=pr)
+        required: false
+        type: string
+      preview_name:
+        description: Optional preview name override (target=branch)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: >-
+    preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: 🔎 Deploy Preview Resources
+    if: >-
+      (github.event_name == 'pull_request' &&
+        github.event.action != 'closed' &&
+        github.event.pull_request.head.repo.fork == false &&
+        github.event.pull_request.draft == false) ||
+      (github.event_name == 'workflow_dispatch' &&
+        inputs.action == 'deploy')
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🧾 Resolve preview names
+        id: names
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_NAME="epicflare"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PREVIEW_KIND="pr"
+            PREVIEW_ID="${{ github.event.pull_request.number }}"
+          else
+            PREVIEW_KIND="${{ inputs.target }}"
+            PREVIEW_ID=""
+            if [ "$PREVIEW_KIND" = "pr" ]; then
+              PREVIEW_ID="${{ inputs.pr_number }}"
+              if [ -z "$PREVIEW_ID" ]; then
+                echo "inputs.pr_number is required when inputs.target=pr" >&2
+                exit 1
+              fi
+            else
+              PREVIEW_ID="${{ inputs.preview_name }}"
+              if [ -z "$PREVIEW_ID" ]; then
+                PREVIEW_ID="${{ github.ref_name }}"
+              fi
+            fi
+          fi
+
+          # Cloudflare Worker names must be URL-safe; normalize to lower-kebab-case.
+          slug="$(echo "$PREVIEW_ID" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | cut -c1-32)"
+          if [ -z "$slug" ]; then
+            slug="preview"
+          fi
+
+          if [ "$PREVIEW_KIND" = "pr" ]; then
+            APP_WORKER_NAME="${APP_NAME}-pr-${slug}"
+          else
+            APP_WORKER_NAME="${APP_NAME}-branch-${slug}"
+          fi
+
+          echo "preview_kind=$PREVIEW_KIND" >> "$GITHUB_OUTPUT"
+          echo "preview_id=$PREVIEW_ID" >> "$GITHUB_OUTPUT"
+          echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: 🔐 Sync Cloudflare Secrets (preview)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env preview --name "$APP_WORKER_NAME"
+          FROM_EMAIL="${RESEND_FROM_EMAIL:-reset@epicflare.dev}"
+          echo "$FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env preview --name "$APP_WORKER_NAME"
+
+      - name: 🗄️ Apply D1 Migrations (preview)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENV: preview
+        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+
+      - name: 🧪 Deploy preview mock Workers
+        id: deploy_mocks
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          MOCK_API_TOKEN="$(openssl rand -hex 32)"
+          echo "::add-mask::$MOCK_API_TOKEN"
+
+          mock_summary=""
+
+          for dir in mock-servers/*; do
+            if [ ! -d "$dir" ]; then
+              continue
+            fi
+            if [ ! -f "$dir/wrangler.jsonc" ]; then
+              continue
+            fi
+
+            service="$(basename "$dir")"
+            service_key="$(echo "$service" | tr '[:lower:]-' '[:upper:]_')"
+            mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
+            deploy_log="deploy-mock-${service}.log"
+
+            echo "$MOCK_API_TOKEN" | bunx wrangler secret put MOCK_API_TOKEN --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc"
+
+            bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
+
+            mock_url="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync(process.argv[1],'utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')" "$deploy_log")"
+            if [ -z "$mock_url" ]; then
+              echo "Failed to parse mock URL for $service." >&2
+              exit 1
+            fi
+
+            # Point the app preview at the mock service and use the shared token.
+            echo "$mock_url" | bunx wrangler secret put "${service_key}_API_BASE_URL" --env preview --name "$APP_WORKER_NAME"
+            echo "$MOCK_API_TOKEN" | bunx wrangler secret put "${service_key}_API_KEY" --env preview --name "$APP_WORKER_NAME"
+
+            mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
+          done
+
+          if [ -n "$mock_summary" ]; then
+            mock_summary="$(printf "%b" "$mock_summary" | sed '1{/^$/d;}')"
+          fi
+
+          {
+            echo "mock_summary<<EOF"
+            printf "%b\n" "$mock_summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: ☁️ Deploy preview app Worker
+        id: deploy_preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENV: preview
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
+
+          bun run deploy -- --name "$APP_WORKER_NAME" 2>&1 | tee deploy.log
+
+          PREVIEW_URL="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync('deploy.log','utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')")"
+          if [ -n "$PREVIEW_URL" ]; then
+            echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 💬 Comment Preview URL on PR
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.deploy_preview.outputs.url != ''
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+          WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
+          MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_summary }}
+        with:
+          script: |
+            const marker = "<!-- epicflare-preview-url -->";
+            const bodyLines = [
+              marker,
+              `🔎 Preview deployed: ${process.env.PREVIEW_URL}`,
+              "",
+              `Worker: \`${process.env.WORKER_NAME}\``,
+            ];
+            if (process.env.MOCK_SUMMARY?.trim()) {
+              bodyLines.push("");
+              bodyLines.push("Mocks:");
+              bodyLines.push(process.env.MOCK_SUMMARY.trim());
+            }
+            const body = bodyLines.join("\n");
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((c) => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+  cleanup:
+    runs-on: ubuntu-latest
+    name: 🧹 Cleanup Preview Resources
+    if: >-
+      (github.event_name == 'pull_request' &&
+        github.event.action == 'closed' &&
+        github.event.pull_request.head.repo.fork == false) ||
+      (github.event_name == 'workflow_dispatch' &&
+        inputs.action == 'cleanup')
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 🧾 Resolve preview names
+        id: names
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_NAME="epicflare"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PREVIEW_KIND="pr"
+            PREVIEW_ID="${{ github.event.pull_request.number }}"
+          else
+            PREVIEW_KIND="${{ inputs.target }}"
+            PREVIEW_ID=""
+            if [ "$PREVIEW_KIND" = "pr" ]; then
+              PREVIEW_ID="${{ inputs.pr_number }}"
+              if [ -z "$PREVIEW_ID" ]; then
+                echo "inputs.pr_number is required when inputs.target=pr" >&2
+                exit 1
+              fi
+            else
+              PREVIEW_ID="${{ inputs.preview_name }}"
+              if [ -z "$PREVIEW_ID" ]; then
+                PREVIEW_ID="${{ github.ref_name }}"
+              fi
+            fi
+          fi
+
+          slug="$(echo "$PREVIEW_ID" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' | cut -c1-32)"
+          if [ -z "$slug" ]; then
+            slug="preview"
+          fi
+
+          if [ "$PREVIEW_KIND" = "pr" ]; then
+            APP_WORKER_NAME="${APP_NAME}-pr-${slug}"
+          else
+            APP_WORKER_NAME="${APP_NAME}-branch-${slug}"
+          fi
+
+          echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: 🗑️ Delete preview Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          bunx wrangler delete "$APP_WORKER_NAME" --env preview --force
+
+          for dir in mock-servers/*; do
+            if [ ! -d "$dir" ]; then
+              continue
+            fi
+            if [ ! -f "$dir/wrangler.jsonc" ]; then
+              continue
+            fi
+
+            service="$(basename "$dir")"
+            mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
+            bunx wrangler delete "$mock_worker_name" --env preview --force
+          done
