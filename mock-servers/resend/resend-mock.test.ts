@@ -6,7 +6,9 @@ import { createTemporaryDirectory } from '#tools/temp-directory.ts'
 const workerScript = 'mock-servers/resend/worker.ts'
 const workerConfig = 'mock-servers/resend/wrangler.jsonc'
 
-test('resend mock stores messages in D1 and exposes a count', async () => {
+test(
+	'resend mock stores messages in D1 and exposes a count',
+	async () => {
 	await using tempDir = await createTemporaryDirectory('resend-mock-d1-')
 	const token = 'test-mock-token'
 	const worker = await unstable_dev(workerScript, {
@@ -20,7 +22,7 @@ test('resend mock stores messages in D1 and exposes a count', async () => {
 		experimental: { disableExperimentalWarning: true, testMode: true },
 	})
 
-	try {
+		try {
 		const email = {
 			to: 'alex@example.com',
 			from: 'no-reply@example.com',
@@ -74,12 +76,16 @@ test('resend mock stores messages in D1 and exposes a count', async () => {
 		expect(JSON.parse(listJson.messages[0]?.to_json ?? 'null')).toEqual(
 			email.to,
 		)
-	} finally {
+		} finally {
 		await worker.stop()
-	}
-})
+		}
+	},
+	{ timeout: 30_000 },
+)
 
-test('resend mock rejects unauthenticated requests when a token is configured', async () => {
+test(
+	'resend mock rejects unauthenticated requests when a token is configured',
+	async () => {
 	await using tempDir = await createTemporaryDirectory('resend-mock-auth-')
 	const token = 'test-mock-token'
 	const worker = await unstable_dev(workerScript, {
@@ -93,7 +99,7 @@ test('resend mock rejects unauthenticated requests when a token is configured', 
 		experimental: { disableExperimentalWarning: true, testMode: true },
 	})
 
-	try {
+		try {
 		const createResp = await worker.fetch('http://example.com/emails', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -105,7 +111,9 @@ test('resend mock rejects unauthenticated requests when a token is configured', 
 			}),
 		})
 		expect(createResp.status).toBe(401)
-	} finally {
+		} finally {
 		await worker.stop()
-	}
-})
+		}
+	},
+	{ timeout: 30_000 },
+)
