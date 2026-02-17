@@ -60,8 +60,12 @@ jobs:
         run: |
           echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env production
           echo "$APP_BASE_URL" | bunx wrangler secret put APP_BASE_URL --env production
-          echo "$RESEND_API_KEY" | bunx wrangler secret put RESEND_API_KEY --env production
-          echo "$RESEND_FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env production
+          if [ -n "${RESEND_API_KEY:-}" ]; then
+            echo "$RESEND_API_KEY" | bunx wrangler secret put RESEND_API_KEY --env production
+          fi
+          if [ -n "${RESEND_FROM_EMAIL:-}" ]; then
+            echo "$RESEND_FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env production
+          fi
 
       - name: 🗄️ Apply D1 Migrations
         env:

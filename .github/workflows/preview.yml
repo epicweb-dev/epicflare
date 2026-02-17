@@ -43,7 +43,9 @@ permissions:
 
 concurrency:
   group: >-
-    preview-${{ github.event.pull_request.number || github.ref }}
+    preview-${{ github.event.pull_request.number || format('{0}-{1}',
+    inputs.target, inputs.target == 'pr' && inputs.pr_number ||
+    inputs.preview_name || github.ref_name) }}
   cancel-in-progress: true
 
 jobs:
