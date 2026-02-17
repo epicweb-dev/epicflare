@@ -8,6 +8,7 @@ magic.
 - Prefer flat test files: use top-level `test(...)` and avoid `describe`
   nesting.
 - Avoid shared setup like `beforeEach`/`afterEach`; inline setup per test.
+- Don't write tests for what the type system already guarantees.
 - Use disposable objects only when there is real cleanup. If no cleanup, skip
   `using` and `Symbol.dispose`.
 - Build helpers that return ready-to-run objects (factory pattern), not globals.
