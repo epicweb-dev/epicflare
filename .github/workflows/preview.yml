@@ -316,7 +316,31 @@ jobs:
           APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
         run: |
           set -euo pipefail
-          bunx wrangler delete "$APP_WORKER_NAME" --env preview --force
+          delete_worker() {
+            local name="$1"
+            local output=""
+            set +e
+            output="$(bunx wrangler delete "$name" --env preview --force 2>&1)"
+            local exit_code="$?"
+            set -e
+
+            if [ "$exit_code" -eq 0 ]; then
+              echo "$output"
+              return 0
+            fi
+
+            local lower
+            lower="$(echo "$output" | tr '[:upper:]' '[:lower:]')"
+            if [[ "$lower" == *"not found"* ]] || [[ "$lower" == *"no such"* ]] || [[ "$lower" == *"does not exist"* ]]; then
+              echo "Worker $name already deleted."
+              return 0
+            fi
+
+            echo "$output" >&2
+            return "$exit_code"
+          }
+
+          delete_worker "$APP_WORKER_NAME"
 
           for dir in mock-servers/*; do
             if [ ! -d "$dir" ]; then
@@ -328,5 +352,5 @@ jobs:
 
             service="$(basename "$dir")"
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
-            bunx wrangler delete "$mock_worker_name" --env preview --force
+            delete_worker "$mock_worker_name"
           done
