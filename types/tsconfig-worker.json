@@ -33,6 +33,7 @@
 		"./env-schema.ts",
 		"./worker-configuration.d.ts",
 		"../shared/**/*.ts",
+		"../mock-servers/**/*.ts",
 		"../worker/**/*.ts",
 		"../server/**/*.ts",
 		"../mcp/**/*.ts"

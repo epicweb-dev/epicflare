@@ -54,14 +54,17 @@ Tests use `.env.test` when `CLOUDFLARE_ENV=test` (set by Playwright).
 
 ## GitHub Actions secrets
 
-Configure these secrets for deploy workflows:
+Configure these secrets for GitHub Actions workflows:
 
 - `CLOUDFLARE_API_TOKEN` (Workers deploy + D1 edit access on the correct
   account)
 - `COOKIE_SECRET` (same format as local)
-- `RESEND_API_KEY` (optional, required to send via Resend)
+- `APP_BASE_URL` (optional, used by the production deploy)
+- `RESEND_API_KEY` (optional, required to send via Resend in non-mock
+  environments)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
 
 Preview deploys for pull requests create a separate Worker per PR named
-`<app-name>-pr-<number>` (for epicflare: `epicflare-pr-123`). The same
+`<app-name>-pr-<number>` (for epicflare: `epicflare-pr-123`) plus one Worker per
+mock service named `<app-name>-pr-<number>-mock-<service>`. The same
 `CLOUDFLARE_API_TOKEN` must be able to create/update and delete those Workers.

@@ -352,6 +352,109 @@ function updateDeployWorkflow({
 	return changed
 }
 
+function updatePreviewWorkflow({
+	workerName,
+	dryRun,
+}: {
+	workerName: string
+	dryRun: boolean
+}) {
+	const workflowPath = join(process.cwd(), '.github/workflows/preview.yml')
+	if (!existsSync(workflowPath)) {
+		return false
+	}
+	const original = readFileSync(workflowPath, 'utf8')
+	const next = original.replace(
+		/\bAPP_NAME="[^"]*"/g,
+		`APP_NAME="${workerName}"`,
+	)
+	const changed = next !== original
+
+	if (dryRun) {
+		logDryRun(
+			changed
+				? 'Would update preview workflow Worker name prefix.'
+				: 'preview workflow already matches the provided Worker name.',
+		)
+		return changed
+	}
+
+	if (changed) {
+		writeFileSync(workflowPath, next)
+	}
+	return changed
+}
+
+function updateMockWorkers({
+	workerName,
+	databaseName,
+	databaseId,
+	previewDatabaseName,
+	previewDatabaseId,
+	dryRun,
+}: {
+	workerName: string
+	databaseName: string
+	databaseId: string
+	previewDatabaseName: string
+	previewDatabaseId: string
+	dryRun: boolean
+}) {
+	const root = process.cwd()
+	const mockServersDir = join(root, 'mock-servers')
+	if (!existsSync(mockServersDir)) {
+		return false
+	}
+
+	const entries = readdirSync(mockServersDir, { withFileTypes: true })
+	const updatedConfigs: Array<string> = []
+
+	for (const entry of entries) {
+		if (!entry.isDirectory()) continue
+		const serviceName = entry.name
+		const configPath = join(mockServersDir, serviceName, 'wrangler.jsonc')
+		if (!existsSync(configPath)) continue
+
+		const original = readFileSync(configPath, 'utf8')
+		let next = original
+
+		next = replaceFirstStringProperty(
+			next,
+			'name',
+			`${workerName}-mock-${serviceName}`,
+		)
+		next = replaceStringPropertySequence(next, 'database_name', [
+			databaseName,
+			previewDatabaseName,
+			previewDatabaseName,
+		])
+		if (databaseId && previewDatabaseId) {
+			next = replaceStringPropertySequence(next, 'database_id', [
+				databaseId,
+				previewDatabaseId,
+				previewDatabaseId,
+			])
+		}
+
+		if (next === original) continue
+
+		if (!dryRun) {
+			writeFileSync(configPath, next)
+		}
+		updatedConfigs.push(configPath)
+	}
+
+	const changed = updatedConfigs.length > 0
+	if (dryRun) {
+		logDryRun(
+			changed
+				? `Would update ${updatedConfigs.length} mock Worker wrangler config(s).`
+				: 'No mock Worker wrangler configs required updates.',
+		)
+	}
+	return changed
+}
+
 function updatePackageJson({
 	packageName,
 	dryRun,
@@ -1025,6 +1128,7 @@ async function run() {
 	try {
 		const changedBranding = updateBrandingTokens({ appName, dryRun })
 		const changedDeployWorkflow = updateDeployWorkflow({ databaseName, dryRun })
+		const changedPreviewWorkflow = updatePreviewWorkflow({ workerName, dryRun })
 		const changedWrangler = updateWrangler({
 			workerName,
 			databaseName,
@@ -1033,6 +1137,14 @@ async function run() {
 			previewDatabaseId,
 			kvNamespaceId,
 			kvNamespacePreviewId,
+			dryRun,
+		})
+		const changedMockWorkers = updateMockWorkers({
+			workerName,
+			databaseName,
+			databaseId,
+			previewDatabaseName,
+			previewDatabaseId,
 			dryRun,
 		})
 		const changedPackageJson = updatePackageJson({ packageName, dryRun })
@@ -1055,7 +1167,9 @@ async function run() {
 			changes: {
 				brandingTokens: changedBranding,
 				deployWorkflow: changedDeployWorkflow,
+				previewWorkflow: changedPreviewWorkflow,
 				wranglerJsonc: changedWrangler,
+				mockWorkers: changedMockWorkers,
 				packageJson: changedPackageJson,
 				env: changedEnv,
 			},

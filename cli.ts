@@ -1,15 +1,14 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { platform } from 'node:os'
 import readline from 'node:readline'
 import { setTimeout as delay } from 'node:timers/promises'
 import getPort, { clearLockedPorts } from 'get-port'
-import {
-	createMockResendServer,
-	type MockResendServer,
-} from './tools/mock-resend-server.ts'
 
 const defaultWorkerPort = 3742
 const defaultMockPort = 8788
+const mockReadyTimeoutMs = 10_000
+const mockReadyPollMs = 200
 
 const ansiReset = '\x1b[0m'
 const ansiBright = '\x1b[1m'
@@ -41,7 +40,7 @@ const extraArgs = process.argv.slice(2)
 let shutdown: (() => void) | null = null
 let devChildren: Array<ChildProcess> = []
 let workerOrigin = ''
-let mockResendServer: MockResendServer | null = null
+let mockResendProcess: ChildProcess | null = null
 let mockEnvOverrides: Record<string, string> = {}
 
 void startDev()
@@ -54,7 +53,7 @@ async function startDev() {
 	})
 	shutdown = setupShutdown(
 		() => devChildren,
-		() => mockResendServer,
+		() => mockResendProcess,
 	)
 }
 
@@ -117,23 +116,22 @@ function pipeStream(
 
 function setupShutdown(
 	getChildren: () => Array<ChildProcess>,
-	getMockServer: () => MockResendServer | null,
+	getMockProcess: () => ChildProcess | null,
 ) {
+	let isShuttingDown = false
 	function doShutdown() {
+		if (isShuttingDown) return
+		isShuttingDown = true
 		console.log(dim('\nShutting down...'))
-		for (const child of getChildren()) {
-			if (!child.killed) {
-				child.kill('SIGINT')
-			}
+		const children = getChildren().filter((child) => child.exitCode === null)
+		const mockProcess = getMockProcess()
+		if (mockProcess && mockProcess.exitCode === null) {
+			children.push(mockProcess)
 		}
-		const server = getMockServer()
-		if (server) {
-			server.stop()
-		}
-
-		setTimeout(() => {
+		void (async () => {
+			await Promise.all(children.map((child) => stopChild(child)))
 			process.exit(0)
-		}, 500)
+		})()
 	}
 
 	process.on('SIGINT', doShutdown)
@@ -257,8 +255,36 @@ function hasEnvValue(value: string | undefined) {
 	return typeof value === 'string' && value.trim().length > 0
 }
 
+async function isMockReady(baseUrl: string) {
+	try {
+		const response = await fetch(`${baseUrl}/__mocks/meta`)
+		await response.body?.cancel()
+		return response.ok
+	} catch {
+		return false
+	}
+}
+
+async function waitForMockReady(baseUrl: string, child: ChildProcess) {
+	const start = Date.now()
+	while (Date.now() - start < mockReadyTimeoutMs) {
+		if (child.killed || child.exitCode !== null) {
+			return false
+		}
+		if (await isMockReady(baseUrl)) {
+			return true
+		}
+		await delay(mockReadyPollMs)
+	}
+	return false
+}
+
 async function ensureMockServers() {
-	if (mockResendServer) {
+	if (
+		mockResendProcess &&
+		!mockResendProcess.killed &&
+		mockResendProcess.exitCode === null
+	) {
 		return mockEnvOverrides
 	}
 	const desiredPort = Number.parseInt(
@@ -270,21 +296,39 @@ async function ensureMockServers() {
 		(_, index) => desiredPort + index,
 	)
 	const mockPort = await getPort({ port: portRange })
-	mockResendServer = createMockResendServer({
-		port: mockPort,
-		storageDir: process.env.MOCK_API_STORAGE_DIR ?? 'mock-data/resend',
+	const baseUrl = `http://127.0.0.1:${mockPort}`
+	const apiToken = `mock-resend-${randomUUID()}`
+	const child = runBunScript(
+		'dev:mock-resend',
+		[
+			'--port',
+			String(mockPort),
+			'--ip',
+			'127.0.0.1',
+			'--var',
+			`MOCK_API_TOKEN:${apiToken}`,
+		],
+		{},
+	)
+	mockResendProcess = child
+	child.once('exit', () => {
+		mockResendProcess = null
 	})
 	mockEnvOverrides = {
-		RESEND_API_BASE_URL: mockResendServer.baseUrl,
-	}
-	if (!hasEnvValue(process.env.RESEND_API_KEY)) {
-		mockEnvOverrides.RESEND_API_KEY = 'mock-resend-key'
+		RESEND_API_BASE_URL: baseUrl,
+		RESEND_API_KEY: apiToken,
 	}
 	if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
 		mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
 	}
-	console.log(dim(`Mock API server running at ${mockResendServer.url}`))
-	console.log(dim(`Resend mock base URL ${mockResendServer.baseUrl}`))
+	const didStart = await waitForMockReady(baseUrl, child)
+	if (!didStart) {
+		console.warn(
+			`Mock API worker did not become ready within ${mockReadyTimeoutMs}ms.`,
+		)
+	}
+	console.log(dim(`Mock API worker running at ${baseUrl}`))
+	console.log(dim(`Resend mock base URL ${baseUrl}`))
 	return mockEnvOverrides
 }
 
