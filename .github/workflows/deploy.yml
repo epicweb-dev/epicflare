@@ -71,7 +71,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: ✅ Run Bun Tests
-        run: bun test server
+        run: bun test server mock-servers
 
   e2e:
     runs-on: ubuntu-latest
@@ -197,18 +197,65 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: |
           set -euo pipefail
           WORKER_NAME="epicflare-pr-${{ github.event.pull_request.number }}"
           echo "$COOKIE_SECRET" | bunx wrangler secret put COOKIE_SECRET --env preview --name "$WORKER_NAME"
-          if [ -n "${RESEND_API_KEY:-}" ]; then
-            echo "$RESEND_API_KEY" | bunx wrangler secret put RESEND_API_KEY --env preview --name "$WORKER_NAME"
+          FROM_EMAIL="${RESEND_FROM_EMAIL:-reset@epicflare.dev}"
+          echo "$FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env preview --name "$WORKER_NAME"
+
+      - name: 🧪 Deploy PR Preview Mock Workers
+        id: deploy_mocks
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          APP_WORKER_NAME="epicflare-pr-${{ github.event.pull_request.number }}"
+          MOCK_API_TOKEN="$(openssl rand -hex 32)"
+          echo "::add-mask::$MOCK_API_TOKEN"
+
+          mock_summary=""
+
+          for dir in mock-servers/*; do
+            if [ ! -d "$dir" ]; then
+              continue
+            fi
+            if [ ! -f "$dir/wrangler.jsonc" ]; then
+              continue
+            fi
+
+            service="$(basename "$dir")"
+            service_key="$(echo "$service" | tr '[:lower:]-' '[:upper:]_')"
+            mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
+            deploy_log="deploy-mock-${service}.log"
+
+            echo "$MOCK_API_TOKEN" | bunx wrangler secret put MOCK_API_TOKEN --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc"
+
+            bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
+
+            mock_url="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync(process.argv[1],'utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')" "$deploy_log")"
+            if [ -z "$mock_url" ]; then
+              echo "Failed to parse mock URL for $service." >&2
+              exit 1
+            fi
+
+            # Point the app preview at the mock service and use the shared token.
+            echo "$mock_url" | bunx wrangler secret put "${service_key}_API_BASE_URL" --env preview --name "$APP_WORKER_NAME"
+            echo "$MOCK_API_TOKEN" | bunx wrangler secret put "${service_key}_API_KEY" --env preview --name "$APP_WORKER_NAME"
+
+            mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
+          done
+
+          if [ -n "$mock_summary" ]; then
+            mock_summary="$(printf "%b" "$mock_summary" | sed '1{/^$/d;}')"
           fi
-          if [ -n "${RESEND_FROM_EMAIL:-}" ]; then
-            echo "$RESEND_FROM_EMAIL" | bunx wrangler secret put RESEND_FROM_EMAIL --env preview --name "$WORKER_NAME"
-          fi
+
+          {
+            echo "mock_summary<<EOF"
+            printf "%b\n" "$mock_summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: 🗄️ Apply D1 Migrations (preview)
         env:
@@ -240,15 +287,22 @@ jobs:
         env:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
           WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
+          MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_summary }}
         with:
           script: |
             const marker = "<!-- epicflare-preview-url -->";
-            const body = [
+            const bodyLines = [
               marker,
               `🔎 Preview deployed: ${process.env.PREVIEW_URL}`,
               "",
               `Worker: \`${process.env.WORKER_NAME}\``,
-            ].join("\n");
+            ];
+            if (process.env.MOCK_SUMMARY?.trim()) {
+              bodyLines.push("");
+              bodyLines.push("Mocks:");
+              bodyLines.push(process.env.MOCK_SUMMARY.trim());
+            }
+            const body = bodyLines.join("\n");
 
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
