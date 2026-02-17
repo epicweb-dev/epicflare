@@ -33,6 +33,7 @@ function parseArgs(argv: Array<string>): CliOptions {
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index]
+		if (!arg) continue
 		switch (arg) {
 			case '--env': {
 				options.env = argv[index + 1] ?? ''
