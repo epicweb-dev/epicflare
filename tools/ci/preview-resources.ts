@@ -27,7 +27,10 @@ function fail(message: string): never {
 	process.exit(1)
 }
 
-function parseArgs(argv: Array<string>): { command: Command; options: CliOptions } {
+function parseArgs(argv: Array<string>): {
+	command: Command
+	options: CliOptions
+} {
 	const command = argv[0]
 	if (command !== 'ensure' && command !== 'cleanup') {
 		fail(
@@ -420,7 +423,9 @@ async function writeGeneratedWranglerConfig({
 
 	const d1Databases = (previewEnv as Record<string, unknown>).d1_databases
 	if (!Array.isArray(d1Databases)) {
-		fail(`wrangler config "${baseConfigPath}" is missing "env.preview.d1_databases".`)
+		fail(
+			`wrangler config "${baseConfigPath}" is missing "env.preview.d1_databases".`,
+		)
 	}
 
 	const d1EntryIndex = d1Databases.findIndex((entry) => {
@@ -442,7 +447,9 @@ async function writeGeneratedWranglerConfig({
 
 	const kvNamespaces = (previewEnv as Record<string, unknown>).kv_namespaces
 	if (!Array.isArray(kvNamespaces)) {
-		fail(`wrangler config "${baseConfigPath}" is missing "env.preview.kv_namespaces".`)
+		fail(
+			`wrangler config "${baseConfigPath}" is missing "env.preview.kv_namespaces".`,
+		)
 	}
 
 	const kvEntryIndex = kvNamespaces.findIndex((entry) => {
@@ -463,7 +470,11 @@ async function writeGeneratedWranglerConfig({
 	}
 
 	const resolvedOut = path.resolve(outConfigPath)
-	await writeFile(resolvedOut, `${JSON.stringify(config, null, '\t')}\n`, 'utf8')
+	await writeFile(
+		resolvedOut,
+		`${JSON.stringify(config, null, '\t')}\n`,
+		'utf8',
+	)
 	console.error(`Wrote generated Wrangler config: ${resolvedOut}`)
 	return resolvedOut
 }
@@ -507,7 +518,9 @@ async function main() {
 	const { command, options } = parseArgs(process.argv.slice(2))
 
 	if (!process.env.CLOUDFLARE_API_TOKEN && !options.dryRun) {
-		fail('Missing CLOUDFLARE_API_TOKEN (required for Wrangler resource operations).')
+		fail(
+			'Missing CLOUDFLARE_API_TOKEN (required for Wrangler resource operations).',
+		)
 	}
 
 	if (command === 'ensure') {
