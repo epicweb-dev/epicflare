@@ -3,10 +3,6 @@ import { platform } from 'node:os'
 import readline from 'node:readline'
 import { setTimeout as delay } from 'node:timers/promises'
 import getPort, { clearLockedPorts } from 'get-port'
-import {
-	createMockResendServer,
-	type MockResendServer,
-} from './tools/mock-resend-server.ts'
 
 const defaultWorkerPort = 3742
 const defaultMockPort = 8788
@@ -41,7 +37,7 @@ const extraArgs = process.argv.slice(2)
 let shutdown: (() => void) | null = null
 let devChildren: Array<ChildProcess> = []
 let workerOrigin = ''
-let mockResendServer: MockResendServer | null = null
+let mockResendProcess: ChildProcess | null = null
 let mockEnvOverrides: Record<string, string> = {}
 
 void startDev()
@@ -54,7 +50,7 @@ async function startDev() {
 	})
 	shutdown = setupShutdown(
 		() => devChildren,
-		() => mockResendServer,
+		() => mockResendProcess,
 	)
 }
 
@@ -117,7 +113,7 @@ function pipeStream(
 
 function setupShutdown(
 	getChildren: () => Array<ChildProcess>,
-	getMockServer: () => MockResendServer | null,
+	getMockProcess: () => ChildProcess | null,
 ) {
 	function doShutdown() {
 		console.log(dim('\nShutting down...'))
@@ -126,9 +122,9 @@ function setupShutdown(
 				child.kill('SIGINT')
 			}
 		}
-		const server = getMockServer()
-		if (server) {
-			server.stop()
+		const mockProcess = getMockProcess()
+		if (mockProcess && !mockProcess.killed) {
+			mockProcess.kill('SIGINT')
 		}
 
 		setTimeout(() => {
@@ -258,7 +254,11 @@ function hasEnvValue(value: string | undefined) {
 }
 
 async function ensureMockServers() {
-	if (mockResendServer) {
+	if (
+		mockResendProcess &&
+		!mockResendProcess.killed &&
+		mockResendProcess.exitCode === null
+	) {
 		return mockEnvOverrides
 	}
 	const desiredPort = Number.parseInt(
@@ -270,21 +270,31 @@ async function ensureMockServers() {
 		(_, index) => desiredPort + index,
 	)
 	const mockPort = await getPort({ port: portRange })
-	mockResendServer = createMockResendServer({
-		port: mockPort,
-		storageDir: process.env.MOCK_API_STORAGE_DIR ?? 'mock-data/resend',
+	const baseUrl = `http://127.0.0.1:${mockPort}`
+	const apiKey = hasEnvValue(process.env.RESEND_API_KEY)
+		? process.env.RESEND_API_KEY!.trim()
+		: 'mock-resend-key'
+	mockResendProcess = runBunScript(
+		'dev:mock-resend',
+		['--port', String(mockPort), '--ip', '127.0.0.1'],
+		{
+			MOCK_API_TOKEN: apiKey,
+		},
+	)
+	mockResendProcess.once('exit', () => {
+		mockResendProcess = null
 	})
 	mockEnvOverrides = {
-		RESEND_API_BASE_URL: mockResendServer.baseUrl,
+		RESEND_API_BASE_URL: baseUrl,
 	}
 	if (!hasEnvValue(process.env.RESEND_API_KEY)) {
-		mockEnvOverrides.RESEND_API_KEY = 'mock-resend-key'
+		mockEnvOverrides.RESEND_API_KEY = apiKey
 	}
 	if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
 		mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
 	}
-	console.log(dim(`Mock API server running at ${mockResendServer.url}`))
-	console.log(dim(`Resend mock base URL ${mockResendServer.baseUrl}`))
+	console.log(dim(`Mock API worker running at ${baseUrl}`))
+	console.log(dim(`Resend mock base URL ${baseUrl}`))
 	return mockEnvOverrides
 }
 

@@ -1,0 +1,450 @@
+import { resendEmailSchema } from '#shared/resend-email.ts'
+
+type MockResendEnv = {
+	APP_DB: D1Database
+	MOCK_API_TOKEN?: string
+}
+
+type DashboardEndpoint = {
+	method: string
+	path: string
+	description: string
+	requiresAuth: boolean
+}
+
+const dashboardEndpoints: Array<DashboardEndpoint> = [
+	{
+		method: 'POST',
+		path: '/emails',
+		description: 'Create an email message (Resend API compatible)',
+		requiresAuth: true,
+	},
+	{
+		method: 'GET',
+		path: '/__mocks',
+		description: 'Mock dashboard (HTML)',
+		requiresAuth: false,
+	},
+	{
+		method: 'GET',
+		path: '/__mocks/meta',
+		description: 'Mock metadata (JSON)',
+		requiresAuth: false,
+	},
+	{
+		method: 'GET',
+		path: '/__mocks/messages',
+		description: 'List stored messages (JSON)',
+		requiresAuth: true,
+	},
+	{
+		method: 'POST',
+		path: '/__mocks/clear',
+		description: 'Delete stored messages for this token (JSON)',
+		requiresAuth: true,
+	},
+]
+
+let schemaReady: Promise<void> | null = null
+
+function htmlEscape(value: string) {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;')
+}
+
+function json(data: unknown, init: ResponseInit = {}) {
+	const headers = new Headers(init.headers)
+	if (!headers.has('content-type')) {
+		headers.set('content-type', 'application/json; charset=utf-8')
+	}
+	return new Response(JSON.stringify(data, null, 2), { ...init, headers })
+}
+
+function parseBearerToken(headerValue: string | null) {
+	if (!headerValue) return null
+	const match = headerValue.match(/^Bearer\s+(.+)\s*$/i)
+	return match?.[1]?.trim() || null
+}
+
+function getCookieValue(cookieHeader: string | null, name: string) {
+	if (!cookieHeader) return null
+	for (const part of cookieHeader.split(';')) {
+		const [rawKey, ...rest] = part.trim().split('=')
+		if (!rawKey) continue
+		if (rawKey !== name) continue
+		return rest.join('=')
+	}
+	return null
+}
+
+function readAuthToken(request: Request, url: URL) {
+	const bearer = parseBearerToken(request.headers.get('authorization'))
+	if (bearer) return bearer
+
+	const headerToken = request.headers.get('x-mock-token')?.trim()
+	if (headerToken) return headerToken
+
+	const urlToken = url.searchParams.get('token')?.trim()
+	if (urlToken) return urlToken
+
+	const cookieToken = getCookieValue(
+		request.headers.get('cookie'),
+		'mock_token',
+	)
+	if (cookieToken) return cookieToken
+
+	return null
+}
+
+function isAuthorized(request: Request, env: MockResendEnv, url: URL) {
+	const expected = env.MOCK_API_TOKEN?.trim() ?? ''
+	if (!expected) return true
+	const provided = readAuthToken(request, url)
+	return Boolean(provided && provided === expected)
+}
+
+async function sha256Hex(value: string) {
+	const data = new TextEncoder().encode(value)
+	const digest = await crypto.subtle.digest('SHA-256', data)
+	return Array.from(new Uint8Array(digest))
+		.map((byte) => byte.toString(16).padStart(2, '0'))
+		.join('')
+}
+
+function getTokenPartition(env: MockResendEnv) {
+	const expected = env.MOCK_API_TOKEN?.trim() ?? ''
+	return expected ? sha256Hex(expected) : Promise.resolve('public')
+}
+
+async function ensureSchema(db: D1Database) {
+	if (!schemaReady) {
+		schemaReady = (async () => {
+			await db.exec(`
+				CREATE TABLE IF NOT EXISTS mock_resend_messages (
+					id TEXT PRIMARY KEY,
+					token_hash TEXT NOT NULL,
+					received_at INTEGER NOT NULL,
+					from_email TEXT NOT NULL,
+					to_json TEXT NOT NULL,
+					subject TEXT NOT NULL,
+					html TEXT NOT NULL,
+					payload_json TEXT NOT NULL
+				);
+				CREATE INDEX IF NOT EXISTS mock_resend_messages_token_received_at
+					ON mock_resend_messages(token_hash, received_at DESC);
+			`)
+		})()
+	}
+	await schemaReady
+}
+
+async function readJsonBody(request: Request) {
+	try {
+		return await request.json()
+	} catch {
+		return null
+	}
+}
+
+async function countMessages(db: D1Database, tokenHash: string) {
+	await ensureSchema(db)
+	const row = await db
+		.prepare(
+			'SELECT COUNT(*) AS count FROM mock_resend_messages WHERE token_hash = ?',
+		)
+		.bind(tokenHash)
+		.first<{ count: number | string }>()
+	const value = row?.count ?? 0
+	return typeof value === 'number' ? value : Number.parseInt(value, 10) || 0
+}
+
+async function listMessages(db: D1Database, tokenHash: string, limit: number) {
+	await ensureSchema(db)
+	const result = await db
+		.prepare(
+			`SELECT id, received_at, from_email, to_json, subject
+			 FROM mock_resend_messages
+			 WHERE token_hash = ?
+			 ORDER BY received_at DESC
+			 LIMIT ?`,
+		)
+		.bind(tokenHash, limit)
+		.all<{
+			id: string
+			received_at: number
+			from_email: string
+			to_json: string
+			subject: string
+		}>()
+
+	return Array.isArray(result.results) ? result.results : []
+}
+
+async function getMessage(db: D1Database, tokenHash: string, id: string) {
+	await ensureSchema(db)
+	return db
+		.prepare(
+			`SELECT id, received_at, from_email, to_json, subject, html, payload_json
+			 FROM mock_resend_messages
+			 WHERE token_hash = ? AND id = ?`,
+		)
+		.bind(tokenHash, id)
+		.first<{
+			id: string
+			received_at: number
+			from_email: string
+			to_json: string
+			subject: string
+			html: string
+			payload_json: string
+		}>()
+}
+
+async function clearMessages(db: D1Database, tokenHash: string) {
+	await ensureSchema(db)
+	await db
+		.prepare('DELETE FROM mock_resend_messages WHERE token_hash = ?')
+		.bind(tokenHash)
+		.run()
+}
+
+async function handlePostEmails(
+	request: Request,
+	env: MockResendEnv,
+	url: URL,
+) {
+	if (!isAuthorized(request, env, url)) {
+		return json({ error: 'Unauthorized' }, { status: 401 })
+	}
+
+	const body = await readJsonBody(request)
+	const parsed = resendEmailSchema.safeParse(body)
+	if (!parsed.success) {
+		return json({ error: 'Invalid email payload.' }, { status: 400 })
+	}
+
+	await ensureSchema(env.APP_DB)
+	const tokenHash = await getTokenPartition(env)
+	const now = Date.now()
+	const id = `email_${crypto.randomUUID()}`
+	const payloadJson = JSON.stringify(parsed.data)
+
+	await env.APP_DB.prepare(
+		`INSERT INTO mock_resend_messages
+			 (id, token_hash, received_at, from_email, to_json, subject, html, payload_json)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+	)
+		.bind(
+			id,
+			tokenHash,
+			now,
+			parsed.data.from,
+			JSON.stringify(parsed.data.to),
+			parsed.data.subject,
+			parsed.data.html,
+			payloadJson,
+		)
+		.run()
+
+	// Mirror Resend's happy-path shape.
+	return json({ id }, { status: 200 })
+}
+
+async function handleGetMeta(request: Request, env: MockResendEnv, url: URL) {
+	const authorized = isAuthorized(request, env, url)
+	const tokenHash = authorized ? await getTokenPartition(env) : null
+
+	return json({
+		service: 'resend',
+		authorized,
+		endpoints: dashboardEndpoints,
+		...(tokenHash
+			? {
+					messageCount: await countMessages(env.APP_DB, tokenHash),
+				}
+			: {}),
+	})
+}
+
+async function handleGetMessages(
+	request: Request,
+	env: MockResendEnv,
+	url: URL,
+) {
+	if (!isAuthorized(request, env, url)) {
+		return json({ error: 'Unauthorized' }, { status: 401 })
+	}
+	const tokenHash = await getTokenPartition(env)
+	const messageId = url.pathname.startsWith('/__mocks/messages/')
+		? url.pathname.slice('/__mocks/messages/'.length).trim()
+		: ''
+	if (messageId) {
+		const message = await getMessage(env.APP_DB, tokenHash, messageId)
+		if (!message) {
+			return json({ error: 'Not Found' }, { status: 404 })
+		}
+		return json({ message })
+	}
+	const limitParam = url.searchParams.get('limit')?.trim() ?? ''
+	const limit = Math.min(
+		100,
+		Math.max(1, Number.parseInt(limitParam || '50', 10)),
+	)
+
+	const messages = await listMessages(env.APP_DB, tokenHash, limit)
+	return json({ count: messages.length, messages })
+}
+
+async function handleClear(request: Request, env: MockResendEnv, url: URL) {
+	if (!isAuthorized(request, env, url)) {
+		return json({ error: 'Unauthorized' }, { status: 401 })
+	}
+	const tokenHash = await getTokenPartition(env)
+	await clearMessages(env.APP_DB, tokenHash)
+	return json({ ok: true })
+}
+
+async function handleDashboard(request: Request, env: MockResendEnv, url: URL) {
+	const meta = (await handleGetMeta(request, env, url).then((res) =>
+		res.json(),
+	)) as {
+		authorized: boolean
+		messageCount?: number
+	}
+
+	const tokenHint = env.MOCK_API_TOKEN?.trim()
+		? 'This mock requires a token (Authorization: Bearer ... or ?token=...).'
+		: 'No token is configured; mock endpoints are open.'
+
+	const endpointRows = dashboardEndpoints
+		.map((endpoint) => {
+			const authBadge = endpoint.requiresAuth
+				? '<span class="badge badge-warn">auth</span>'
+				: '<span class="badge">public</span>'
+			return `<tr>
+				<td><code>${htmlEscape(endpoint.method)}</code></td>
+				<td><code>${htmlEscape(endpoint.path)}</code></td>
+				<td>${authBadge}</td>
+				<td>${htmlEscape(endpoint.description)}</td>
+			</tr>`
+		})
+		.join('')
+
+	const messageCountLine = meta.authorized
+		? `<span class="stat-value">${meta.messageCount ?? 0}</span>`
+		: `<span class="stat-value muted">hidden</span>`
+
+	const body = `<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Mock: Resend</title>
+		<style>
+			body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; color: #0f172a; }
+			.container { max-width: 960px; margin: 0 auto; }
+			h1 { margin: 0 0 8px; font-size: 22px; }
+			.subtitle { margin: 0 0 24px; color: #475569; }
+			.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0 24px; }
+			.card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; }
+			.stat-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+			.stat-value { font-size: 18px; font-weight: 600; }
+			.muted { color: #94a3b8; font-weight: 500; }
+			table { width: 100%; border-collapse: collapse; }
+			th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+			th { font-size: 12px; color: #64748b; font-weight: 600; }
+			code { background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }
+			.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #e2e8f0; color: #334155; }
+			.badge-warn { background: #fee2e2; color: #991b1b; }
+			.footer { margin-top: 24px; color: #64748b; font-size: 12px; }
+			a { color: #2563eb; text-decoration: none; }
+			a:hover { text-decoration: underline; }
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Mock: Resend</h1>
+			<p class="subtitle">${htmlEscape(tokenHint)}</p>
+			<div class="grid">
+				<div class="card">
+					<div class="stat-label">Auth</div>
+					<div class="stat-value">${meta.authorized ? 'authorized' : 'unauthorized'}</div>
+				</div>
+				<div class="card">
+					<div class="stat-label">Stored messages</div>
+					<div class="stat-value">${messageCountLine}</div>
+				</div>
+			</div>
+			<div class="card">
+				<h2 style="margin: 0 0 12px; font-size: 16px;">Endpoints</h2>
+				<table>
+					<thead>
+						<tr>
+							<th style="width: 110px;">Method</th>
+							<th style="width: 220px;">Path</th>
+							<th style="width: 90px;">Access</th>
+							<th>Description</th>
+						</tr>
+					</thead>
+					<tbody>
+						${endpointRows}
+					</tbody>
+				</table>
+				<p class="footer">
+					Meta: <a href="/__mocks/meta">/__mocks/meta</a>
+					· Messages: <a href="/__mocks/messages">/__mocks/messages</a>
+				</p>
+			</div>
+		</div>
+	</body>
+</html>`
+
+	return new Response(body, {
+		status: 200,
+		headers: { 'content-type': 'text/html; charset=utf-8' },
+	})
+}
+
+export default {
+	async fetch(request: Request, env: MockResendEnv, ctx: ExecutionContext) {
+		void ctx
+		const url = new URL(request.url)
+
+		if (request.method === 'GET' && url.pathname === '/') {
+			return Response.redirect(new URL('/__mocks', url).toString(), 302)
+		}
+
+		if (request.method === 'POST' && url.pathname === '/emails') {
+			return handlePostEmails(request, env, url)
+		}
+
+		if (request.method === 'GET' && url.pathname === '/__mocks') {
+			return handleDashboard(request, env, url)
+		}
+
+		if (request.method === 'GET' && url.pathname === '/__mocks/meta') {
+			return handleGetMeta(request, env, url)
+		}
+
+		if (request.method === 'GET' && url.pathname === '/__mocks/messages') {
+			return handleGetMessages(request, env, url)
+		}
+
+		if (
+			request.method === 'GET' &&
+			url.pathname.startsWith('/__mocks/messages/')
+		) {
+			return handleGetMessages(request, env, url)
+		}
+
+		if (request.method === 'POST' && url.pathname === '/__mocks/clear') {
+			return handleClear(request, env, url)
+		}
+
+		return new Response('Not Found', { status: 404 })
+	},
+} satisfies ExportedHandler<MockResendEnv>
