@@ -7,6 +7,8 @@ import getPort, { clearLockedPorts } from 'get-port'
 
 const defaultWorkerPort = 3742
 const defaultMockPort = 8788
+const mockReadyTimeoutMs = 10_000
+const mockReadyPollMs = 200
 
 const ansiReset = '\x1b[0m'
 const ansiBright = '\x1b[1m'
@@ -253,6 +255,29 @@ function hasEnvValue(value: string | undefined) {
 	return typeof value === 'string' && value.trim().length > 0
 }
 
+async function isMockReady(baseUrl: string) {
+	try {
+		const response = await fetch(`${baseUrl}/__mocks/meta`)
+		return response.ok
+	} catch {
+		return false
+	}
+}
+
+async function waitForMockReady(baseUrl: string, child: ChildProcess) {
+	const start = Date.now()
+	while (Date.now() - start < mockReadyTimeoutMs) {
+		if (child.killed || child.exitCode !== null) {
+			return false
+		}
+		if (await isMockReady(baseUrl)) {
+			return true
+		}
+		await delay(mockReadyPollMs)
+	}
+	return false
+}
+
 async function ensureMockServers() {
 	if (
 		mockResendProcess &&
@@ -272,7 +297,7 @@ async function ensureMockServers() {
 	const mockPort = await getPort({ port: portRange })
 	const baseUrl = `http://127.0.0.1:${mockPort}`
 	const apiToken = `mock-resend-${randomUUID()}`
-	mockResendProcess = runBunScript(
+	const child = runBunScript(
 		'dev:mock-resend',
 		[
 			'--port',
@@ -284,7 +309,8 @@ async function ensureMockServers() {
 		],
 		{},
 	)
-	mockResendProcess.once('exit', () => {
+	mockResendProcess = child
+	child.once('exit', () => {
 		mockResendProcess = null
 	})
 	mockEnvOverrides = {
@@ -293,6 +319,12 @@ async function ensureMockServers() {
 	}
 	if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
 		mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
+	}
+	const didStart = await waitForMockReady(baseUrl, child)
+	if (!didStart) {
+		console.warn(
+			`Mock API worker did not become ready within ${mockReadyTimeoutMs}ms.`,
+		)
 	}
 	console.log(dim(`Mock API worker running at ${baseUrl}`))
 	console.log(dim(`Resend mock base URL ${baseUrl}`))
