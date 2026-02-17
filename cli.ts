@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { platform } from 'node:os'
 import readline from 'node:readline'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -115,21 +116,20 @@ function setupShutdown(
 	getChildren: () => Array<ChildProcess>,
 	getMockProcess: () => ChildProcess | null,
 ) {
+	let isShuttingDown = false
 	function doShutdown() {
+		if (isShuttingDown) return
+		isShuttingDown = true
 		console.log(dim('\nShutting down...'))
-		for (const child of getChildren()) {
-			if (!child.killed) {
-				child.kill('SIGINT')
-			}
-		}
+		const children = getChildren().filter((child) => child.exitCode === null)
 		const mockProcess = getMockProcess()
-		if (mockProcess && !mockProcess.killed) {
-			mockProcess.kill('SIGINT')
+		if (mockProcess && mockProcess.exitCode === null) {
+			children.push(mockProcess)
 		}
-
-		setTimeout(() => {
+		void (async () => {
+			await Promise.all(children.map((child) => stopChild(child)))
 			process.exit(0)
-		}, 500)
+		})()
 	}
 
 	process.on('SIGINT', doShutdown)
@@ -271,9 +271,7 @@ async function ensureMockServers() {
 	)
 	const mockPort = await getPort({ port: portRange })
 	const baseUrl = `http://127.0.0.1:${mockPort}`
-	const apiKey = hasEnvValue(process.env.RESEND_API_KEY)
-		? process.env.RESEND_API_KEY!.trim()
-		: 'mock-resend-key'
+	const apiToken = `mock-resend-${randomUUID()}`
 	mockResendProcess = runBunScript(
 		'dev:mock-resend',
 		[
@@ -282,7 +280,7 @@ async function ensureMockServers() {
 			'--ip',
 			'127.0.0.1',
 			'--var',
-			`MOCK_API_TOKEN:${apiKey}`,
+			`MOCK_API_TOKEN:${apiToken}`,
 		],
 		{},
 	)
@@ -291,9 +289,7 @@ async function ensureMockServers() {
 	})
 	mockEnvOverrides = {
 		RESEND_API_BASE_URL: baseUrl,
-	}
-	if (!hasEnvValue(process.env.RESEND_API_KEY)) {
-		mockEnvOverrides.RESEND_API_KEY = apiKey
+		RESEND_API_KEY: apiToken,
 	}
 	if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
 		mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
