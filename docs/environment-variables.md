@@ -39,8 +39,10 @@ types, runtime validation, and documentation in sync.
    - Add the variable to `docs/setup-manifest.md`.
 
 5. **Sync deploy secrets**
-   - Add the variable to `.github/workflows/deploy.yml` so it is pushed via
-     `wrangler secret put`.
+   - Add the variable to the relevant GitHub Actions workflows so it is pushed
+     via `wrangler secret put`:
+     - `.github/workflows/deploy.yml` (production deploys)
+     - `.github/workflows/preview.yml` (preview deploys)
 
 ## Why Zod?
 
