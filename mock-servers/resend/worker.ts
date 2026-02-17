@@ -356,24 +356,76 @@ async function handleDashboard(request: Request, env: MockResendEnv, url: URL) {
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
 		<title>Mock: Resend</title>
 		<style>
-			body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; color: #0f172a; }
+			:root {
+				color-scheme: light dark;
+				--bg: #f8fafc;
+				--text: #0f172a;
+				--muted: #475569;
+				--border: #e2e8f0;
+				--card-bg: #ffffff;
+				--table-border: #e2e8f0;
+				--code-bg: #f1f5f9;
+				--code-text: #0f172a;
+				--badge-bg: #e2e8f0;
+				--badge-text: #334155;
+				--badge-warn-bg: #fee2e2;
+				--badge-warn-text: #991b1b;
+				--link: #2563eb;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--bg: #0b1220;
+					--text: #e2e8f0;
+					--muted: #94a3b8;
+					--border: #1e293b;
+					--card-bg: #0f172a;
+					--table-border: #1e293b;
+					--code-bg: #111827;
+					--code-text: #e2e8f0;
+					--badge-bg: #1f2937;
+					--badge-text: #e2e8f0;
+					--badge-warn-bg: #7f1d1d;
+					--badge-warn-text: #fecaca;
+					--link: #60a5fa;
+				}
+			}
+
+			body {
+				margin: 0;
+				background: var(--bg);
+				font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+					sans-serif;
+				padding: 24px;
+				color: var(--text);
+			}
 			.container { max-width: 960px; margin: 0 auto; }
 			h1 { margin: 0 0 8px; font-size: 22px; }
-			.subtitle { margin: 0 0 24px; color: #475569; }
+			.subtitle { margin: 0 0 24px; color: var(--muted); }
 			.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0 24px; }
-			.card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; }
-			.stat-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+			.card { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--card-bg); }
+			.stat-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 			.stat-value { font-size: 18px; font-weight: 600; }
-			.muted { color: #94a3b8; font-weight: 500; }
+			.muted { color: var(--muted); font-weight: 500; }
 			table { width: 100%; border-collapse: collapse; }
-			th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-			th { font-size: 12px; color: #64748b; font-weight: 600; }
-			code { background: #f1f5f9; padding: 2px 6px; border-radius: 6px; }
-			.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #e2e8f0; color: #334155; }
-			.badge-warn { background: #fee2e2; color: #991b1b; }
-			.footer { margin-top: 24px; color: #64748b; font-size: 12px; }
-			a { color: #2563eb; text-decoration: none; }
+			th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--table-border); vertical-align: top; }
+			th { font-size: 12px; color: var(--muted); font-weight: 600; }
+			code { background: var(--code-bg); color: var(--code-text); padding: 2px 6px; border-radius: 6px; }
+			.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--badge-bg); color: var(--badge-text); }
+			.badge-warn { background: var(--badge-warn-bg); color: var(--badge-warn-text); }
+			.footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+			a { color: var(--link); text-decoration: none; }
 			a:hover { text-decoration: underline; }
+
+			@media (max-width: 640px) {
+				body { padding: 16px; }
+				h1 { font-size: 20px; }
+				.subtitle { margin-bottom: 16px; font-size: 14px; }
+				.grid { grid-template-columns: 1fr; margin: 12px 0 16px; }
+				.card { border-radius: 10px; padding: 12px; }
+				table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+				th, td { padding: 8px 6px; }
+			}
 		</style>
 	</head>
 	<body>
