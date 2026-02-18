@@ -1,6 +1,6 @@
-import { z } from 'zod'
-import { type MCP } from './index.ts'
 import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
+import { z } from 'zod'
+import { type MCP } from '../index.ts'
 
 type OperationFn = (left: number, right: number) => number
 type MathOperator = '+' | '-' | '*' | '/'
@@ -14,7 +14,7 @@ const operations = {
 
 const mathOperators = Object.keys(operations) as Array<MathOperator>
 
-const doMathToolMetadata = {
+const doMathTool = {
 	name: 'do_math',
 	title: 'Do Math',
 	description: `
@@ -41,12 +41,12 @@ function formatNumberForMarkdown(value: number, precision: number) {
 	return rounded.includes('.') ? rounded.replace(/\.?0+$/, '') : rounded
 }
 
-export async function registerTools(agent: MCP) {
+export async function registerDoMathTool(agent: MCP) {
 	agent.server.registerTool(
-		doMathToolMetadata.name,
+		doMathTool.name,
 		{
-			title: doMathToolMetadata.title,
-			description: doMathToolMetadata.description,
+			title: doMathTool.title,
+			description: doMathTool.description,
 			inputSchema: {
 				left: z
 					.number()
@@ -94,7 +94,7 @@ export async function registerTools(agent: MCP) {
 					.max(15)
 					.describe('Precision used ONLY for markdown formatting.'),
 			},
-			annotations: doMathToolMetadata.annotations,
+			annotations: doMathTool.annotations,
 		},
 		async ({
 			left,
@@ -156,6 +156,7 @@ Next: Use smaller inputs or choose a different operator.
 					isError: true,
 				}
 			}
+
 			const expression = `${left} ${operator} ${right}`
 			const markdownResult = formatNumberForMarkdown(result, precision)
 			return {

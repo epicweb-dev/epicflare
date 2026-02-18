@@ -311,7 +311,7 @@ export const toolsMetadata = {
 
 **Example in this repo:** Server instructions live in `mcp/server-metadata.ts`,
 and tool metadata is colocated with tool registration + schemas in
-`mcp/tools.ts`.
+`mcp/tools/do-math.ts` (with `mcp/register-tools.ts` as the small aggregator).
 
 ---
 

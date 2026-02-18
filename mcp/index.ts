@@ -2,7 +2,7 @@ import { invariant } from '@epic-web/invariant'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { McpAgent } from 'agents/mcp'
 import { serverMetadata } from './server-metadata.ts'
-import { registerTools } from './tools.ts'
+import { registerTools } from './register-tools.ts'
 
 export type State = {}
 export type Props = {
