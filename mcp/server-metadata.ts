@@ -48,12 +48,6 @@ Examples:
 Next:
 - Use 'structuredContent.result' if you need a machine-friendly number.
 - If you need to present the result to a user, use the markdown text in 'content'.
-
-Input details:
-- See the tool input schema for parameter descriptions, constraints, defaults, and valid values.
-
-Output details:
-- See the tool output schema for the shape of 'structuredContent' on success.
 		`.trim(),
 		annotations: readOnlyToolAnnotations,
 	},
