@@ -1,4 +1,6 @@
-# MCP Server Best Practices
+// Intentionally duplicated markdown (also in docs/) so the MCP server can serve
+// it without requiring Wrangler module rules for importing `*.md`.
+export const mcpServerBestPracticesMarkdown = `# MCP Server Best Practices
 
 _Learnings from analyzing high-quality MCP server implementations_
 
@@ -21,7 +23,7 @@ guide" for the AI. This is the first thing the AI reads when connecting.
 
 **Best Practice Format:**
 
-```
+\`\`\`
 Quick start
 - What to call first
 - Most common workflows
@@ -39,16 +41,16 @@ How to chain tools safely
 
 Common patterns & examples
 - "To do X, first call Y, then Z"
-```
+\`\`\`
 
 **Example from Linear:**
 
-```
+\`\`\`
 Quick start
 - Call 'workspace_metadata' first to fetch canonical identifiers you will reuse across tools.
 - Then use 'list_issues' with teamId/projectId and filters to locate targets.
 - To modify, use 'update_issues', then verify with 'list_issues'.
-```
+\`\`\`
 
 **Example in this repo:** The MCP server now provides a structured onboarding
 guide in server-level instructions (quick start, defaults, chaining patterns,
@@ -70,7 +72,7 @@ Tools have _detailed, structured descriptions_ that include:
 
 **Best Practice Format:**
 
-```
+\`\`\`
 Brief description of what the tool does.
 
 Inputs:
@@ -84,11 +86,11 @@ Examples:
 - "Do Y" → { param: "other" }
 
 Next: Use tool_a to verify. Pass id to tool_b.
-```
+\`\`\`
 
 **Example from Google Calendar:**
 
-```
+\`\`\`
 Search events across ALL calendars by default. Returns merged results sorted by start time.
 
 Inputs: calendarId? (default: 'all'), timeMin?, timeMax? (ISO 8601), query?, maxResults?...
@@ -100,7 +102,7 @@ FILTERING BY TIME (important!):
 Returns: { items: Array<{ id, summary, start, end, calendarId, calendarName... }> }
 
 Next: Use eventId AND calendarId with 'update_event' or 'delete_event'.
-```
+\`\`\`
 
 **Example in this repo:** Tool descriptions now follow the structured format
 (what it does, inputs/returns, examples, and "next steps").
@@ -113,26 +115,26 @@ Next: Use eventId AND calendarId with 'update_event' or 'delete_event'.
 
 Every tool includes annotations that help the AI understand the tool's behavior:
 
-```typescript
+\`\`\`typescript
 annotations: {
   readOnlyHint: true,      // Does not modify state
   destructiveHint: false,  // Does not delete data
   idempotentHint: true,    // Safe to call multiple times
   openWorldHint: true,     // May access external resources
 }
-```
+\`\`\`
 
 **Guidelines:**
 
-| Annotation        | When to use `true`                      |
-| ----------------- | --------------------------------------- |
-| `readOnlyHint`    | GET/LIST operations                     |
-| `destructiveHint` | DELETE operations, irreversible changes |
-| `idempotentHint`  | Same input always produces same result  |
-| `openWorldHint`   | Accesses external APIs/resources        |
+| Annotation | When to use \`true\` |
+| --- | --- |
+| \`readOnlyHint\` | GET/LIST operations |
+| \`destructiveHint\` | DELETE operations, irreversible changes |
+| \`idempotentHint\` | Same input always produces same result |
+| \`openWorldHint\` | Accesses external APIs/resources |
 
 **Example in this repo:** All tools now provide annotations via the
-`server.registerTool()` config.
+\`server.registerTool()\` config.
 
 ---
 
@@ -149,7 +151,7 @@ Rich, descriptive input schemas with:
 
 **Example:**
 
-```typescript
+\`\`\`typescript
 z.object({
 	calendarId: z
 		.union([z.literal('all'), z.string(), z.array(z.string())])
@@ -175,7 +177,7 @@ z.object({
 		.default(50)
 		.describe('Max events to return (1-250, default: 50)'),
 })
-```
+\`\`\`
 
 **Example in this repo:** Tool input schemas now describe defaults, valid
 values, and format expectations (where applicable).
@@ -188,12 +190,12 @@ values, and format expectations (where applicable).
 
 Return **both** human-readable text AND structured content:
 
-```typescript
+\`\`\`typescript
 return {
 	content: [
 		{
 			type: 'text',
-			text: `✓ Event created: [${title}](${htmlLink})\n  when: ${start}\n  meet: ${meetLink}`,
+			text: \`✓ Event created: [\${title}](\${htmlLink})\\n  when: \${start}\\n  meet: \${meetLink}\`,
 		},
 	],
 	structuredContent: {
@@ -202,7 +204,7 @@ return {
 		// ... full structured data
 	},
 }
-```
+\`\`\`
 
 **Human-readable text best practices:**
 
@@ -213,7 +215,7 @@ return {
 
 **Example from Tesla:**
 
-```
+\`\`\`
 ## Model 3
 
 **Status**: asleep
@@ -227,10 +229,10 @@ return {
 
 ### ⚠️ Open
 - Trunk
-```
+\`\`\`
 
-**Example in this repo:** Tools now return human-readable markdown in `content`
-and machine-friendly data in `structuredContent`.
+**Example in this repo:** Tools now return human-readable markdown in \`content\`
+and machine-friendly data in \`structuredContent\`.
 
 ---
 
@@ -240,11 +242,11 @@ and machine-friendly data in `structuredContent`.
 
 Keep tool/prompt/resource metadata in a centralized file:
 
-```typescript
+\`\`\`typescript
 // config/metadata.ts
 export const serverMetadata = {
 	title: 'Media Server',
-	instructions: `...comprehensive instructions...`,
+	instructions: \`...comprehensive instructions...\`,
 }
 
 export const toolsMetadata = {
@@ -255,7 +257,7 @@ export const toolsMetadata = {
 	},
 	// ... more tools
 }
-```
+\`\`\`
 
 **Benefits:**
 
@@ -273,23 +275,23 @@ and the MCP server implementation consumes it.
 
 ### What Great Servers Do
 
-| Pattern    | Example                    | Use Case              |
-| ---------- | -------------------------- | --------------------- |
-| `list_*`   | `list_feeds`, `list_users` | Get multiple items    |
-| `get_*`    | `get_feed`, `get_issue`    | Get single item by ID |
-| `create_*` | `create_feed`              | Create new item       |
-| `update_*` | `update_feed`              | Modify existing item  |
-| `delete_*` | `delete_feed`              | Remove item           |
-| `browse_*` | `browse_media`             | Navigate/explore      |
-| `search_*` | `search_events`            | Query with filters    |
+| Pattern | Example | Use Case |
+| --- | --- | --- |
+| \`list_*\` | \`list_feeds\`, \`list_users\` | Get multiple items |
+| \`get_*\` | \`get_feed\`, \`get_issue\` | Get single item by ID |
+| \`create_*\` | \`create_feed\` | Create new item |
+| \`update_*\` | \`update_feed\` | Modify existing item |
+| \`delete_*\` | \`delete_feed\` | Remove item |
+| \`browse_*\` | \`browse_media\` | Navigate/explore |
+| \`search_*\` | \`search_events\` | Query with filters |
 
 **Consistency rules:**
 
-- Use `snake_case` for tool names
+- Use \`snake_case\` for tool names
 - Group related tools with common prefix
 - Use singular nouns for get/create, plural for list
 
-**Example in this repo:** Tool names use `snake_case` and follow `list_*`/verb
+**Example in this repo:** Tool names use \`snake_case\` and follow \`list_*\`/verb
 conventions.
 
 ---
@@ -300,19 +302,19 @@ conventions.
 
 Provide helpful, actionable error messages:
 
-```typescript
+\`\`\`typescript
 if (!feed) {
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `Feed "${feedId}" not found.\n\nNext: Use list_feeds to see available feeds.`,
+				text: \`Feed "\${feedId}" not found.\\n\\nNext: Use list_feeds to see available feeds.\`,
 			},
 		],
 		isError: true,
 	}
 }
-```
+\`\`\`
 
 **Best practices:**
 
@@ -332,7 +334,7 @@ if (!feed) {
 
 Consistent pagination patterns:
 
-```typescript
+\`\`\`typescript
 return {
   content: [...],
   structuredContent: {
@@ -345,18 +347,18 @@ return {
     },
   },
 }
-```
+\`\`\`
 
 **In descriptions:**
 
-```
+\`\`\`
 Returns: { items[], pagination: { hasMore, nextCursor } }
 
 Pass nextCursor to fetch the next page.
-```
+\`\`\`
 
 **Example in this repo:** List-style tools follow a consistent pagination shape
-in `structuredContent`.
+in \`structuredContent\`.
 
 ---
 
@@ -366,16 +368,16 @@ in `structuredContent`.
 
 Resources provide **read-only data access** with:
 
-- Clear URI schemes (`media://feeds`, `media://feeds/{id}`)
+- Clear URI schemes (\`media://feeds\`, \`media://feeds/{id}\`)
 - Proper MIME types
 - Descriptions that explain the data structure
 
 **Good resource examples:**
 
-- `media://server` — Server info and statistics
-- `media://feeds` — All feeds list
-- `media://feeds/{id}` — Individual feed details
-- `media://directories` — Available media directories
+- \`media://server\` — Server info and statistics
+- \`media://feeds\` — All feeds list
+- \`media://feeds/{id}\` — Individual feed details
+- \`media://directories\` — Available media directories
 
 **Example in this repo:** The server exposes read-only resources with stable
 URIs and proper MIME types (including this best-practices document).
@@ -395,7 +397,7 @@ Prompts are **task-oriented conversation starters**:
 
 **Example prompt:**
 
-```
+\`\`\`
 I want to create a new feed. Please help me decide:
 
 1. Should this be a directory feed (automatically includes all media from a folder)?
@@ -406,7 +408,8 @@ Available media roots:
 - video: /media/video
 
 Please ask me some questions to understand what I'm trying to create, then help me set it up.
-```
+\`\`\`
 
 **Example in this repo:** Prompts are registered as workflow starters and point
 to the most relevant tools/resources.
+`

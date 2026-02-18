@@ -31,7 +31,6 @@
 	"include": [
 		"./env.d.ts",
 		"./env-schema.ts",
-		"./markdown.d.ts",
 		"./worker-configuration.d.ts",
 		"../shared/**/*.ts",
 		"../mock-servers/**/*.ts",

@@ -4,13 +4,6 @@
 	"compatibility_date": "2026-01-31",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"main": "./worker/index.ts",
-	"rules": [
-		{
-			"type": "Text",
-			"globs": ["**/*.md"],
-			"fallthrough": true,
-		},
-	],
 	"migrations": [
 		{
 			"new_sqlite_classes": ["MCP"],

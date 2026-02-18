@@ -1,4 +1,3 @@
-import mcpServerBestPracticesMarkdown from '#docs/mcp-server-best-practices.md'
 import { type MCP } from './index.ts'
 import {
 	promptsMetadata,
@@ -7,6 +6,7 @@ import {
 	toolsMetadata,
 } from './server-metadata.ts'
 import { mathOperations } from './math-operations.ts'
+import { mcpServerBestPracticesMarkdown } from './server-best-practices-doc.ts'
 
 function jsonText(value: unknown) {
 	return JSON.stringify(value, null, 2)
