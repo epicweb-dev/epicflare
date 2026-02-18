@@ -60,50 +60,65 @@ and pointers to resources/prompts).
 
 ### What Great Servers Do
 
-Tools have _detailed, structured descriptions_ that include:
+Tools have _structured descriptions_ that **complement** the input schema rather
+than duplicating it.
+
+Include:
 
 1. **What the tool does** (1-2 sentences)
-2. **Inputs** with examples and valid values
-3. **Returns** - what the response structure looks like
-4. **Next steps** - what to do after calling this tool
-5. **Examples** - concrete usage examples
+2. **Behavior & gotchas** - semantics that aren't obvious from types alone
+   (cross-field rules, default meaning, side effects)
+3. **Returns** - what the response structure looks like (especially
+   `structuredContent`, which is not described by the input schema)
+4. **Errors & recovery** - common failure modes and what to do next
+5. **Examples** - concrete, copy/pasteable payloads
+
+**Avoid duplication:**
+
+- Do not re-list every input parameter (name/type/required/default) if the
+  `inputSchema` already documents it (see section 4).
+- Mention inputs only when they are necessary to explain behavior or cross-field
+  semantics.
 
 **Best Practice Format:**
 
 ```
 Brief description of what the tool does.
 
-Inputs:
-- param1: type (required/optional) — description with examples
-- param2: type — description
+Behavior:
+- Important semantic rule...
+- Cross-field constraint...
 
-Returns: { field1, field2, ... }
+Returns (structuredContent):
+- field1: description
+- field2: description
 
 Examples:
-- "Do X" → { param: "value" }
-- "Do Y" → { param: "other" }
+- "Do X" → { ... }
+- "Do Y" → { ... }
 
-Next: Use tool_a to verify. Pass id to tool_b.
+Next:
+- Use tool_a to verify. Pass id to tool_b.
+
+Input details:
+- Refer to the tool input schema for argument docs (types, defaults, valid
+  values, formats).
 ```
 
-**Example from Google Calendar:**
+**Example from Google Calendar (trimmed to the non-obvious behavior):**
 
 ```
 Search events across ALL calendars by default. Returns merged results sorted by start time.
-
-Inputs: calendarId? (default: 'all'), timeMin?, timeMax? (ISO 8601), query?, maxResults?...
 
 FILTERING BY TIME (important!):
 - Today's events: timeMin=start of day, timeMax=end of day
 - This week: timeMin=Monday 00:00, timeMax=Sunday 23:59:59
 
-Returns: { items: Array<{ id, summary, start, end, calendarId, calendarName... }> }
-
 Next: Use eventId AND calendarId with 'update_event' or 'delete_event'.
 ```
 
-**Example in this repo:** Tool descriptions now follow the structured format
-(what it does, inputs/returns, examples, and "next steps").
+**Example in this repo:** Tool descriptions focus on behavior/returns/examples
+and next steps, while parameter docs live in the input schema.
 
 ---
 
