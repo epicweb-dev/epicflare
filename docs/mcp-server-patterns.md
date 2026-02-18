@@ -309,9 +309,9 @@ export const toolsMetadata = {
 - Consistent naming and style
 - Can be extracted for documentation
 
-**Example in this repo:** Server/tool metadata is centralized and consumed by
-the MCP server implementation (see `mcp/server-metadata.ts`). Prefer colocation
-when metadata is only used by a single tool registration site.
+**Example in this repo:** Server instructions live in `mcp/server-metadata.ts`,
+and tool metadata is colocated with tool registration + schemas in
+`mcp/tools.ts`.
 
 ---
 

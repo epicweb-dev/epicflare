@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { type MCP } from './index.ts'
-import { toolsMetadata } from './server-metadata.ts'
+import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 
 type OperationFn = (left: number, right: number) => number
 type MathOperator = '+' | '-' | '*' | '/'
@@ -14,6 +14,27 @@ const operations = {
 
 const mathOperators = Object.keys(operations) as Array<MathOperator>
 
+const doMathToolMetadata = {
+	name: 'do_math',
+	title: 'Do Math',
+	description: `
+Compute a single arithmetic operation over two numbers.
+
+Behavior:
+- Division by zero is rejected.
+
+Examples:
+- "Add 8 and 4" → { left: 8, operator: "+", right: 4 }
+- "Divide 1 by 3 with 3 decimals" → { left: 1, operator: "/", right: 3, precision: 3 }
+	`.trim(),
+	annotations: {
+		readOnlyHint: true,
+		destructiveHint: false,
+		idempotentHint: true,
+		openWorldHint: false,
+	} satisfies ToolAnnotations,
+} as const
+
 function formatNumberForMarkdown(value: number, precision: number) {
 	if (Number.isInteger(value)) return String(value)
 	const rounded = value.toFixed(precision)
@@ -22,10 +43,10 @@ function formatNumberForMarkdown(value: number, precision: number) {
 
 export async function registerTools(agent: MCP) {
 	agent.server.registerTool(
-		toolsMetadata.do_math.name,
+		doMathToolMetadata.name,
 		{
-			title: toolsMetadata.do_math.title,
-			description: toolsMetadata.do_math.description,
+			title: doMathToolMetadata.title,
+			description: doMathToolMetadata.description,
 			inputSchema: {
 				left: z
 					.number()
@@ -73,7 +94,7 @@ export async function registerTools(agent: MCP) {
 					.max(15)
 					.describe('Precision used ONLY for markdown formatting.'),
 			},
-			annotations: toolsMetadata.do_math.annotations,
+			annotations: doMathToolMetadata.annotations,
 		},
 		async ({
 			left,
