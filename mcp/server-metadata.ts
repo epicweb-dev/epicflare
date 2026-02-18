@@ -7,18 +7,10 @@ export const serverMetadata = {
 	},
 	instructions: `
 Quick start
-- Use 'do_math' to compute a single arithmetic operation on two numbers.
-
-Default behavior
-- 'do_math.precision' controls ONLY display formatting; it does not change the computed value.
-- Division by zero is rejected with an actionable error message.
+- Use 'do_math' any time you need arithmetic. Prefer calling the tool over doing mental math.
 
 How to chain tools safely
-- Use one of the supported operators: "+", "-", "*", "/".
 - If you need to verify, re-run 'do_math' with the same arguments (idempotent) or validate with an inverse operation.
-
-Common patterns & examples
-- "Compute 8 + 4" → call 'do_math' with { left: 8, operator: "+", right: 4 }
 	`.trim(),
 }
 

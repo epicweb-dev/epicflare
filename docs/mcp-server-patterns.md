@@ -19,6 +19,11 @@ server implementations:
 Provide comprehensive server-level instructions that act as an "onboarding
 guide" for the AI. This is the first thing the AI reads when connecting.
 
+**Avoid duplication:** Server instructions should not repeat tool descriptions
+or tool argument docs. Keep tool-specific behavior and defaults in the tool
+description + schemas, and keep server instructions focused on workflows and
+cross-tool conventions.
+
 **Suggested format:**
 
 ```
@@ -268,11 +273,17 @@ mention these protocol field names.
 
 ---
 
-## 6. Centralized Metadata
+## 6. Metadata Location (Colocate by Default)
 
 ### What Great Servers Do
 
-Keep tool/prompt/resource metadata in a centralized file:
+Colocate tool descriptions with the tool definition by default (ideally in the
+same module as `server.registerTool()` and the schemas), so changes are reviewed
+together.
+
+Centralize metadata only when it has multiple consumers (for example: tool
+registration, docs generation, prompt templates), or when you need one shared
+source of truth across modules.
 
 ```typescript
 // config/metadata.ts
