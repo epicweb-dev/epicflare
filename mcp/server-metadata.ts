@@ -8,7 +8,6 @@ export const serverMetadata = {
 	instructions: `
 Quick start
 - Use 'do_math' to compute a single arithmetic operation on two numbers.
-- Tools return both a human-readable message and a machine-readable result.
 
 Default behavior
 - 'do_math.precision' controls ONLY display formatting; it does not change the computed value.
@@ -39,7 +38,6 @@ Compute a single arithmetic operation over two numbers.
 
 Behavior:
 - Division by zero is rejected.
-- 'precision' affects ONLY display formatting; it does not change the computed numeric result.
 
 Examples:
 - "Add 8 and 4" → { left: 8, operator: "+", right: 4 }
