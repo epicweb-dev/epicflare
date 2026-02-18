@@ -468,17 +468,11 @@ test(
 		const toolNames = result.tools.map((tool) => tool.name)
 
 		expect(toolNames).toContain('do_math')
-		expect(toolNames).toContain('list_operations')
+		expect(toolNames).not.toContain('list_operations')
 
 		const resources = await mcpClient.client.listResources()
 		const resourceUris = resources.resources.map((resource) => resource.uri)
-		expect(resourceUris).toContain('epicflare://server')
-		expect(resourceUris).toContain('epicflare://operations')
 		expect(resourceUris).toContain('epicflare://docs/mcp-server-best-practices')
-
-		const prompts = await mcpClient.client.listPrompts()
-		const promptNames = prompts.prompts.map((prompt) => prompt.name)
-		expect(promptNames).toContain('solve_math_problem')
 	},
 	{ timeout: defaultTimeoutMs },
 )
@@ -525,47 +519,6 @@ test(
 				> => 'text' in item,
 			)?.text ?? ''
 		expect(bestPracticesText).toContain('# MCP Server Best Practices')
-
-		const serverInfoResource = await mcpClient.client.readResource({
-			uri: 'epicflare://server',
-		})
-		const serverInfoText =
-			serverInfoResource.contents.find(
-				(
-					item,
-				): item is Extract<
-					(typeof serverInfoResource.contents)[number],
-					{ text: string }
-				> => 'text' in item,
-			)?.text ?? ''
-		const serverInfo = JSON.parse(serverInfoText) as {
-			tools?: Array<{ name?: string }>
-		}
-		expect(serverInfo.tools?.some((tool) => tool.name === 'do_math')).toBe(true)
-
-		const firstPage = await mcpClient.client.callTool({
-			name: 'list_operations',
-			arguments: { limit: 2 },
-		})
-		const firstStructured = (firstPage as CallToolResult).structuredContent as
-			| Record<string, unknown>
-			| undefined
-		const firstPagination = firstStructured?.pagination as
-			| { hasMore?: unknown; nextCursor?: unknown }
-			| undefined
-		expect(firstPagination?.hasMore).toBe(true)
-		expect(firstPagination?.nextCursor).toBe('2')
-
-		const secondPage = await mcpClient.client.callTool({
-			name: 'list_operations',
-			arguments: { limit: 2, cursor: String(firstPagination?.nextCursor) },
-		})
-		const secondStructured = (secondPage as CallToolResult)
-			.structuredContent as Record<string, unknown> | undefined
-		const secondPagination = secondStructured?.pagination as
-			| { hasMore?: unknown; nextCursor?: unknown }
-			| undefined
-		expect(secondPagination?.hasMore).toBe(false)
 	},
 	{ timeout: defaultTimeoutMs },
 )

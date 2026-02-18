@@ -1,7 +1,6 @@
 import { invariant } from '@epic-web/invariant'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { McpAgent } from 'agents/mcp'
-import { registerPrompts } from './prompts.ts'
 import { registerResources } from './resources.ts'
 import { serverMetadata } from './server-metadata.ts'
 import { registerTools } from './tools.ts'
@@ -17,7 +16,6 @@ export class MCP extends McpAgent<Env, State, Props> {
 	async init() {
 		await registerTools(this)
 		await registerResources(this)
-		await registerPrompts(this)
 	}
 	requireDomain() {
 		const baseUrl = this.props?.baseUrl
