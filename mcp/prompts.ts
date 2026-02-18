@@ -37,7 +37,7 @@ If I am unsure about operators, call list_operations first, then use do_math.`
 				messages: [
 					{
 						role: 'user',
-						content: [{ type: 'text' as const, text: userMessage }],
+						content: { type: 'text', text: userMessage },
 					},
 				],
 			}
