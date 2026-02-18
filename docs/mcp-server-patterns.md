@@ -308,9 +308,9 @@ export async function registerTools(agent: MCP) {
 - Tool docs/schemas/handler stay in sync
 - Easier to add/remove tools without touching unrelated tools
 
-**Example in this repo:** Server instructions live in `mcp/server-metadata.ts`,
-and tool metadata is colocated with tool registration + schemas in
-`mcp/tools/do-math.ts` (with `mcp/register-tools.ts` as the small aggregator).
+**Example in this repo:** Server instructions live in `mcp/index.ts`, and tool
+metadata is colocated with tool registration + schemas in `mcp/tools/do-math.ts`
+(with `mcp/register-tools.ts` as the small aggregator).
 
 ---
 
