@@ -123,8 +123,6 @@ Next: Use smaller inputs or choose a different operator.
 **Expression**: \`${expression}\`
 
 **Result**: \`${markdownResult}\`
-
-Next: If you need a machine-friendly number, use structuredContent.result.
 						`.trim(),
 					},
 				],
