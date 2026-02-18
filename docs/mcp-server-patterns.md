@@ -55,9 +55,9 @@ Quick start
 - To modify, use 'update_issues', then verify with 'list_issues'.
 ```
 
-**Example in this repo:** The MCP server now provides a structured onboarding
-guide in server-level instructions (quick start, defaults, chaining patterns,
-and pointers to resources/prompts).
+**Example in this repo:** Server-level instructions are intentionally short and
+avoid repeating tool-level docs. Tool-specific behavior/defaults live with the
+tool description + schemas.
 
 ---
 
@@ -309,8 +309,9 @@ export const toolsMetadata = {
 - Consistent naming and style
 - Can be extracted for documentation
 
-**Example in this repo:** Server/tool metadata is centralized, and the MCP
-server implementation consumes it (see `mcp/server-metadata.ts`).
+**Example in this repo:** Server/tool metadata is centralized and consumed by
+the MCP server implementation (see `mcp/server-metadata.ts`). Prefer colocation
+when metadata is only used by a single tool registration site.
 
 ---
 
