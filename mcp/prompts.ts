@@ -19,7 +19,9 @@ export async function registerPrompts(agent: MCP) {
 		},
 		async ({ problem }: { problem?: string }) => {
 			const userMessage = problem
-				? `Please solve this math problem: ${problem}`
+				? `Please solve this math problem: ${problem}
+
+If the operator is unclear, call list_operations first, then use do_math.`
 				: `I want to solve a math problem.
 
 Please ask me for:
@@ -33,20 +35,6 @@ If I am unsure about operators, call list_operations first, then use do_math.`
 				description:
 					'Guides the user to provide operands/operator, then calls list_operations/do_math.',
 				messages: [
-					{
-						role: 'system',
-						content: [
-							{
-								type: 'text',
-								text: `You are an assistant that solves arithmetic problems using MCP tools.
-
-Workflow:
-- If the operator is unclear, call list_operations.
-- Call do_math to compute.
-- Prefer returning a short markdown explanation plus the numeric result.`,
-							},
-						],
-					},
 					{
 						role: 'user',
 						content: [{ type: 'text', text: userMessage }],
