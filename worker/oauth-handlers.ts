@@ -243,14 +243,14 @@ export async function handleAuthorizeRequest(
 			sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
 			userRecordSchema,
 		)
-		let passwordCheck: Awaited<ReturnType<typeof verifyPassword>> | null = null
+		let passwordValid = false
 		if (userRecord) {
-			passwordCheck = await verifyPassword(password, userRecord.password_hash)
+			passwordValid = await verifyPassword(password, userRecord.password_hash)
 		} else {
 			await verifyPassword(password, dummyPasswordHash)
 		}
 
-		if (!userRecord || !passwordCheck?.valid) {
+		if (!userRecord || !passwordValid) {
 			void logAuditEvent({
 				category: 'oauth',
 				action: 'authorize',
@@ -261,16 +261,6 @@ export async function handleAuthorizeRequest(
 				reason: 'invalid_credentials',
 			})
 			return respondAuthorizeError(request, 'Invalid email or password.')
-		}
-
-		if (passwordCheck.upgradedHash) {
-			try {
-				await db.exec(
-					sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE id = ${userRecord.id}`,
-				)
-			} catch {
-				// Ignore upgrade failures so valid logins still succeed.
-			}
 		}
 		approvedEmail = normalizedEmail
 	} else if (sessionEmail) {

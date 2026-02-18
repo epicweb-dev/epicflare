@@ -19,7 +19,6 @@ We have **three** distinct TypeScript environments, each with its own
 
 - **Config**: `types/tsconfig-tools.json`
 - **Files**:
-  - `vite.config.ts`
   - `playwright.config.ts`
   - `wrangler-env.ts`
   - `cli.ts`

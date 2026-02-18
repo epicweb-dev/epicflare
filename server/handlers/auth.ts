@@ -166,17 +166,16 @@ export function createAuthHandler(appEnv: AppEnv) {
 				sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
 				userLookupSchema,
 			)
-			let passwordCheck: Awaited<ReturnType<typeof verifyPassword>> | null =
-				null
+			let passwordValid = false
 			if (userRecord) {
-				passwordCheck = await verifyPassword(
+				passwordValid = await verifyPassword(
 					normalizedPassword,
 					userRecord.password_hash,
 				)
 			} else {
 				await verifyPassword(normalizedPassword, dummyPasswordHash)
 			}
-			if (!userRecord || !passwordCheck?.valid) {
+			if (!userRecord || !passwordValid) {
 				void logAuditEvent({
 					category: 'auth',
 					action: 'login',
@@ -190,16 +189,6 @@ export function createAuthHandler(appEnv: AppEnv) {
 					{ error: 'Invalid email or password.' },
 					{ status: 401 },
 				)
-			}
-
-			if (passwordCheck.upgradedHash) {
-				try {
-					await db.exec(
-						sql`UPDATE users SET password_hash = ${passwordCheck.upgradedHash} WHERE id = ${userRecord.id}`,
-					)
-				} catch {
-					// Ignore upgrade failures so valid logins still succeed.
-				}
 			}
 
 			const cookie = await createAuthCookie(

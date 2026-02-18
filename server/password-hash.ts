@@ -5,7 +5,6 @@ const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const maxPasswordHashIterations = 100_000
 const passwordHashIterations = maxPasswordHashIterations
-const legacyPasswordHashPattern = /^[0-9a-f]{64}$/i
 
 function fromHex(value: string): Uint8Array<ArrayBuffer> | null {
 	const normalized = value.trim().toLowerCase()
@@ -79,12 +78,6 @@ async function derivePasswordKey(
 	return new Uint8Array(derivedBits)
 }
 
-async function hashLegacyPassword(password: string) {
-	const data = new TextEncoder().encode(password)
-	const hash = await crypto.subtle.digest('SHA-256', data)
-	return toHex(new Uint8Array(hash))
-}
-
 export async function createPasswordHash(password: string) {
 	const salt = new Uint8Array(new ArrayBuffer(passwordSaltBytes))
 	crypto.getRandomValues(salt)
@@ -102,26 +95,26 @@ export async function createPasswordHash(password: string) {
 export async function verifyPassword(
 	password: string,
 	storedHash: string,
-): Promise<{ valid: boolean; upgradedHash?: string }> {
+): Promise<boolean> {
 	if (!storedHash) {
-		return { valid: false }
+		return false
 	}
 	const normalizedHash = storedHash.trim()
 	if (normalizedHash.startsWith(`${passwordHashPrefix}$`)) {
 		const [prefix, iterationsRaw, saltHex, hashHex, ...extra] =
 			normalizedHash.split('$')
 		if (prefix !== passwordHashPrefix || extra.length > 0) {
-			return { valid: false }
+			return false
 		}
-		if (!iterationsRaw) return { valid: false }
+		if (!iterationsRaw) return false
 		const iterations = Number.parseInt(iterationsRaw, 10)
 		const salt = saltHex ? fromHex(saltHex) : null
 		const hash = hashHex ? fromHex(hashHex) : null
 		if (!iterations || iterations < 1 || !salt || !hash) {
-			return { valid: false }
+			return false
 		}
 		if (iterations > maxPasswordHashIterations) {
-			return { valid: false }
+			return false
 		}
 		const derived = await derivePasswordKey(
 			password,
@@ -129,19 +122,8 @@ export async function verifyPassword(
 			iterations,
 			hash.length,
 		)
-		return { valid: timingSafeEqual(derived, hash) }
+		return timingSafeEqual(derived, hash)
 	}
 
-	if (legacyPasswordHashPattern.test(normalizedHash)) {
-		const legacyHash = await hashLegacyPassword(password)
-		const valid = timingSafeEqual(
-			new TextEncoder().encode(legacyHash),
-			new TextEncoder().encode(normalizedHash.toLowerCase()),
-		)
-		if (valid) {
-			return { valid: true, upgradedHash: await createPasswordHash(password) }
-		}
-	}
-
-	return { valid: false }
+	return false
 }

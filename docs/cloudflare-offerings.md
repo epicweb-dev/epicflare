@@ -14,8 +14,8 @@ This guide covers how to add common Cloudflare offerings on top of the starter:
 - AI Gateway
 - An additional KV namespace for app data (separate from `OAUTH_KV`)
 
-All examples assume you are using the template's `wrangler.jsonc` (not
-`wrangler.toml`) and that you run commands from the repo root.
+All examples assume you are using the template's `wrangler.jsonc` and that you
+run commands from the repo root.
 
 ## Authentication: `wrangler login` vs API tokens
 
