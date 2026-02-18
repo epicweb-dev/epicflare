@@ -37,13 +37,9 @@ export const toolsMetadata = {
 		description: `
 Compute a single arithmetic operation over two numbers.
 
-Inputs:
-- left: number (required) — Left operand, e.g. 8
-- operator: "+" | "-" | "*" | "/" (required) — The operation to apply.
-- right: number (required) — Right operand, e.g. 4
-- precision: integer (optional, default: 6) — Decimal places used ONLY in the markdown output (structured result is not rounded).
-
-Returns (structuredContent): { left, operator, right, expression, result, precisionUsed }
+Behavior:
+- Division by zero is rejected and includes a stable error code in 'structuredContent.error'.
+- 'precision' affects ONLY the markdown output in 'content'; 'structuredContent.result' is not rounded.
 
 Examples:
 - "Add 8 and 4" → { left: 8, operator: "+", right: 4 }
@@ -52,6 +48,12 @@ Examples:
 Next:
 - Use 'structuredContent.result' if you need a machine-friendly number.
 - If you need to present the result to a user, use the markdown text in 'content'.
+
+Input details:
+- See the tool input schema for parameter descriptions, constraints, defaults, and valid values.
+
+Output details:
+- See the tool output schema for the shape of 'structuredContent' on success.
 		`.trim(),
 		annotations: readOnlyToolAnnotations,
 	},

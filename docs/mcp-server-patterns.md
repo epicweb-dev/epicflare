@@ -1,8 +1,8 @@
-# MCP Server Best Practices
+# MCP Server Patterns
 
-_Learnings from analyzing high-quality MCP server implementations_
+_Patterns learned from analyzing high-quality MCP server implementations_
 
-This document summarizes best practices learned from analyzing the following MCP
+This document summarizes patterns learned from analyzing the following MCP
 server implementations:
 
 - [Linear MCP Server](https://github.com/iceener/linear-streamable-mcp-server)
@@ -19,7 +19,7 @@ server implementations:
 Provide comprehensive server-level instructions that act as an "onboarding
 guide" for the AI. This is the first thing the AI reads when connecting.
 
-**Best Practice Format:**
+**Suggested format:**
 
 ```
 Quick start
@@ -60,50 +60,68 @@ and pointers to resources/prompts).
 
 ### What Great Servers Do
 
-Tools have _detailed, structured descriptions_ that include:
+Tools have _structured descriptions_ that **complement** the schemas
+(`inputSchema` and `outputSchema`) rather than duplicating them.
+
+Include:
 
 1. **What the tool does** (1-2 sentences)
-2. **Inputs** with examples and valid values
-3. **Returns** - what the response structure looks like
-4. **Next steps** - what to do after calling this tool
-5. **Examples** - concrete usage examples
+2. **Behavior & gotchas** - semantics that aren't obvious from types alone
+   (cross-field rules, default meaning, side effects)
+3. **Outputs & return semantics** - what `structuredContent` means and how to
+   use it (the _shape_ lives in `outputSchema`)
+4. **Errors & recovery** - common failure modes and what to do next
+5. **Examples** - concrete, copy/pasteable payloads
 
-**Best Practice Format:**
+**Avoid duplication:**
+
+- Do not re-list every input parameter (name/type/required/default) if the
+  `inputSchema` already documents it (see section 4).
+- Do not re-list the full output object shape if an `outputSchema` exists (see
+  section 4).
+- Mention inputs only when they are necessary to explain behavior or cross-field
+  semantics.
+
+**Suggested format:**
 
 ```
 Brief description of what the tool does.
 
-Inputs:
-- param1: type (required/optional) — description with examples
-- param2: type — description
-
-Returns: { field1, field2, ... }
+Behavior:
+- Important semantic rule...
+- Cross-field constraint...
 
 Examples:
-- "Do X" → { param: "value" }
-- "Do Y" → { param: "other" }
+- "Do X" → { ... }
+- "Do Y" → { ... }
 
-Next: Use tool_a to verify. Pass id to tool_b.
+Next:
+- Use tool_a to verify. Pass id to tool_b.
+
+Input details:
+- Refer to the tool input schema for argument docs (types, defaults, valid
+  values, formats).
+
+Output details:
+- Refer to the tool output schema for `structuredContent` shape (fields, types,
+  formats).
 ```
 
-**Example from Google Calendar:**
+**Example from Google Calendar (trimmed to the non-obvious behavior):**
 
 ```
 Search events across ALL calendars by default. Returns merged results sorted by start time.
-
-Inputs: calendarId? (default: 'all'), timeMin?, timeMax? (ISO 8601), query?, maxResults?...
 
 FILTERING BY TIME (important!):
 - Today's events: timeMin=start of day, timeMax=end of day
 - This week: timeMin=Monday 00:00, timeMax=Sunday 23:59:59
 
-Returns: { items: Array<{ id, summary, start, end, calendarId, calendarName... }> }
-
 Next: Use eventId AND calendarId with 'update_event' or 'delete_event'.
 ```
 
-**Example in this repo:** Tool descriptions now follow the structured format
-(what it does, inputs/returns, examples, and "next steps").
+**Example in this repo:** Tool descriptions focus on semantics/examples and next
+steps, while argument docs live in `inputSchema` and structured output docs live
+in `outputSchema`.
 
 ---
 
@@ -136,18 +154,25 @@ annotations: {
 
 ---
 
-## 4. Input Schema Best Practices
+## 4. Schema Patterns (Input & Output)
 
 ### What Great Servers Do
 
-Rich, descriptive input schemas with:
+Rich, descriptive schemas with:
 
-- **Clear descriptions** for each parameter
-- **Default values** explained in description
+- **Clear descriptions** for each field
+- **Default values** explained (where defaults exist)
 - **Valid values** listed (especially for enums)
 - **Format expectations** (dates, IDs, etc.)
 
-**Example:**
+Use:
+
+- `inputSchema` to document tool arguments (types, defaults, constraints).
+- `outputSchema` to document the shape of `structuredContent` on success. If an
+  `outputSchema` is provided, the SDK validates that `structuredContent` exists
+  and matches the schema for non-error tool results.
+
+**Example (input schema):**
 
 ```typescript
 z.object({
@@ -177,8 +202,19 @@ z.object({
 })
 ```
 
-**Example in this repo:** Tool input schemas now describe defaults, valid
-values, and format expectations (where applicable).
+**Example (output schema):**
+
+```typescript
+outputSchema: {
+	expression: z.string().describe('Expression string, e.g. "8 + 4"'),
+	result: z.number().finite().describe('Exact numeric result (not rounded)'),
+	precisionUsed: z.number().int().min(0).max(15),
+}
+```
+
+**Example in this repo:** Tool schemas describe defaults, valid values, and
+format expectations (where applicable), and tools provide `outputSchema` for the
+shape of `structuredContent` on success.
 
 ---
 
@@ -204,7 +240,7 @@ return {
 }
 ```
 
-**Human-readable text best practices:**
+**Human-readable text patterns:**
 
 - Use **markdown** formatting (links, bold, lists)
 - Use **emojis** for status (✓, ⚠️, 🟢, 🔴)
@@ -264,8 +300,8 @@ export const toolsMetadata = {
 - Consistent naming and style
 - Can be extracted for documentation
 
-**Example in this repo:** Server/tool/resource/prompt metadata is centralized,
-and the MCP server implementation consumes it.
+**Example in this repo:** Server/tool metadata is centralized, and the MCP
+server implementation consumes it (see `mcp/server-metadata.ts`).
 
 ---
 
@@ -289,8 +325,7 @@ and the MCP server implementation consumes it.
 - Group related tools with common prefix
 - Use singular nouns for get/create, plural for list
 
-**Example in this repo:** Tool names use `snake_case` and follow `list_*`/verb
-conventions.
+**Example in this repo:** Tool names use `snake_case`.
 
 ---
 
@@ -314,7 +349,7 @@ if (!feed) {
 }
 ```
 
-**Best practices:**
+**Patterns:**
 
 - Explain **what went wrong**
 - Suggest **how to fix it**
@@ -347,20 +382,22 @@ return {
 }
 ```
 
-**In descriptions:**
+**In schemas + descriptions:**
 
 ```
-Returns: { items[], pagination: { hasMore, nextCursor } }
+Put the output shape in `outputSchema` (for `structuredContent`), and describe
+the chaining semantics in the tool description:
 
-Pass nextCursor to fetch the next page.
+Next:
+- Pass `pagination.nextCursor` to fetch the next page.
 ```
 
-**Example in this repo:** List-style tools follow a consistent pagination shape
-in `structuredContent`.
+**Example in this repo:** The example tool does not paginate, but this pattern
+is recommended for future list-style tools.
 
 ---
 
-## 10. Resources Best Practices
+## 10. Resource Patterns
 
 ### What Great Servers Do
 
@@ -377,12 +414,12 @@ Resources provide **read-only data access** with:
 - `media://feeds/{id}` — Individual feed details
 - `media://directories` — Available media directories
 
-**Example in this repo:** The server exposes read-only resources with stable
-URIs and proper MIME types (including this best-practices document).
+**Example in this repo:** Resources are not currently registered, but this
+pattern is recommended for exposing read-only docs and server metadata.
 
 ---
 
-## 11. Prompts Best Practices
+## 11. Prompt Patterns
 
 ### What Great Servers Do
 
@@ -408,5 +445,5 @@ Available media roots:
 Please ask me some questions to understand what I'm trying to create, then help me set it up.
 ```
 
-**Example in this repo:** Prompts are registered as workflow starters and point
-to the most relevant tools/resources.
+**Example in this repo:** Prompts are not currently registered, but this pattern
+is recommended for guiding multi-step workflows.
