@@ -378,14 +378,62 @@ function stripJsonc(source: string) {
 }
 
 function stripTrailingCommas(source: string) {
-	let current = source
-	// Repeat until stable to handle nested arrays/objects.
-	for (let pass = 0; pass < 10; pass += 1) {
-		const next = current.replace(/,\s*(\}|\])/g, '$1')
-		if (next === current) return next
-		current = next
+	let output = ''
+	let inString = false
+	let stringQuote = ''
+	let isEscaped = false
+
+	for (let index = 0; index < source.length; index += 1) {
+		const char = source[index] ?? ''
+
+		if (inString) {
+			output += char
+			if (isEscaped) {
+				isEscaped = false
+				continue
+			}
+			if (char === '\\') {
+				isEscaped = true
+				continue
+			}
+			if (char === stringQuote) {
+				inString = false
+				stringQuote = ''
+			}
+			continue
+		}
+
+		if (char === '"' || char === "'") {
+			inString = true
+			stringQuote = char
+			output += char
+			continue
+		}
+
+		if (char === ',') {
+			let lookahead = index + 1
+			while (lookahead < source.length) {
+				const next = source[lookahead] ?? ''
+				if (next === ' ' || next === '\t' || next === '\n' || next === '\r') {
+					lookahead += 1
+					continue
+				}
+				if (next === '}' || next === ']') {
+					// Skip comma before a closing token, preserve whitespace.
+					break
+				}
+				break
+			}
+			const nextNonWhitespace = source[lookahead] ?? ''
+			if (nextNonWhitespace === '}' || nextNonWhitespace === ']') {
+				continue
+			}
+		}
+
+		output += char
 	}
-	return current
+
+	return output
 }
 
 function parseJsonc<T>(source: string): T {
