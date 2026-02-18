@@ -81,6 +81,8 @@ Include:
   section 4).
 - Mention inputs only when they are necessary to explain behavior or cross-field
   semantics.
+- Avoid boilerplate that only points to schemas (for example "Input details: see
+  input schema"). The schemas should stand on their own.
 
 **Suggested format:**
 
@@ -97,14 +99,6 @@ Examples:
 
 Next:
 - Use tool_a to verify. Pass id to tool_b.
-
-Input details:
-- Refer to the tool input schema for argument docs (types, defaults, valid
-  values, formats).
-
-Output details:
-- Refer to the tool output schema for `structuredContent` shape (fields, types,
-  formats).
 ```
 
 **Example from Google Calendar (trimmed to the non-obvious behavior):**
