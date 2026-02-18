@@ -461,10 +461,13 @@ test(
 		await using server = await startDevServer(database.persistDir)
 		await using mcpClient = await createMcpClient(server.origin, database.user)
 
+		const instructions = mcpClient.client.getInstructions() ?? ''
+		expect(instructions).toContain('Quick start')
+
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
 
-		expect(toolNames).toContain('do_math')
+		expect(toolNames.sort()).toEqual(['do_math'])
 	},
 	{ timeout: defaultTimeoutMs },
 )
@@ -484,6 +487,11 @@ test(
 				operator: '+',
 			},
 		})
+
+		const structuredResult = (result as CallToolResult).structuredContent as
+			| Record<string, unknown>
+			| undefined
+		expect(structuredResult?.result).toBe(12)
 
 		const textOutput =
 			(result as CallToolResult).content.find(

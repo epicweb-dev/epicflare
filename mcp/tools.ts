@@ -1,49 +1,139 @@
 import { z } from 'zod'
 import { type MCP } from './index.ts'
+import { toolsMetadata } from './server-metadata.ts'
 
 type OperationFn = (left: number, right: number) => number
+type MathOperator = '+' | '-' | '*' | '/'
 
-let operations = {
-	'+': (left, right) => left + right,
-	'-': (left, right) => left - right,
-	'*': (left, right) => left * right,
-	'/': (left, right) => left / right,
-} satisfies Record<string, OperationFn>
+const operations = {
+	'+': (left: number, right: number) => left + right,
+	'-': (left: number, right: number) => left - right,
+	'*': (left: number, right: number) => left * right,
+	'/': (left: number, right: number) => left / right,
+} satisfies Record<MathOperator, OperationFn>
+
+const mathOperators = Object.keys(operations) as Array<MathOperator>
+
+function formatNumberForMarkdown(value: number, precision: number) {
+	if (Number.isInteger(value)) return String(value)
+	const rounded = value.toFixed(precision)
+	return rounded.includes('.') ? rounded.replace(/\.?0+$/, '') : rounded
+}
 
 export async function registerTools(agent: MCP) {
 	agent.server.registerTool(
-		'do_math',
+		toolsMetadata.do_math.name,
 		{
-			description: 'Solve a math problem',
+			title: toolsMetadata.do_math.title,
+			description: toolsMetadata.do_math.description,
 			inputSchema: {
-				left: z.number(),
-				right: z.number(),
-				operator: z.enum(
-					Object.keys(operations) as [
-						keyof typeof operations,
-						...Array<keyof typeof operations>,
-					],
-				),
+				left: z
+					.number()
+					.finite()
+					.describe('Left operand (finite number). Example: 8'),
+				right: z
+					.number()
+					.finite()
+					.describe('Right operand (finite number). Example: 4'),
+				operator: z
+					.enum(mathOperators)
+					.describe('Operator. Valid values: "+", "-", "*", "/".'),
+				precision: z
+					.number()
+					.int()
+					.min(0)
+					.max(15)
+					.optional()
+					.default(6)
+					.describe(
+						'Decimal places used ONLY for the markdown output (0-15, default: 6). Does not round structuredContent.result.',
+					),
 			},
+			annotations: toolsMetadata.do_math.annotations,
 		},
 		async ({
 			left,
 			right,
 			operator,
+			precision,
 		}: {
 			left: number
 			right: number
-			operator: keyof typeof operations
+			operator: MathOperator
+			precision: number
 		}) => {
-			let operation = operations[operator]
-			let result = operation(left, right)
+			if (operator === '/' && right === 0) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `
+❌ Division by zero.
+
+Inputs: left=${left}, operator="${operator}", right=${right}
+
+Next: Choose a non-zero right operand.
+							`.trim(),
+						},
+					],
+					structuredContent: {
+						error: 'DIVISION_BY_ZERO',
+						left,
+						operator,
+						right,
+					},
+					isError: true,
+				}
+			}
+
+			const operation = operations[operator]
+			const result = operation(left, right)
+			if (!Number.isFinite(result)) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `
+❌ Result is not a finite number.
+
+Inputs: left=${left}, operator="${operator}", right=${right}
+
+Next: Use smaller inputs or choose a different operator.
+							`.trim(),
+						},
+					],
+					structuredContent: {
+						error: 'NON_FINITE_RESULT',
+						left,
+						operator,
+						right,
+					},
+					isError: true,
+				}
+			}
+			const expression = `${left} ${operator} ${right}`
+			const markdownResult = formatNumberForMarkdown(result, precision)
 			return {
 				content: [
 					{
 						type: 'text',
-						text: `The result of ${left} ${operator} ${right} is ${result}`,
+						text: `
+## ✅ Result
+
+**Expression**: \`${expression}\`
+
+**Result**: \`${markdownResult}\`
+						`.trim(),
 					},
 				],
+				structuredContent: {
+					left,
+					operator,
+					right,
+					expression,
+					result,
+					precisionUsed: precision,
+				},
 			}
 		},
 	)
