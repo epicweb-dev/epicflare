@@ -41,7 +41,7 @@ function formatNumberForMarkdown(value: number, precision: number) {
 	return rounded.includes('.') ? rounded.replace(/\.?0+$/, '') : rounded
 }
 
-export async function registerTool(agent: MCP) {
+export async function registerDoMathTool(agent: MCP) {
 	agent.server.registerTool(
 		doMathTool.name,
 		{
