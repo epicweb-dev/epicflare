@@ -67,7 +67,13 @@ export async function registerTools(agent: MCP) {
 					content: [
 						{
 							type: 'text',
-							text: `❌ Division by zero.\n\nInputs: left=${left}, operator="${operator}", right=${right}\n\nNext: Choose a non-zero right operand.`,
+							text: `
+❌ Division by zero.
+
+Inputs: left=${left}, operator="${operator}", right=${right}
+
+Next: Choose a non-zero right operand.
+							`.trim(),
 						},
 					],
 					structuredContent: {
@@ -87,7 +93,13 @@ export async function registerTools(agent: MCP) {
 					content: [
 						{
 							type: 'text',
-							text: `❌ Result is not a finite number.\n\nInputs: left=${left}, operator="${operator}", right=${right}\n\nNext: Use smaller inputs or choose a different operator.`,
+							text: `
+❌ Result is not a finite number.
+
+Inputs: left=${left}, operator="${operator}", right=${right}
+
+Next: Use smaller inputs or choose a different operator.
+							`.trim(),
 						},
 					],
 					structuredContent: {
@@ -105,7 +117,15 @@ export async function registerTools(agent: MCP) {
 				content: [
 					{
 						type: 'text',
-						text: `## ✅ Result\n\n**Expression**: \`${expression}\`\n\n**Result**: \`${markdownResult}\`\n\nNext: If you need a machine-friendly number, use structuredContent.result.`,
+						text: `
+## ✅ Result
+
+**Expression**: \`${expression}\`
+
+**Result**: \`${markdownResult}\`
+
+Next: If you need a machine-friendly number, use structuredContent.result.
+						`.trim(),
 					},
 				],
 				structuredContent: {

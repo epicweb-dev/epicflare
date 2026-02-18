@@ -5,7 +5,8 @@ export const serverMetadata = {
 		name: 'epicflare-mcp',
 		version: '1.0.0',
 	},
-	instructions: `Quick start
+	instructions: `
+Quick start
 - Use 'do_math' to compute a single arithmetic operation on two numbers.
 - Tools return both human-readable markdown in 'content' and machine-friendly data in 'structuredContent'.
 
@@ -19,7 +20,7 @@ How to chain tools safely
 
 Common patterns & examples
 - "Compute 8 + 4" → call 'do_math' with { left: 8, operator: "+", right: 4 }
-`,
+	`.trim(),
 }
 
 export const readOnlyToolAnnotations = {
@@ -33,7 +34,8 @@ export const toolsMetadata = {
 	do_math: {
 		name: 'do_math',
 		title: 'Do Math',
-		description: `Compute a single arithmetic operation over two numbers.
+		description: `
+Compute a single arithmetic operation over two numbers.
 
 Inputs:
 - left: number (required) — Left operand, e.g. 8
@@ -49,7 +51,8 @@ Examples:
 
 Next:
 - Use 'structuredContent.result' if you need a machine-friendly number.
-- If you need to present the result to a user, use the markdown text in 'content'.`,
+- If you need to present the result to a user, use the markdown text in 'content'.
+		`.trim(),
 		annotations: readOnlyToolAnnotations,
 	},
 } as const
