@@ -171,6 +171,23 @@ export async function registerTools(agent: MCP) {
 
 			const operation = mathOperationByOperator[operator]
 			const result = operation.fn(left, right)
+			if (!Number.isFinite(result)) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `❌ Result is not a finite number.\n\nInputs: left=${left}, operator="${operator}", right=${right}\n\nNext: Use smaller inputs or choose a different operator.`,
+						},
+					],
+					structuredContent: {
+						error: 'NON_FINITE_RESULT',
+						left,
+						operator,
+						right,
+					},
+					isError: true,
+				}
+			}
 			const expression = `${left} ${operator} ${right}`
 			const markdownResult = formatNumberForMarkdown(result, precision)
 			return {
