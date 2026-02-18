@@ -41,9 +41,6 @@ Behavior:
 - Division by zero is rejected and includes a stable error code in 'structuredContent.error'.
 - 'precision' affects ONLY the markdown output in 'content'; 'structuredContent.result' is not rounded.
 
-Returns (structuredContent):
-{ expression, result, precisionUsed, left, operator, right }
-
 Examples:
 - "Add 8 and 4" → { left: 8, operator: "+", right: 4 }
 - "Divide 1 by 3 with 3 decimals" → { left: 1, operator: "/", right: 3, precision: 3 }
@@ -54,6 +51,9 @@ Next:
 
 Input details:
 - See the tool input schema for parameter descriptions, constraints, defaults, and valid values.
+
+Output details:
+- See the tool output schema for the shape of 'structuredContent' on success.
 		`.trim(),
 		annotations: readOnlyToolAnnotations,
 	},
