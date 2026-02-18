@@ -32,6 +32,22 @@ Quick notes for getting a local epicflare environment running.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
 
+## PR preview deployments
+
+The GitHub Actions preview workflow creates per-preview Cloudflare resources so
+each PR preview is isolated:
+
+- D1 database: `<preview-worker-name>-db`
+- KV namespace (OAuth state): `<preview-worker-name>-oauth-kv`
+
+When a PR is closed, the cleanup job deletes the preview Worker(s) and these
+resources as well.
+
+If you ever need to do the same operations manually, use:
+
+- `bun tools/ci/preview-resources.ts ensure --worker-name <name> --out-config <path>`
+- `bun tools/ci/preview-resources.ts cleanup --worker-name <name>`
+
 ## Remix package docs
 
 Use the Remix package index for quick navigation:

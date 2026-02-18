@@ -126,11 +126,23 @@ jobs:
           echo "preview_id=$PREVIEW_ID" >> "$GITHUB_OUTPUT"
           echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: 🧱 Ensure preview resources (D1 + KV)
+        id: resources
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          bun tools/ci/preview-resources.ts ensure --worker-name "$APP_WORKER_NAME" --out-config wrangler-preview.generated.json | tee -a "$GITHUB_OUTPUT"
+
       - name: 🗄️ Apply D1 Migrations (preview)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ENV: preview
-        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+          WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
+        run:
+          bun ./wrangler-env.ts d1 migrations apply APP_DB --remote --config
+          "$WRANGLER_CONFIG"
 
       - name: 🧪 Deploy preview mock Workers
         id: deploy_mocks
@@ -211,11 +223,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ENV: preview
           APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+          WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
         run: |
           set -euo pipefail
           echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
 
-          bun run deploy -- --name "$APP_WORKER_NAME" 2>&1 | tee deploy.log
+          bun run deploy -- --name "$APP_WORKER_NAME" --config "$WRANGLER_CONFIG" 2>&1 | tee deploy.log
 
           PREVIEW_URL="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync('deploy.log','utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')")"
           if [ -n "$PREVIEW_URL" ]; then
@@ -228,6 +241,8 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
           WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
           MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_summary }}
+          D1_DATABASE_NAME: ${{ steps.resources.outputs.d1_database_name }}
+          OAUTH_KV_TITLE: ${{ steps.resources.outputs.oauth_kv_title }}
         run: |
           {
             echo "### Preview"
@@ -235,6 +250,12 @@ jobs:
             echo "$PREVIEW_URL"
             echo ""
             printf 'Worker: `%s`\n' "$WORKER_NAME"
+            if [ -n "${D1_DATABASE_NAME:-}" ]; then
+              printf 'D1: `%s`\n' "$D1_DATABASE_NAME"
+            fi
+            if [ -n "${OAUTH_KV_TITLE:-}" ]; then
+              printf 'KV: `%s`\n' "$OAUTH_KV_TITLE"
+            fi
             if [ -n "${MOCK_SUMMARY:-}" ]; then
               echo ""
               echo "### Mocks"
@@ -251,6 +272,8 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
           WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
           MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_summary }}
+          D1_DATABASE_NAME: ${{ steps.resources.outputs.d1_database_name }}
+          OAUTH_KV_TITLE: ${{ steps.resources.outputs.oauth_kv_title }}
         with:
           script: |
             const marker = "<!-- epicflare-preview-url -->";
@@ -260,6 +283,12 @@ jobs:
               "",
               `Worker: \`${process.env.WORKER_NAME}\``,
             ];
+            if (process.env.D1_DATABASE_NAME?.trim()) {
+              bodyLines.push(`D1: \`${process.env.D1_DATABASE_NAME.trim()}\``);
+            }
+            if (process.env.OAUTH_KV_TITLE?.trim()) {
+              bodyLines.push(`KV: \`${process.env.OAUTH_KV_TITLE.trim()}\``);
+            }
             if (process.env.MOCK_SUMMARY?.trim()) {
               bodyLines.push("");
               bodyLines.push("Mocks:");
@@ -312,6 +341,9 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
 
       - name: 🧾 Resolve preview names
         id: names
@@ -404,3 +436,12 @@ jobs:
             mock_worker_name="${APP_WORKER_NAME}-mock-${service}"
             delete_worker "$mock_worker_name"
           done
+
+      - name: 🧹 Delete preview resources (D1 + KV)
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
+        run: |
+          set -euo pipefail
+          bun tools/ci/preview-resources.ts cleanup --worker-name "$APP_WORKER_NAME"
