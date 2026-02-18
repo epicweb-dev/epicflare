@@ -19,6 +19,11 @@ server implementations:
 Provide comprehensive server-level instructions that act as an "onboarding
 guide" for the AI. This is the first thing the AI reads when connecting.
 
+**Avoid duplication:** Server instructions should not repeat tool descriptions
+or tool argument docs. Keep tool-specific behavior and defaults in the tool
+description + schemas, and keep server instructions focused on workflows and
+cross-tool conventions.
+
 **Suggested format:**
 
 ```
@@ -50,9 +55,9 @@ Quick start
 - To modify, use 'update_issues', then verify with 'list_issues'.
 ```
 
-**Example in this repo:** The MCP server now provides a structured onboarding
-guide in server-level instructions (quick start, defaults, chaining patterns,
-and pointers to resources/prompts).
+**Example in this repo:** Server-level instructions are intentionally short and
+avoid repeating tool-level docs. Tool-specific behavior/defaults live with the
+tool description + schemas.
 
 ---
 
@@ -68,7 +73,7 @@ Include:
 1. **What the tool does** (1-2 sentences)
 2. **Behavior & gotchas** - semantics that aren't obvious from types alone
    (cross-field rules, default meaning, side effects)
-3. **Outputs & return semantics** - what `structuredContent` means and how to
+3. **Outputs & return semantics** - what the structured result means and how to
    use it (the _shape_ lives in `outputSchema`)
 4. **Errors & recovery** - common failure modes and what to do next
 5. **Examples** - concrete, copy/pasteable payloads
@@ -81,6 +86,11 @@ Include:
   section 4).
 - Mention inputs only when they are necessary to explain behavior or cross-field
   semantics.
+- Avoid boilerplate that only points to schemas (for example "Input details: see
+  input schema"). The schemas should stand on their own.
+- Avoid protocol field names (for example `content` or `structuredContent`) in
+  tool descriptions. Describe behavior and meaning conceptually; let schemas and
+  examples carry the structure.
 
 **Suggested format:**
 
@@ -97,14 +107,6 @@ Examples:
 
 Next:
 - Use tool_a to verify. Pass id to tool_b.
-
-Input details:
-- Refer to the tool input schema for argument docs (types, defaults, valid
-  values, formats).
-
-Output details:
-- Refer to the tool output schema for `structuredContent` shape (fields, types,
-  formats).
 ```
 
 **Example from Google Calendar (trimmed to the non-obvious behavior):**
@@ -266,42 +268,49 @@ return {
 ```
 
 **Example in this repo:** Tools now return human-readable markdown in `content`
-and machine-friendly data in `structuredContent`.
+and machine-friendly data in `structuredContent`. Tool descriptions should not
+mention these protocol field names.
 
 ---
 
-## 6. Centralized Metadata
+## 6. Tool Modules (One Tool Per File)
 
 ### What Great Servers Do
 
-Keep tool/prompt/resource metadata in a centralized file:
+Prefer **one tool per file**, with the tool's description, annotations, schemas,
+and handler colocated. Keep a small `register-tools` module that imports each
+tool module and registers them.
 
 ```typescript
-// config/metadata.ts
-export const serverMetadata = {
-	title: 'Media Server',
-	instructions: `...comprehensive instructions...`,
+// mcp/tools/do-math.ts
+export async function registerDoMathTool(agent: MCP) {
+	agent.server.registerTool(
+		'do_math',
+		{
+			/* metadata + schemas */
+		},
+		async (args) => {
+			// handler
+		},
+	)
 }
 
-export const toolsMetadata = {
-	list_feeds: {
-		name: 'list_feeds',
-		title: 'List Feeds',
-		description: '...detailed description...',
-	},
-	// ... more tools
+// mcp/register-tools.ts
+import { registerDoMathTool } from './tools/do-math.ts'
+export async function registerTools(agent: MCP) {
+	await registerDoMathTool(agent)
 }
 ```
 
 **Benefits:**
 
-- Single source of truth for descriptions
-- Easy to review/update all metadata
-- Consistent naming and style
-- Can be extracted for documentation
+- Smaller diffs and less merge conflict
+- Tool docs/schemas/handler stay in sync
+- Easier to add/remove tools without touching unrelated tools
 
-**Example in this repo:** Server/tool metadata is centralized, and the MCP
-server implementation consumes it (see `mcp/server-metadata.ts`).
+**Example in this repo:** Server instructions live in `mcp/index.ts`, and tool
+metadata is colocated with tool registration + schemas in `mcp/tools/do-math.ts`
+(with `mcp/register-tools.ts` as the small aggregator).
 
 ---
 

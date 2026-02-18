@@ -1,6 +1,6 @@
+import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import { type MCP } from './index.ts'
-import { toolsMetadata } from './server-metadata.ts'
+import { type MCP } from '../index.ts'
 
 type OperationFn = (left: number, right: number) => number
 type MathOperator = '+' | '-' | '*' | '/'
@@ -14,18 +14,39 @@ const operations = {
 
 const mathOperators = Object.keys(operations) as Array<MathOperator>
 
+const doMathTool = {
+	name: 'do_math',
+	title: 'Do Math',
+	description: `
+Compute a single arithmetic operation over two numbers.
+
+Behavior:
+- Division by zero is rejected.
+
+Examples:
+- "Add 8 and 4" → { left: 8, operator: "+", right: 4 }
+- "Divide 1 by 3 with 3 decimals" → { left: 1, operator: "/", right: 3, precision: 3 }
+	`.trim(),
+	annotations: {
+		readOnlyHint: true,
+		destructiveHint: false,
+		idempotentHint: true,
+		openWorldHint: false,
+	} satisfies ToolAnnotations,
+} as const
+
 function formatNumberForMarkdown(value: number, precision: number) {
 	if (Number.isInteger(value)) return String(value)
 	const rounded = value.toFixed(precision)
 	return rounded.includes('.') ? rounded.replace(/\.?0+$/, '') : rounded
 }
 
-export async function registerTools(agent: MCP) {
+export async function registerDoMathTool(agent: MCP) {
 	agent.server.registerTool(
-		toolsMetadata.do_math.name,
+		doMathTool.name,
 		{
-			title: toolsMetadata.do_math.title,
-			description: toolsMetadata.do_math.description,
+			title: doMathTool.title,
+			description: doMathTool.description,
 			inputSchema: {
 				left: z
 					.number()
@@ -46,7 +67,7 @@ export async function registerTools(agent: MCP) {
 					.optional()
 					.default(6)
 					.describe(
-						'Decimal places used ONLY for the markdown output (0-15, default: 6). Does not round structuredContent.result.',
+						'Decimal places used ONLY for the markdown output (0-15, default: 6). Does not change the computed numeric result.',
 					),
 			},
 			outputSchema: {
@@ -73,7 +94,7 @@ export async function registerTools(agent: MCP) {
 					.max(15)
 					.describe('Precision used ONLY for markdown formatting.'),
 			},
-			annotations: toolsMetadata.do_math.annotations,
+			annotations: doMathTool.annotations,
 		},
 		async ({
 			left,
@@ -135,6 +156,7 @@ Next: Use smaller inputs or choose a different operator.
 					isError: true,
 				}
 			}
+
 			const expression = `${left} ${operator} ${right}`
 			const markdownResult = formatNumberForMarkdown(result, precision)
 			return {
