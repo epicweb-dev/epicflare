@@ -111,7 +111,7 @@ export async function registerTools(agent: MCP) {
 	)
 
 	agent.server.registerTool(
-		'do_math',
+		toolsMetadata.do_math.name,
 		{
 			title: toolsMetadata.do_math.title,
 			description: toolsMetadata.do_math.description,
