@@ -467,8 +467,7 @@ test(
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
 
-		expect(toolNames).toContain('do_math')
-		expect(toolNames).not.toContain('list_operations')
+		expect(toolNames.sort()).toEqual(['do_math'])
 
 		const resources = await mcpClient.client.listResources()
 		const resourceUris = resources.resources.map((resource) => resource.uri)
