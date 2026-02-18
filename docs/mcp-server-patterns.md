@@ -83,6 +83,9 @@ Include:
   semantics.
 - Avoid boilerplate that only points to schemas (for example "Input details: see
   input schema"). The schemas should stand on their own.
+- Avoid protocol field names (for example `content` or `structuredContent`) in
+  tool descriptions. Describe behavior and meaning conceptually; let schemas and
+  examples carry the structure.
 
 **Suggested format:**
 
@@ -260,7 +263,8 @@ return {
 ```
 
 **Example in this repo:** Tools now return human-readable markdown in `content`
-and machine-friendly data in `structuredContent`.
+and machine-friendly data in `structuredContent`. Tool descriptions should not
+mention these protocol field names.
 
 ---
 
