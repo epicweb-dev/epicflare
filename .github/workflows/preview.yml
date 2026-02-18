@@ -157,6 +157,7 @@ jobs:
           : > "$OVERRIDES_FILE"
 
           mock_summary=""
+          mock_comment_summary=""
 
           for dir in mock-servers/*; do
             if [ ! -d "$dir" ]; then
@@ -185,15 +186,22 @@ jobs:
             echo "${service_key}_API_KEY=$MOCK_API_TOKEN" >> "$OVERRIDES_FILE"
 
             mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
+            mock_comment_summary="${mock_comment_summary}\n- ${service}: [${mock_url}/__mocks](${mock_url}/__mocks?token=${MOCK_API_TOKEN}) (\`${mock_worker_name}\`)"
           done
 
           if [ -n "$mock_summary" ]; then
             mock_summary="$(printf "%b" "$mock_summary" | sed '1{/^$/d;}')"
           fi
+          if [ -n "$mock_comment_summary" ]; then
+            mock_comment_summary="$(printf "%b" "$mock_comment_summary" | sed '1{/^$/d;}')"
+          fi
 
           {
             echo "mock_summary<<EOF"
             printf "%b\n" "$mock_summary"
+            echo "EOF"
+            echo "mock_comment_summary<<EOF"
+            printf "%b\n" "$mock_comment_summary"
             echo "EOF"
             echo "overrides_file=$OVERRIDES_FILE"
           } >> "$GITHUB_OUTPUT"
@@ -271,7 +279,7 @@ jobs:
         env:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
           WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
-          MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_summary }}
+          MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_comment_summary }}
           D1_DATABASE_NAME: ${{ steps.resources.outputs.d1_database_name }}
           OAUTH_KV_TITLE: ${{ steps.resources.outputs.oauth_kv_title }}
         with:
