@@ -44,8 +44,8 @@ When a PR is closed, the cleanup job deletes the preview Worker(s) and these
 resources as well.
 
 Both the preview and production deploy workflows run a post-deploy healthcheck
-against `<deploy-url>/health` and fail the job if it does not return `{ ok:
-true }`.
+against `<deploy-url>/health` and fail the job if it does not return
+`{ ok: true }`.
 
 If you ever need to do the same operations manually, use:
 
