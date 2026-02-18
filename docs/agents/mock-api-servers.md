@@ -25,5 +25,5 @@ it can also be deployed alongside the main app.
   `<app>-pr-<number>-mock-<service>` and configure the app preview to point at
   the deployed mock URL. A single generated token is shared between the app and
   all mock Workers for request authentication. The preview workflow includes an
-  authenticated dashboard link in the PR comment via `?token=...` so you can
-  open `/<service>/__mocks` without manually copying secrets.
+  authenticated dashboard link in the PR comment (href includes `?token=...`) so
+  you can open `/<service>/__mocks` without manually copying secrets.

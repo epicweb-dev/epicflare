@@ -186,7 +186,7 @@ jobs:
             echo "${service_key}_API_KEY=$MOCK_API_TOKEN" >> "$OVERRIDES_FILE"
 
             mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
-            mock_comment_summary="${mock_comment_summary}\n- ${service}: ${mock_url}/__mocks?token=${MOCK_API_TOKEN} (\`${mock_worker_name}\`)"
+            mock_comment_summary="${mock_comment_summary}\n- ${service}: [${mock_url}/__mocks](${mock_url}/__mocks?token=${MOCK_API_TOKEN}) (\`${mock_worker_name}\`)"
           done
 
           if [ -n "$mock_summary" ]; then
