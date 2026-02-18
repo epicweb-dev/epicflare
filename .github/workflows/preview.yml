@@ -243,6 +243,42 @@ jobs:
             echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: 🩺 Healthcheck (preview)
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PREVIEW_URL:-}" ]; then
+            echo "Missing preview URL output; cannot run healthcheck." >&2
+            exit 1
+          fi
+
+          HEALTHCHECK_URL="${PREVIEW_URL%/}/health"
+          echo "Healthcheck URL: $HEALTHCHECK_URL"
+
+          attempts=30
+          delay_seconds=3
+
+          for i in $(seq 1 "$attempts"); do
+            echo "Attempt $i/$attempts"
+            if curl --fail --silent --show-error --location --max-time 10 \
+              --header "Accept: application/json" \
+              "$HEALTHCHECK_URL" > health.json; then
+              node -e "const fs = require('node:fs'); const body = fs.readFileSync('health.json','utf8'); const json = JSON.parse(body); if (json?.ok !== true) { console.error('healthcheck-unexpected-response', json); process.exit(1); } console.log('healthcheck-ok', json);"
+              exit 0
+            fi
+            sleep "$delay_seconds"
+          done
+
+          echo "Healthcheck failed after ${attempts} attempts: $HEALTHCHECK_URL" >&2
+          if [ -f health.json ]; then
+            echo "Last response body:" >&2
+            cat health.json >&2
+          fi
+          exit 1
+
       - name: 🧾 Write preview link summary
         if: steps.deploy_preview.outputs.url != ''
         env:
