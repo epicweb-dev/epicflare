@@ -273,41 +273,40 @@ mention these protocol field names.
 
 ---
 
-## 6. Metadata Location (Colocate by Default)
+## 6. Tool Modules (One Tool Per File)
 
 ### What Great Servers Do
 
-Colocate tool descriptions with the tool definition by default (ideally in the
-same module as `server.registerTool()` and the schemas), so changes are reviewed
-together.
-
-Centralize metadata only when it has multiple consumers (for example: tool
-registration, docs generation, prompt templates), or when you need one shared
-source of truth across modules.
+Prefer **one tool per file**, with the tool's description, annotations, schemas,
+and handler colocated. Keep a small `register-tools` module that imports each
+tool module and registers them.
 
 ```typescript
-// config/metadata.ts
-export const serverMetadata = {
-	title: 'Media Server',
-	instructions: `...comprehensive instructions...`,
+// mcp/tools/do-math.ts
+export async function registerDoMathTool(agent: MCP) {
+	agent.server.registerTool(
+		'do_math',
+		{
+			/* metadata + schemas */
+		},
+		async (args) => {
+			// handler
+		},
+	)
 }
 
-export const toolsMetadata = {
-	list_feeds: {
-		name: 'list_feeds',
-		title: 'List Feeds',
-		description: '...detailed description...',
-	},
-	// ... more tools
+// mcp/register-tools.ts
+import { registerDoMathTool } from './tools/do-math.ts'
+export async function registerTools(agent: MCP) {
+	await registerDoMathTool(agent)
 }
 ```
 
 **Benefits:**
 
-- Single source of truth for descriptions
-- Easy to review/update all metadata
-- Consistent naming and style
-- Can be extracted for documentation
+- Smaller diffs and less merge conflict
+- Tool docs/schemas/handler stay in sync
+- Easier to add/remove tools without touching unrelated tools
 
 **Example in this repo:** Server instructions live in `mcp/server-metadata.ts`,
 and tool metadata is colocated with tool registration + schemas in
