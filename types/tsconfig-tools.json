@@ -29,7 +29,6 @@
 		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.tools.tsbuildinfo"
 	},
 	"include": [
-		"../vite.config.ts",
 		"../playwright.config.ts",
 		"../wrangler-env.ts",
 		"../cli.ts",
