@@ -461,10 +461,24 @@ test(
 		await using server = await startDevServer(database.persistDir)
 		await using mcpClient = await createMcpClient(server.origin, database.user)
 
+		const instructions = mcpClient.client.getInstructions() ?? ''
+		expect(instructions).toContain('Quick start')
+
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
 
 		expect(toolNames).toContain('do_math')
+		expect(toolNames).toContain('list_operations')
+
+		const resources = await mcpClient.client.listResources()
+		const resourceUris = resources.resources.map((resource) => resource.uri)
+		expect(resourceUris).toContain('epicflare://server')
+		expect(resourceUris).toContain('epicflare://operations')
+		expect(resourceUris).toContain('epicflare://docs/mcp-server-best-practices')
+
+		const prompts = await mcpClient.client.listPrompts()
+		const promptNames = prompts.prompts.map((prompt) => prompt.name)
+		expect(promptNames).toContain('solve_math_problem')
 	},
 	{ timeout: defaultTimeoutMs },
 )
@@ -485,6 +499,11 @@ test(
 			},
 		})
 
+		const structuredResult = (result as CallToolResult).structuredContent as
+			| Record<string, unknown>
+			| undefined
+		expect(structuredResult?.result).toBe(12)
+
 		const textOutput =
 			(result as CallToolResult).content.find(
 				(item): item is Extract<ContentBlock, { type: 'text' }> =>
@@ -492,6 +511,61 @@ test(
 			)?.text ?? ''
 
 		expect(textOutput).toContain('12')
+
+		const bestPracticesResource = await mcpClient.client.readResource({
+			uri: 'epicflare://docs/mcp-server-best-practices',
+		})
+		const bestPracticesText =
+			bestPracticesResource.contents.find(
+				(
+					item,
+				): item is Extract<
+					(typeof bestPracticesResource.contents)[number],
+					{ text: string }
+				> => 'text' in item,
+			)?.text ?? ''
+		expect(bestPracticesText).toContain('# MCP Server Best Practices')
+
+		const serverInfoResource = await mcpClient.client.readResource({
+			uri: 'epicflare://server',
+		})
+		const serverInfoText =
+			serverInfoResource.contents.find(
+				(
+					item,
+				): item is Extract<
+					(typeof serverInfoResource.contents)[number],
+					{ text: string }
+				> => 'text' in item,
+			)?.text ?? ''
+		const serverInfo = JSON.parse(serverInfoText) as {
+			tools?: Array<{ name?: string }>
+		}
+		expect(serverInfo.tools?.some((tool) => tool.name === 'do_math')).toBe(true)
+
+		const firstPage = await mcpClient.client.callTool({
+			name: 'list_operations',
+			arguments: { limit: 2 },
+		})
+		const firstStructured = (firstPage as CallToolResult).structuredContent as
+			| Record<string, unknown>
+			| undefined
+		const firstPagination = firstStructured?.pagination as
+			| { hasMore?: unknown; nextCursor?: unknown }
+			| undefined
+		expect(firstPagination?.hasMore).toBe(true)
+		expect(firstPagination?.nextCursor).toBe('2')
+
+		const secondPage = await mcpClient.client.callTool({
+			name: 'list_operations',
+			arguments: { limit: 2, cursor: String(firstPagination?.nextCursor) },
+		})
+		const secondStructured = (secondPage as CallToolResult)
+			.structuredContent as Record<string, unknown> | undefined
+		const secondPagination = secondStructured?.pagination as
+			| { hasMore?: unknown; nextCursor?: unknown }
+			| undefined
+		expect(secondPagination?.hasMore).toBe(false)
 	},
 	{ timeout: defaultTimeoutMs },
 )
