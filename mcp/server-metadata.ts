@@ -8,7 +8,6 @@ export const serverMetadata = {
 	instructions: `Quick start
 - Use 'do_math' to compute a single arithmetic operation on two numbers.
 - Tools return both human-readable markdown in 'content' and machine-friendly data in 'structuredContent'.
-- For documentation on MCP server design practices, read the resource 'epicflare://docs/mcp-server-best-practices'.
 
 Default behavior
 - 'do_math.precision' controls ONLY the human-readable formatting. 'structuredContent.result' is not rounded.
@@ -20,9 +19,6 @@ How to chain tools safely
 
 Common patterns & examples
 - "Compute 8 + 4" → call 'do_math' with { left: 8, operator: "+", right: 4 }
-
-Resources
-- 'epicflare://docs/mcp-server-best-practices' → this repo's MCP server best practices (markdown)
 `,
 }
 
@@ -55,16 +51,5 @@ Next:
 - Use 'structuredContent.result' if you need a machine-friendly number.
 - If you need to present the result to a user, use the markdown text in 'content'.`,
 		annotations: readOnlyToolAnnotations,
-	},
-} as const
-
-export const resourcesMetadata = {
-	mcp_server_best_practices: {
-		name: 'mcp_server_best_practices',
-		uri: 'epicflare://docs/mcp-server-best-practices',
-		title: 'MCP Server Best Practices',
-		description:
-			'Learnings from analyzing high-quality MCP server implementations.',
-		mimeType: 'text/markdown',
 	},
 } as const

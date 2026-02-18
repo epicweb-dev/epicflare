@@ -468,10 +468,6 @@ test(
 		const toolNames = result.tools.map((tool) => tool.name)
 
 		expect(toolNames.sort()).toEqual(['do_math'])
-
-		const resources = await mcpClient.client.listResources()
-		const resourceUris = resources.resources.map((resource) => resource.uri)
-		expect(resourceUris).toContain('epicflare://docs/mcp-server-best-practices')
 	},
 	{ timeout: defaultTimeoutMs },
 )
@@ -504,20 +500,6 @@ test(
 			)?.text ?? ''
 
 		expect(textOutput).toContain('12')
-
-		const bestPracticesResource = await mcpClient.client.readResource({
-			uri: 'epicflare://docs/mcp-server-best-practices',
-		})
-		const bestPracticesText =
-			bestPracticesResource.contents.find(
-				(
-					item,
-				): item is Extract<
-					(typeof bestPracticesResource.contents)[number],
-					{ text: string }
-				> => 'text' in item,
-			)?.text ?? ''
-		expect(bestPracticesText).toContain('# MCP Server Best Practices')
 	},
 	{ timeout: defaultTimeoutMs },
 )
