@@ -68,7 +68,7 @@ Include:
 1. **What the tool does** (1-2 sentences)
 2. **Behavior & gotchas** - semantics that aren't obvious from types alone
    (cross-field rules, default meaning, side effects)
-3. **Outputs & return semantics** - what `structuredContent` means and how to
+3. **Outputs & return semantics** - what the structured result means and how to
    use it (the _shape_ lives in `outputSchema`)
 4. **Errors & recovery** - common failure modes and what to do next
 5. **Examples** - concrete, copy/pasteable payloads

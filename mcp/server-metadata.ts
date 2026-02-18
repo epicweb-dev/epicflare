@@ -8,10 +8,10 @@ export const serverMetadata = {
 	instructions: `
 Quick start
 - Use 'do_math' to compute a single arithmetic operation on two numbers.
-- Tools return both human-readable markdown in 'content' and machine-friendly data in 'structuredContent'.
+- Tools return both a human-readable message and a machine-readable result.
 
 Default behavior
-- 'do_math.precision' controls ONLY the human-readable formatting. 'structuredContent.result' is not rounded.
+- 'do_math.precision' controls ONLY display formatting; it does not change the computed value.
 - Division by zero is rejected with an actionable error message.
 
 How to chain tools safely
@@ -38,16 +38,12 @@ export const toolsMetadata = {
 Compute a single arithmetic operation over two numbers.
 
 Behavior:
-- Division by zero is rejected and includes a stable error code in 'structuredContent.error'.
-- 'precision' affects ONLY the markdown output in 'content'; 'structuredContent.result' is not rounded.
+- Division by zero is rejected.
+- 'precision' affects ONLY display formatting; it does not change the computed numeric result.
 
 Examples:
 - "Add 8 and 4" → { left: 8, operator: "+", right: 4 }
 - "Divide 1 by 3 with 3 decimals" → { left: 1, operator: "/", right: 3, precision: 3 }
-
-Next:
-- Use 'structuredContent.result' if you need a machine-friendly number.
-- If you need to present the result to a user, use the markdown text in 'content'.
 		`.trim(),
 		annotations: readOnlyToolAnnotations,
 	},

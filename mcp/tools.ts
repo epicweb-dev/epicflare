@@ -46,7 +46,7 @@ export async function registerTools(agent: MCP) {
 					.optional()
 					.default(6)
 					.describe(
-						'Decimal places used ONLY for the markdown output (0-15, default: 6). Does not round structuredContent.result.',
+						'Decimal places used ONLY for the markdown output (0-15, default: 6). Does not change the computed numeric result.',
 					),
 			},
 			outputSchema: {
