@@ -184,7 +184,7 @@ async function listMessages(db: D1Database, tokenHash: string, limit: number) {
 	await ensureSchema(db)
 	const result = await db
 		.prepare(
-			`SELECT id, received_at, from_email, to_json, subject
+			`SELECT id, received_at, from_email, to_json, subject, html, payload_json
 			 FROM mock_resend_messages
 			 WHERE token_hash = ?
 			 ORDER BY received_at DESC
@@ -197,6 +197,8 @@ async function listMessages(db: D1Database, tokenHash: string, limit: number) {
 			from_email: string
 			to_json: string
 			subject: string
+			html: string
+			payload_json: string
 		}>()
 
 	return Array.isArray(result.results) ? result.results : []

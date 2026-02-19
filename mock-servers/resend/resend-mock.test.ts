@@ -218,6 +218,8 @@ test(
 				from_email: string
 				to_json: string
 				subject: string
+				html: string
+				payload_json: string
 			}>
 		}
 		expect(listJson.count).toBe(1)
@@ -225,6 +227,10 @@ test(
 		expect(listJson.messages[0]?.from_email).toBe(email.from)
 		expect(JSON.parse(listJson.messages[0]?.to_json ?? 'null')).toEqual(
 			email.to,
+		)
+		expect(listJson.messages[0]?.html).toBe(email.html)
+		expect(JSON.parse(listJson.messages[0]?.payload_json ?? 'null')).toEqual(
+			email,
 		)
 	},
 	{ timeout: defaultTimeoutMs },
