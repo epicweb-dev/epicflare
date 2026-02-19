@@ -1,6 +1,7 @@
 import { type Handle } from 'remix/component'
 import {
 	AccountRoute,
+	ChatRoute,
 	HomeRoute,
 	LoginRoute,
 	OAuthAuthorizeRoute,
@@ -87,6 +88,9 @@ export function App(handle: Handle) {
 					) : null}
 					{isLoggedIn ? (
 						<>
+							<a href="/chat" css={navLinkCss}>
+								Chat
+							</a>
 							<a href="/account" css={navLinkCss}>
 								{sessionEmail}
 							</a>
@@ -102,6 +106,7 @@ export function App(handle: Handle) {
 					setup={{
 						routes: {
 							'/': HomeRoute(),
+							'/chat': ChatRoute(),
 							'/account': AccountRoute(),
 							'/login': LoginRoute('login'),
 							'/signup': LoginRoute('signup'),

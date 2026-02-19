@@ -90,6 +90,24 @@ export function HomeRoute() {
 	)
 }
 
+export function ChatRoute() {
+	return (_match: { path: string; params: Record<string, string> }) => (
+		<section css={{ display: 'grid', gap: spacing.lg }}>
+			<h2
+				css={{
+					fontSize: typography.fontSize.lg,
+					fontWeight: typography.fontWeight.semibold,
+					margin: 0,
+					color: colors.text,
+				}}
+			>
+				Chat
+			</h2>
+			<p css={{ margin: 0, color: colors.textMuted }}>AI chat coming soon.</p>
+		</section>
+	)
+}
+
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
 type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
