@@ -43,11 +43,11 @@
     "@types/set-cookie-parser": "^2.4.10",
     "concurrently": "^9.2.1",
     "esbuild": "^0.27.3",
-    "oxlint": "^1.47.0",
+    "oxlint": "^1.49.0",
     "prettier": "^3.8.1",
     "set-cookie-parser": "^3.0.1",
     "typescript": "^5.9.3",
-    "wrangler": "^4.65.0"
+    "wrangler": "^4.67.0"
   },
   "prettier": "@epic-web/config/prettier",
   "dependencies": {
@@ -56,7 +56,7 @@
     "@mcp-ui/server": "6.1.0",
     "@modelcontextprotocol/ext-apps": "^1.0.1",
     "@modelcontextprotocol/sdk": "1.26.0",
-    "agents": "^0.4.1",
+    "agents": "^0.5.0",
     "get-port": "^7.1.0",
     "remix": "^3.0.0-alpha.2",
     "zod": "^4.3.6"
