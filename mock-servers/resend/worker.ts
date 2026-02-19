@@ -56,6 +56,13 @@ function htmlEscape(value: string) {
 		.replaceAll("'", '&#39;')
 }
 
+function withTokenQueryParam(baseUrl: URL, href: string, token: string | null) {
+	if (!token) return href
+	const next = new URL(href, baseUrl)
+	next.searchParams.set('token', token)
+	return `${next.pathname}${next.search}${next.hash}`
+}
+
 function json(data: unknown, init: ResponseInit = {}) {
 	const headers = new Headers(init.headers)
 	if (!headers.has('content-type')) {
@@ -327,6 +334,9 @@ async function handleDashboard(request: Request, env: MockResendEnv, url: URL) {
 		messageCount?: number
 	}
 
+	const tokenParam = url.searchParams.get('token')
+	const dashboardToken = tokenParam?.trim() ? tokenParam.trim() : null
+
 	const tokenHint = env.MOCK_API_TOKEN?.trim()
 		? 'This mock requires a token (Authorization: Bearer ... or ?token=...).'
 		: 'No token is configured; mock endpoints are open.'
@@ -336,9 +346,18 @@ async function handleDashboard(request: Request, env: MockResendEnv, url: URL) {
 			const authBadge = endpoint.requiresAuth
 				? '<span class="badge badge-warn">auth</span>'
 				: '<span class="badge">public</span>'
+			const endpointHref = withTokenQueryParam(
+				url,
+				endpoint.path,
+				dashboardToken,
+			)
+			const pathCell =
+				endpoint.method === 'GET'
+					? `<a href="${htmlEscape(endpointHref)}"><code>${htmlEscape(endpoint.path)}</code></a>`
+					: `<code>${htmlEscape(endpoint.path)}</code>`
 			return `<tr>
 				<td><code>${htmlEscape(endpoint.method)}</code></td>
-				<td><code>${htmlEscape(endpoint.path)}</code></td>
+				<td>${pathCell}</td>
 				<td>${authBadge}</td>
 				<td>${htmlEscape(endpoint.description)}</td>
 			</tr>`
@@ -458,8 +477,8 @@ async function handleDashboard(request: Request, env: MockResendEnv, url: URL) {
 					</tbody>
 				</table>
 				<p class="footer">
-					Meta: <a href="/__mocks/meta">/__mocks/meta</a>
-					· Messages: <a href="/__mocks/messages">/__mocks/messages</a>
+					Meta: <a href="${htmlEscape(withTokenQueryParam(url, '/__mocks/meta', dashboardToken))}">/__mocks/meta</a>
+					· Messages: <a href="${htmlEscape(withTokenQueryParam(url, '/__mocks/messages', dashboardToken))}">/__mocks/messages</a>
 				</p>
 			</div>
 		</div>
@@ -478,7 +497,9 @@ export default {
 		const url = new URL(request.url)
 
 		if (request.method === 'GET' && url.pathname === '/') {
-			return Response.redirect(new URL('/__mocks', url).toString(), 302)
+			const destination = new URL('/__mocks', url)
+			destination.search = url.search
+			return Response.redirect(destination.toString(), 302)
 		}
 
 		if (request.method === 'POST' && url.pathname === '/emails') {

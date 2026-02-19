@@ -251,3 +251,33 @@ test(
 	},
 	{ timeout: defaultTimeoutMs },
 )
+
+test(
+	'resend mock dashboard keeps token in endpoint links',
+	async () => {
+		await using tempDir = await createTemporaryDirectory(
+			'resend-mock-dashboard-',
+		)
+		const token = 'test-mock-token'
+		await using server = await startMockResendWorker(tempDir.path, token)
+
+		const rootUrl = new URL('/', server.origin)
+		rootUrl.searchParams.set('token', token)
+		const rootResp = await fetch(rootUrl, { redirect: 'manual' })
+		expect(rootResp.status).toBe(302)
+		const expectedRedirectUrl = new URL('/__mocks', server.origin)
+		expectedRedirectUrl.searchParams.set('token', token)
+		expect(rootResp.headers.get('location')).toBe(
+			expectedRedirectUrl.toString(),
+		)
+
+		const dashboardUrl = new URL('/__mocks', server.origin)
+		dashboardUrl.searchParams.set('token', token)
+		const dashboardResp = await fetch(dashboardUrl)
+		expect(dashboardResp.status).toBe(200)
+		const dashboardHtml = await dashboardResp.text()
+		expect(dashboardHtml).toContain(`href="/__mocks/meta?token=${token}"`)
+		expect(dashboardHtml).toContain(`href="/__mocks/messages?token=${token}"`)
+	},
+	{ timeout: defaultTimeoutMs },
+)
