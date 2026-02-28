@@ -1,52 +1,50 @@
-import { array, parse, type Schema } from 'remix/data-schema'
+import { createDatabase, createTable, sql } from 'remix/data-table'
+import { number, string } from 'remix/data-schema'
+import { createD1DataTableAdapter } from './d1-data-table-adapter.ts'
 
-type D1Value = string | number | boolean | null | ArrayBuffer | Uint8Array
+export const usersTable = createTable({
+	name: 'users',
+	columns: {
+		id: number(),
+		username: string(),
+		email: string(),
+		password_hash: string(),
+		created_at: string(),
+		updated_at: string(),
+	},
+	primaryKey: 'id',
+})
 
-export type DbQuery<Params extends ReadonlyArray<D1Value>> = {
-	sql: string
-	params: Params
-}
+export const passwordResetsTable = createTable({
+	name: 'password_resets',
+	columns: {
+		id: number(),
+		user_id: number(),
+		token_hash: string(),
+		expires_at: number(),
+		created_at: string(),
+	},
+	primaryKey: 'id',
+})
 
-type DataSchema<T> = Schema<unknown, T>
-
-export function sql<Params extends ReadonlyArray<D1Value>>(
-	strings: TemplateStringsArray,
-	...params: Params
-): DbQuery<Params> {
-	const sqlText = strings.reduce(
-		(accumulator, chunk, index) =>
-			`${accumulator}${chunk}${index < params.length ? '?' : ''}`,
-		'',
-	)
-	return { sql: sqlText, params }
-}
+export const mockResendMessagesTable = createTable({
+	name: 'mock_resend_messages',
+	columns: {
+		id: string(),
+		token_hash: string(),
+		received_at: number(),
+		from_email: string(),
+		to_json: string(),
+		subject: string(),
+		html: string(),
+		payload_json: string(),
+	},
+	primaryKey: 'id',
+})
 
 export function createDb(db: D1Database) {
-	function prepare<Params extends ReadonlyArray<D1Value>>(
-		query: DbQuery<Params>,
-	) {
-		return db.prepare(query.sql).bind(...query.params)
-	}
-
-	return {
-		async queryFirst<T, Params extends ReadonlyArray<D1Value>>(
-			query: DbQuery<Params>,
-			schema: DataSchema<T>,
-		): Promise<T | null> {
-			const row = await prepare(query).first()
-			if (!row) return null
-			return parse(schema, row)
-		},
-		async queryAll<T, Params extends ReadonlyArray<D1Value>>(
-			query: DbQuery<Params>,
-			schema: DataSchema<T>,
-		): Promise<Array<T>> {
-			const result = await prepare(query).all()
-			const rows = Array.isArray(result?.results) ? result.results : []
-			return parse(array(schema), rows)
-		},
-		async exec<Params extends ReadonlyArray<D1Value>>(query: DbQuery<Params>) {
-			return prepare(query).run()
-		},
-	}
+	return createDatabase(createD1DataTableAdapter(db))
 }
+
+export type AppDatabase = ReturnType<typeof createDb>
+export { sql }

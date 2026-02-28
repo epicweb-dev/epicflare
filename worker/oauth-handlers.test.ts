@@ -58,15 +58,24 @@ async function createDatabase(password: string) {
 			return {
 				bind() {
 					return {
+						async all() {
+							return {
+								results: [{ id: 1, password_hash: passwordHash }],
+								meta: { changes: 0, last_row_id: 0 },
+							}
+						},
 						async first() {
 							return { id: 1, password_hash: passwordHash }
 						},
 						async run() {
-							return { success: true }
+							return { meta: { changes: 1, last_row_id: 1 } }
 						},
 					}
 				},
 			}
+		},
+		async exec() {
+			return
 		},
 	} as unknown as D1Database
 }

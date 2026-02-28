@@ -1,11 +1,11 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { enum_, number, object, parseSafe, string } from 'remix/data-schema'
+import { enum_, object, parseSafe, string } from 'remix/data-schema'
 import { createAuthCookie } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
 import { type AppEnv } from '#types/env-schema.ts'
-import { createDb, sql } from '#worker/db.ts'
+import { createDb, usersTable } from '#worker/db.ts'
 import type routes from '#server/routes.ts'
 
 const authModes = ['login', 'signup'] as const
@@ -23,8 +23,6 @@ const authRequestSchema = object({
 	mode: enum_(authModes),
 })
 
-const userLookupSchema = object({ id: number(), password_hash: string() })
-const userIdSchema = object({ id: number() })
 const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 
@@ -75,10 +73,9 @@ export function createAuthHandler(appEnv: AppEnv) {
 			}
 
 			if (normalizedMode === 'signup') {
-				const existingUser = await db.queryFirst(
-					sql`SELECT id FROM users WHERE email = ${normalizedEmail}`,
-					userIdSchema,
-				)
+				const existingUser = await db.findOne(usersTable, {
+					where: { email: normalizedEmail },
+				})
 				if (existingUser) {
 					void logAuditEvent({
 						category: 'auth',
@@ -99,14 +96,18 @@ export function createAuthHandler(appEnv: AppEnv) {
 				const username = normalizedEmail
 				let record: { id: number } | null = null
 				try {
-					record = await db.queryFirst(
-						sql`
-							INSERT INTO users (username, email, password_hash)
-							VALUES (${username}, ${normalizedEmail}, ${passwordHash})
-							RETURNING id
-						`,
-						userIdSchema,
+					const createdUser = await db.create(
+						usersTable,
+						{
+							username,
+							email: normalizedEmail,
+							password_hash: passwordHash,
+						},
+						{
+							returnRow: true,
+						},
 					)
+					record = { id: createdUser.id }
 				} catch (error) {
 					if (isUniqueConstraintError(error)) {
 						void logAuditEvent({
@@ -163,10 +164,9 @@ export function createAuthHandler(appEnv: AppEnv) {
 				)
 			}
 
-			const userRecord = await db.queryFirst(
-				sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
-				userLookupSchema,
-			)
+			const userRecord = await db.findOne(usersTable, {
+				where: { email: normalizedEmail },
+			})
 			let passwordValid = false
 			if (userRecord) {
 				passwordValid = await verifyPassword(

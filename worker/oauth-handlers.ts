@@ -2,7 +2,6 @@ import {
 	type AuthRequest,
 	type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
-import { number, object, string } from 'remix/data-schema'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { readAuthSession, setAuthSessionSecret } from '#server/auth-session.ts'
 import { getEnv } from '#server/env.ts'
@@ -10,7 +9,7 @@ import { toHex } from '#server/hex.ts'
 import { verifyPassword } from '#server/password-hash.ts'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
-import { createDb, sql } from './db.ts'
+import { createDb, usersTable } from './db.ts'
 import { wantsJson } from './utils.ts'
 
 export const oauthPaths = {
@@ -44,7 +43,6 @@ function renderSpaShell(status = 200) {
 
 const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
-const userRecordSchema = object({ id: number(), password_hash: string() })
 
 async function createUserId(email: string) {
 	const normalized = email.trim().toLowerCase()
@@ -239,10 +237,9 @@ export async function handleAuthorizeRequest(
 	let approvedEmail = ''
 	if (hasFormCredentials) {
 		const db = createDb(env.APP_DB)
-		const userRecord = await db.queryFirst(
-			sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
-			userRecordSchema,
-		)
+		const userRecord = await db.findOne(usersTable, {
+			where: { email: normalizedEmail },
+		})
 		let passwordValid = false
 		if (userRecord) {
 			passwordValid = await verifyPassword(password, userRecord.password_hash)
