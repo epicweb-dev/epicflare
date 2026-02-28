@@ -545,6 +545,21 @@ test(
 				'text' in content &&
 				typeof content.text === 'string',
 		)
+		const calculatorResourceMeta = (
+			resourceResult.contents.find(
+				(content) => content.uri === calculatorUiResourceUri,
+			) as { _meta?: Record<string, unknown> } | undefined
+		)?._meta as
+			| {
+					ui?: {
+						domain?: string
+						csp?: {
+							resourceDomains?: Array<string>
+						}
+					}
+					'openai/widgetDomain'?: string
+			  }
+			| undefined
 
 		expect(calculatorResource).toBeDefined()
 		expect(calculatorResource?.mimeType).toBe('text/html;profile=mcp-app')
@@ -560,6 +575,11 @@ test(
 		)
 		expect(calculatorResource?.text).toContain('Calculator result:')
 		expect(calculatorResource?.text).toContain("type: 'prompt'")
+		expect(calculatorResourceMeta?.ui?.domain).toBe(server.origin)
+		expect(calculatorResourceMeta?.['openai/widgetDomain']).toBe(server.origin)
+		expect(calculatorResourceMeta?.ui?.csp?.resourceDomains).toContain(
+			server.origin,
+		)
 	},
 	{ timeout: defaultTimeoutMs },
 )

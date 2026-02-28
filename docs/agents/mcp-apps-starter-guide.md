@@ -53,6 +53,9 @@ In `mcp/resources/<your-resource>.ts`:
   injection.
 - Enable the `mcpApps` adapter when UI events should be translated into MCP Apps
   host JSON-RPC.
+- Set `_meta.ui.domain` on resource contents to the widget origin (required for
+  app submission).
+- Add `_meta["openai/widgetDomain"]` as a compatibility alias for ChatGPT.
 
 ### 3) Register the app-opening tool
 
@@ -76,6 +79,7 @@ At minimum, cover:
 - `listTools` includes your new tool.
 - `listResources` includes your `ui://` resource.
 - `readResource` returns expected MIME type + payload markers.
+- `readResource` metadata includes widget domain + CSP expectations.
 - `callTool` returns expected content/structuredContent.
 
 ## Host messaging patterns
@@ -123,6 +127,8 @@ token values into widget CSS. If you do this in an MCP App resource, set
 
 - Keep resources sandbox-friendly (no unnecessary external dependencies).
 - If loading external assets/APIs, define explicit `_meta.ui.csp` domains.
+- Always set `_meta.ui.domain` and `_meta["openai/widgetDomain"]` to your app's
+  dedicated widget origin.
 - Request only required permissions in `_meta.ui.permissions`.
 - Avoid embedding secrets or private tokens in UI payloads.
 
