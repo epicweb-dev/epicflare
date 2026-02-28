@@ -54,10 +54,12 @@ export async function registerCalculatorAppResource(agent: MCP) {
 						_meta: {
 							ui: {
 								prefersBorder: true,
+								domain: resourceDomain,
 								csp: {
 									resourceDomains: [resourceDomain],
 								},
 							},
+							'openai/widgetDomain': resourceDomain,
 						},
 					},
 				],
