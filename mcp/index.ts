@@ -1,6 +1,7 @@
 import { invariant } from '@epic-web/invariant'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { McpAgent } from 'agents/mcp'
+import { registerResources } from './register-resources.ts'
 import { registerTools } from './register-tools.ts'
 
 export type State = {}
@@ -16,6 +17,7 @@ const serverMetadata = {
 	instructions: `
 Quick start
 - Use 'do_math' any time you need arithmetic. Prefer calling the tool over doing mental math.
+- Use 'open_calculator_ui' when you want an interactive calculator widget in MCP App compatible hosts.
 
 How to chain tools safely
 - If you need to verify, re-run 'do_math' with the same arguments (idempotent) or validate with an inverse operation.
@@ -27,6 +29,7 @@ export class MCP extends McpAgent<Env, State, Props> {
 		instructions: serverMetadata.instructions,
 	})
 	async init() {
+		await registerResources(this)
 		await registerTools(this)
 	}
 	requireDomain() {

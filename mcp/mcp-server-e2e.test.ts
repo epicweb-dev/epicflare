@@ -23,6 +23,7 @@ const projectRoot = fileURLToPath(new URL('..', import.meta.url))
 const migrationsDir = join(projectRoot, 'migrations')
 const bunBin = process.execPath
 const defaultTimeoutMs = 60_000
+const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html'
 
 const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
@@ -467,7 +468,14 @@ test(
 		const result = await mcpClient.client.listTools()
 		const toolNames = result.tools.map((tool) => tool.name)
 
-		expect(toolNames.sort()).toEqual(['do_math'])
+		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
+
+		const resourcesResult = await mcpClient.client.listResources()
+		const resourceUris = resourcesResult.resources.map(
+			(resource) => resource.uri,
+		)
+
+		expect(resourceUris).toContain(calculatorUiResourceUri)
 	},
 	{ timeout: defaultTimeoutMs },
 )
@@ -500,6 +508,58 @@ test(
 			)?.text ?? ''
 
 		expect(textOutput).toContain('12')
+	},
+	{ timeout: defaultTimeoutMs },
+)
+
+test(
+	'mcp server executes calculator ui tool and serves resource entry point',
+	async () => {
+		await using database = await createTestDatabase()
+		await using server = await startDevServer(database.persistDir)
+		await using mcpClient = await createMcpClient(server.origin, database.user)
+
+		const result = await mcpClient.client.callTool({
+			name: 'open_calculator_ui',
+		})
+
+		const structuredResult = (result as CallToolResult).structuredContent as
+			| Record<string, unknown>
+			| undefined
+		expect(structuredResult?.widget).toBe('calculator')
+		expect(structuredResult?.resourceUri).toBe(calculatorUiResourceUri)
+
+		const textOutput =
+			(result as CallToolResult).content.find(
+				(item): item is Extract<ContentBlock, { type: 'text' }> =>
+					item.type === 'text',
+			)?.text ?? ''
+		expect(textOutput).toContain('Calculator widget')
+
+		const resourceResult = await mcpClient.client.readResource({
+			uri: calculatorUiResourceUri,
+		})
+		const calculatorResource = resourceResult.contents.find(
+			(content): content is { uri: string; mimeType?: string; text: string } =>
+				content.uri === calculatorUiResourceUri &&
+				'text' in content &&
+				typeof content.text === 'string',
+		)
+
+		expect(calculatorResource).toBeDefined()
+		expect(calculatorResource?.mimeType).toBe('text/html;profile=mcp-app')
+		expect(calculatorResource?.text).toContain('data-calculator-ui')
+		expect(calculatorResource?.text).toContain('rel="stylesheet"')
+		expect(calculatorResource?.text).toContain('styles.css')
+		expect(calculatorResource?.text).toContain('--color-primary')
+		expect(calculatorResource?.text).toContain('--color-background')
+		expect(calculatorResource?.text).toContain("data-theme='dark'")
+		expect(calculatorResource?.text).toContain('ui-request-render-data')
+		expect(calculatorResource?.text).toContain(
+			'ui-lifecycle-iframe-render-data',
+		)
+		expect(calculatorResource?.text).toContain('Calculator result:')
+		expect(calculatorResource?.text).toContain("type: 'prompt'")
 	},
 	{ timeout: defaultTimeoutMs },
 )
