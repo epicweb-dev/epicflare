@@ -217,6 +217,21 @@ const calculatorUiEntryPointHtml = `
 					resultElement.textContent = state.displayValue
 				}
 
+				function sendResultToHostAgent(expression, resultValue) {
+					const prompt = 'Calculator result: ' + expression + ' = ' + resultValue
+					try {
+						window.parent.postMessage(
+							{
+								type: 'prompt',
+								payload: { prompt },
+							},
+							'*',
+						)
+					} catch {
+						// Ignore host messaging errors; calculator behavior should still work locally.
+					}
+				}
+
 				function resetAll() {
 					state.leftOperand = null
 					state.operator = null
@@ -337,6 +352,7 @@ const calculatorUiEntryPointHtml = `
 					state.waitingForNextOperand = true
 					state.expressionText = expression + ' ='
 					updateView()
+					sendResultToHostAgent(expression, state.displayValue)
 				}
 
 				function handleAction(action, value) {

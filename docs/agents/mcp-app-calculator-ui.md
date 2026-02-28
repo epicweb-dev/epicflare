@@ -22,6 +22,7 @@ entry point and a tool that points at it.
   - Dedicated calculator widget entry point.
   - Exports `calculatorUiResourceUri`.
   - Exports `renderCalculatorUiEntryPoint()` (the HTML payload served by MCP).
+  - Emits calculator results back to the host agent as MCP App messages.
 - `mcp/resources/calculator-app-resource.ts`
   - Registers the `ui://` resource.
 - `mcp/tools/open-calculator-ui.ts`
@@ -39,6 +40,9 @@ entry point and a tool that points at it.
 2. Tool metadata advertises `ui://calculator-app/entry-point.html`.
 3. Host reads that resource from the MCP server.
 4. Host renders the HTML widget in a sandboxed MCP App frame.
+5. On each successful `=` evaluation, the widget sends:
+   - `Calculator result: <equation> = <result>`
+   - Routed as a host message via the MCP Apps adapter.
 
 ## Updating the calculator widget
 
@@ -55,3 +59,6 @@ entry point and a tool that points at it.
 - Register tools in `mcp/register-tools.ts`.
 - Prefer `registerAppTool`/`registerAppResource` helpers so metadata and MIME
   behavior stay aligned with the MCP Apps spec.
+- Enable the `mcpApps` adapter when widget events must send messages/tool calls
+  back to the host (`window.parent.postMessage` MCP-UI actions are translated to
+  MCP Apps JSON-RPC).

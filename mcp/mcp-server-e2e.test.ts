@@ -549,6 +549,8 @@ test(
 		expect(calculatorResource).toBeDefined()
 		expect(calculatorResource?.mimeType).toBe('text/html;profile=mcp-app')
 		expect(calculatorResource?.text).toContain('data-calculator-ui')
+		expect(calculatorResource?.text).toContain('Calculator result:')
+		expect(calculatorResource?.text).toContain("type: 'prompt'")
 	},
 	{ timeout: defaultTimeoutMs },
 )

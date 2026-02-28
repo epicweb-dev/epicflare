@@ -2,6 +2,7 @@ import {
 	RESOURCE_MIME_TYPE,
 	registerAppResource,
 } from '@modelcontextprotocol/ext-apps/server'
+import { createUIResource } from '@mcp-ui/server'
 import {
 	calculatorUiResourceUri,
 	renderCalculatorUiEntryPoint,
@@ -25,12 +26,25 @@ export async function registerCalculatorAppResource(agent: MCP) {
 			description: calculatorAppResource.description,
 		},
 		async () => {
+			const calculatorUiResource = createUIResource({
+				uri: calculatorUiResourceUri,
+				content: {
+					type: 'rawHtml',
+					htmlString: renderCalculatorUiEntryPoint(),
+				},
+				encoding: 'text',
+				adapters: {
+					mcpApps: {
+						enabled: true,
+					},
+				},
+			})
+
 			return {
 				contents: [
 					{
-						uri: calculatorUiResourceUri,
+						...calculatorUiResource.resource,
 						mimeType: RESOURCE_MIME_TYPE,
-						text: renderCalculatorUiEntryPoint(),
 						_meta: {
 							ui: {
 								prefersBorder: true,
