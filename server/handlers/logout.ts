@@ -41,28 +41,6 @@ export default {
 	async action({ request }) {
 		const cookie = await destroyAuthCookie(isSecureRequest(request))
 		const location = new URL('/login', request.url)
-		// #region agent log
-		console.log(
-			JSON.stringify({
-				hypothesisId: 'H4',
-				location: 'server/handlers/logout.ts:46',
-				message: 'logout handler returning redirect',
-				data: {
-					requestPath: new URL(request.url).pathname,
-					hasCookieHeader: Boolean(request.headers.get('cookie')),
-					isSecure: isSecureRequest(request),
-					location: location.toString(),
-					debugRouteFrom: request.headers.get('x-agent-debug-route-from'),
-					debugRouteAction: request.headers.get('x-agent-debug-route-action'),
-					setCookieStartsWith: cookie.slice(
-						0,
-						cookie.indexOf(';') > -1 ? cookie.indexOf(';') : cookie.length,
-					),
-				},
-				timestamp: Date.now(),
-			}),
-		)
-		// #endregion
 
 		return new Response(null, {
 			status: 302,

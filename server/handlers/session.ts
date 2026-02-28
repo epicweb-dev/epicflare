@@ -17,23 +17,6 @@ export default {
 	middleware: [],
 	async action({ request }) {
 		const session = await readAuthSession(request)
-		// #region agent log
-		console.log(
-			JSON.stringify({
-				hypothesisId: 'H3',
-				location: 'server/handlers/session.ts:22',
-				message: 'session handler evaluated auth session',
-				data: {
-					requestPath: new URL(request.url).pathname,
-					hasCookieHeader: Boolean(request.headers.get('cookie')),
-					hasSession: Boolean(session),
-					emailLength: session?.email.length ?? 0,
-					debugSessionFetch: request.headers.get('x-agent-debug-session-fetch'),
-				},
-				timestamp: Date.now(),
-			}),
-		)
-		// #endregion
 		if (!session) {
 			return jsonResponse({ ok: false })
 		}
