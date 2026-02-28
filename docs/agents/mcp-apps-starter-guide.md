@@ -92,6 +92,9 @@ When a UI should communicate back to the host agent:
   - `tools/call` (call server tools)
   - `ui/open-link` (request external link open)
 - Keep messages concise and deterministic where possible.
+- For inline `rawHtml` widgets in this repo, prefer reusing the shared runtime
+  in `mcp/apps/widget-host-bridge-runtime.ts` instead of duplicating bridge
+  code.
 
 You can also send simplified MCP-UI actions via `window.parent.postMessage(...)`
 (`type: 'tool' | 'prompt' | 'notify' | 'link'`) when using the `mcpApps`
