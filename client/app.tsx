@@ -49,7 +49,9 @@ export function App(handle: Handle) {
 		}
 	}
 
-	queueSessionRefresh()
+	handle.queueTask(() => {
+		queueSessionRefresh()
+	})
 	listenToRouterNavigation(handle, queueSessionRefresh)
 
 	const navLinkCss = {

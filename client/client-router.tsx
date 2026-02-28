@@ -235,19 +235,9 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 		return
 	}
 
-	if (!response.ok) {
-		const body = await response.text()
-		if (body) {
-			document.open()
-			document.write(body)
-			document.close()
-			return
-		}
-		window.location.assign(details.action.toString())
-		return
-	}
-
-	notify()
+	throw new Error(
+		`Expected redirect location after form submit (${response.status} ${response.statusText})`,
+	)
 }
 
 function handleDocumentSubmit(event: Event) {
