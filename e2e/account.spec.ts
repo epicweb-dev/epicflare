@@ -47,10 +47,19 @@ test('logs out from the account page', async ({ page }) => {
 	await page.getByRole('button', { name: 'Sign in' }).click()
 
 	await expect(page).toHaveURL(/\/account$/)
+	const marker = await page.evaluate(() => {
+		const value = `form-spa-${Math.random().toString(16).slice(2)}`
+		;(window as { __formSpaMarker?: string }).__formSpaMarker = value
+		return value
+	})
 	await page.getByRole('button', { name: 'Log out' }).click()
 
 	await expect(page).toHaveURL(/\/login$/)
 	await expect(
 		page.getByRole('heading', { name: 'Welcome back' }),
 	).toBeVisible()
+	const markerAfterLogout = await page.evaluate(
+		() => (window as { __formSpaMarker?: string }).__formSpaMarker ?? null,
+	)
+	expect(markerAfterLogout).toBe(marker)
 })

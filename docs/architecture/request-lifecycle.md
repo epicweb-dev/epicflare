@@ -39,15 +39,16 @@ modules (home, auth, account, session, logout, password reset, health).
 
 ## Client-side navigation flow
 
-The browser app intercepts same-origin `<a>` clicks and uses the History API
-(`pushState`) to switch routes in-place. Normal app link transitions no longer
-require a full document refresh.
+The browser app intercepts same-origin `<a>` clicks and same-origin form
+submissions (`GET`/`POST`) and routes them in-place through the client router.
+Normal app navigations no longer require a full document refresh.
 
 Full page navigations still occur for:
 
 - Explicit browser reloads/new tab loads
-- Cross-origin links
-- Form posts and redirects that intentionally call `window.location.assign(...)`
+- Cross-origin links/forms
+- Non-`_self` form targets (for example, `_blank`)
+- Explicit code paths that intentionally call `window.location.assign(...)`
 
 ## CORS behavior
 
