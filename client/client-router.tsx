@@ -187,9 +187,25 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 }
 
 function navigateWithRefreshForSamePath(destination: URL) {
+	const currentPath = getCurrentPathWithSearchAndHash()
+	const destinationPath = getPathWithSearchAndHashFromUrl(destination)
+	// #region agent log
+	console.log(
+		JSON.stringify({
+			hypothesisId: 'H2',
+			location: 'client/client-router.tsx:194',
+			message: 'navigateWithRefreshForSamePath decision',
+			data: {
+				currentPath,
+				destinationPath,
+				samePath: destinationPath === currentPath,
+			},
+			timestamp: Date.now(),
+		}),
+	)
+	// #endregion
 	if (
-		getPathWithSearchAndHashFromUrl(destination) ===
-		getCurrentPathWithSearchAndHash()
+		destinationPath === currentPath
 	) {
 		notify()
 		return
@@ -223,7 +239,43 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 		init.body = details.formData
 	}
 
+	// #region agent log
+	console.log(
+		JSON.stringify({
+			hypothesisId: 'H4',
+			location: 'client/client-router.tsx:239',
+			message: 'submitFormThroughRouter sending request',
+			data: {
+				method: init.method,
+				action: details.action.toString(),
+				enctype: details.enctype,
+				credentials: init.credentials,
+				currentPath:
+					typeof window === 'undefined'
+						? null
+						: `${window.location.pathname}${window.location.search}`,
+			},
+			timestamp: Date.now(),
+		}),
+	)
+	// #endregion
 	const response = await fetch(details.action.toString(), init)
+	// #region agent log
+	console.log(
+		JSON.stringify({
+			hypothesisId: 'H2',
+			location: 'client/client-router.tsx:257',
+			message: 'submitFormThroughRouter received response',
+			data: {
+				status: response.status,
+				redirected: response.redirected,
+				responseUrl: response.url,
+				locationHeader: response.headers.get('Location'),
+			},
+			timestamp: Date.now(),
+		}),
+	)
+	// #endregion
 	if (response.redirected) {
 		navigateWithRefreshForSamePath(new URL(response.url, window.location.href))
 		return

@@ -23,6 +23,25 @@ export function App(handle: Handle) {
 	let sessionRefreshQueued = false
 
 	function queueSessionRefresh() {
+		// #region agent log
+		console.log(
+			JSON.stringify({
+				hypothesisId: 'H1',
+				location: 'client/app.tsx:29',
+				message: 'queueSessionRefresh invoked',
+				data: {
+					sessionStatus,
+					sessionRefreshInFlight,
+					sessionRefreshQueued,
+					path:
+						typeof window === 'undefined'
+							? null
+							: `${window.location.pathname}${window.location.search}`,
+				},
+				timestamp: Date.now(),
+			}),
+		)
+		// #endregion
 		sessionRefreshQueued = true
 		if (sessionRefreshInFlight) return
 
@@ -37,6 +56,21 @@ export function App(handle: Handle) {
 		handle.queueTask(async (signal) => {
 			session = await fetchSessionInfo(signal)
 			sessionRefreshInFlight = false
+			// #region agent log
+			console.log(
+				JSON.stringify({
+					hypothesisId: 'H1',
+					location: 'client/app.tsx:58',
+					message: 'queueSessionRefresh task resolved',
+					data: {
+						aborted: signal.aborted,
+						hasSession: Boolean(session?.email),
+						emailLength: session?.email.length ?? 0,
+					},
+					timestamp: Date.now(),
+				}),
+			)
+			// #endregion
 			if (signal.aborted) return
 			sessionStatus = 'ready'
 			handle.update()
