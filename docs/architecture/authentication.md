@@ -41,6 +41,13 @@ Related handlers:
 - `GET /account`: `server/handlers/account.ts` (redirects to login if missing
   session)
 
+### Client session refresh behavior
+
+The app shell (`client/app.tsx`) refreshes session state after initial load and
+on client-side navigation events. If an in-flight refresh is aborted, the client
+keeps the last known ready session instead of overwriting it with `null`. This
+prevents transient logged-out UI during concurrent re-renders.
+
 ## Password reset
 
 Password reset handlers are in `server/handlers/password-reset.ts`.
