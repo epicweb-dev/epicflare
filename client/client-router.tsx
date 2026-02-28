@@ -178,11 +178,7 @@ function formDataToPlainText(formData: FormData) {
 
 function buildGetDestination(action: URL, formData: FormData) {
 	const destination = new URL(action.toString())
-	const searchParams = new URLSearchParams()
-	for (const [name, value] of formData.entries()) {
-		searchParams.append(name, typeof value === 'string' ? value : value.name)
-	}
-	destination.search = searchParams.toString()
+	destination.search = formDataToSearchParams(formData).toString()
 	return destination
 }
 
@@ -224,9 +220,19 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 		return
 	}
 
-	if (response.ok) {
-		notify()
+	if (!response.ok) {
+		const body = await response.text()
+		if (body) {
+			document.open()
+			document.write(body)
+			document.close()
+			return
+		}
+		window.location.assign(details.action.toString())
+		return
 	}
+
+	notify()
 }
 
 function handleDocumentSubmit(event: Event) {
