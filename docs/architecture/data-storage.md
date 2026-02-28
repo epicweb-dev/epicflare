@@ -15,6 +15,7 @@ App access pattern:
 
 - SQL helpers in `worker/db.ts` provide typed wrappers (`queryFirst`,
   `queryAll`, `exec`)
+- Database row validation and API payload parsing use `remix/data-schema`
 - app handlers (for example `server/handlers/auth.ts`) use these helpers for
   database calls
 

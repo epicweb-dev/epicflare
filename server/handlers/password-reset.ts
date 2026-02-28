@@ -1,6 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { object, parseSafe, string } from 'remix/data-schema'
-import { z } from 'zod'
+import { number, object, parseSafe, string } from 'remix/data-schema'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, sql } from '#worker/db.ts'
 import { logAuditEvent, getRequestIp } from '#server/audit-log.ts'
@@ -22,15 +21,15 @@ const resetConfirmSchema = object({
 	password: string(),
 })
 
-const resetUserSchema = z.object({
-	id: z.number(),
-	email: z.string(),
+const resetUserSchema = object({
+	id: number(),
+	email: string(),
 })
 
-const resetTokenSchema = z.object({
-	id: z.number(),
-	user_id: z.number(),
-	expires_at: z.number(),
+const resetTokenSchema = object({
+	id: number(),
+	user_id: number(),
+	expires_at: number(),
 })
 
 function buildResetEmail(resetUrl: string) {

@@ -1,6 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { enum_, object, parseSafe, string } from 'remix/data-schema'
-import { z } from 'zod'
+import { enum_, number, object, parseSafe, string } from 'remix/data-schema'
 import { createAuthCookie } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
@@ -24,8 +23,8 @@ const authRequestSchema = object({
 	mode: enum_(authModes),
 })
 
-const userLookupSchema = z.object({ id: z.number(), password_hash: z.string() })
-const userIdSchema = z.object({ id: z.number() })
+const userLookupSchema = object({ id: number(), password_hash: string() })
+const userIdSchema = object({ id: number() })
 const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 

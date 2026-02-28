@@ -1,3 +1,4 @@
+import { parseSafe } from 'remix/data-schema'
 import { resendEmailSchema } from '#shared/resend-email.ts'
 
 type MockResendEnv = {
@@ -242,7 +243,7 @@ async function handlePostEmails(
 	}
 
 	const body = await readJsonBody(request)
-	const parsed = resendEmailSchema.safeParse(body)
+	const parsed = parseSafe(resendEmailSchema, body)
 	if (!parsed.success) {
 		return json({ error: 'Invalid email payload.' }, { status: 400 })
 	}
@@ -251,7 +252,7 @@ async function handlePostEmails(
 	const tokenHash = await getTokenPartition(env)
 	const now = Date.now()
 	const id = `email_${crypto.randomUUID()}`
-	const payloadJson = JSON.stringify(parsed.data)
+	const payloadJson = JSON.stringify(parsed.value)
 
 	await env.APP_DB.prepare(
 		`INSERT INTO mock_resend_messages
@@ -262,10 +263,10 @@ async function handlePostEmails(
 			id,
 			tokenHash,
 			now,
-			parsed.data.from,
-			JSON.stringify(parsed.data.to),
-			parsed.data.subject,
-			parsed.data.html,
+			parsed.value.from,
+			JSON.stringify(parsed.value.to),
+			parsed.value.subject,
+			parsed.value.html,
 			payloadJson,
 		)
 		.run()

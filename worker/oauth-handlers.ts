@@ -2,7 +2,7 @@ import {
 	type AuthRequest,
 	type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
-import { z } from 'zod'
+import { number, object, string } from 'remix/data-schema'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { readAuthSession, setAuthSessionSecret } from '#server/auth-session.ts'
 import { getEnv } from '#server/env.ts'
@@ -44,7 +44,7 @@ function renderSpaShell(status = 200) {
 
 const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
-const userRecordSchema = z.object({ id: z.number(), password_hash: z.string() })
+const userRecordSchema = object({ id: number(), password_hash: string() })
 
 async function createUserId(email: string) {
 	const normalized = email.trim().toLowerCase()
