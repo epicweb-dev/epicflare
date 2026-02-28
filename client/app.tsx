@@ -78,6 +78,9 @@ export function App(handle: Handle) {
 				queueSessionRefresh()
 			}
 		})
+		if (sessionStatus !== 'loading') {
+			handle.update()
+		}
 	}
 
 	queueSessionRefresh()
