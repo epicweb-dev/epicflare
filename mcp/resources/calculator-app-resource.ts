@@ -1,0 +1,44 @@
+import {
+	RESOURCE_MIME_TYPE,
+	registerAppResource,
+} from '@modelcontextprotocol/ext-apps/server'
+import {
+	calculatorUiResourceUri,
+	renderCalculatorUiEntryPoint,
+} from '#mcp/apps/calculator-ui-entry-point.ts'
+import { type MCP } from '#mcp/index.ts'
+
+const calculatorAppResource = {
+	name: 'calculator_app_resource',
+	title: 'Calculator App Resource',
+	description:
+		'Interactive calculator app entry point rendered by MCP App compatible hosts.',
+} as const
+
+export async function registerCalculatorAppResource(agent: MCP) {
+	registerAppResource(
+		agent.server,
+		calculatorAppResource.name,
+		calculatorUiResourceUri,
+		{
+			title: calculatorAppResource.title,
+			description: calculatorAppResource.description,
+		},
+		async () => {
+			return {
+				contents: [
+					{
+						uri: calculatorUiResourceUri,
+						mimeType: RESOURCE_MIME_TYPE,
+						text: renderCalculatorUiEntryPoint(),
+						_meta: {
+							ui: {
+								prefersBorder: true,
+							},
+						},
+					},
+				],
+			}
+		},
+	)
+}
