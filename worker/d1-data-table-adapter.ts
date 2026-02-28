@@ -264,6 +264,9 @@ function normalizeInsertIdForReader(
 		return undefined
 	}
 	const key = primaryKey[0]
+	if (!key) {
+		return meta?.last_row_id
+	}
 	const row = rows[rows.length - 1]
 	return row?.[key] ?? meta?.last_row_id
 }
@@ -823,13 +826,7 @@ function compilePredicate(
 	throw new Error('Unsupported predicate')
 }
 
-function compileComparisonValue(
-	predicate: {
-		valueType?: unknown
-		value?: unknown
-	},
-	context: SqliteCompileContext,
-) {
+function compileComparisonValue(predicate: any, context: SqliteCompileContext) {
 	if (predicate.valueType === 'column') {
 		return quotePath(String(predicate.value))
 	}
