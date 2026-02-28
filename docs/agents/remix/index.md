@@ -36,6 +36,18 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 - Static assets and compression: [static-middleware](./static-middleware.md) +
   [compression-middleware](./compression-middleware/index.md)
 
+## epicflare adoption snapshot
+
+- Primary runtime packages in active use:
+  - `remix/component`
+  - `remix/fetch-router`
+  - `remix/data-schema`
+  - `remix/data-table`
+- D1 integration uses `remix/data-table` with a repository adapter
+  (`worker/d1-data-table-adapter.ts`) instead of `remix/data-table-sqlite`.
+- Package coverage audit against installed `remix@3.0.0-alpha.3` top-level
+  exports: no missing Remix package docs in this index.
+
 ## UI and components
 
 - [component](./component/index.md)

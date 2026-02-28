@@ -48,7 +48,19 @@ If a package is added or removed upstream, update `docs/agents/remix/index.md`:
 - Update the "Start here" section if new docs are important.
 - If a package moves to a folder, update links to `./<package>/index.md`.
 
-## 5) Verify
+## 5) Audit export coverage
+
+Confirm `docs/agents/remix/index.md` package rows still cover all top-level
+exports from the installed `remix` package:
+
+```sh
+bun -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('node_modules/remix/package.json','utf8'));const top=[...new Set(Object.keys(pkg.exports).filter(k=>k!=='./package.json').map(k=>k.slice(2).split('/')[0]))].sort();const idx=fs.readFileSync('docs/agents/remix/index.md','utf8');const docs=[...new Set([...idx.matchAll(/^\\|\\s*([a-z0-9-]+)\\s*\\|/gm)].map(m=>m[1]).filter(x=>!['Package','--------------------------'].includes(x)))].sort();const missing=top.filter(x=>!docs.includes(x));console.log(missing.length===0?'No missing package docs in index.':'Missing docs for: '+missing.join(', '));"
+```
+
+If any package names are missing, add them to `docs/agents/remix/index.md` and
+add the corresponding docs file(s).
+
+## 6) Verify
 
 Run formatting and validation before committing:
 

@@ -23,6 +23,12 @@ let sqlite = new Database('app.db')
 let db = createDatabase(createSqliteDatabaseAdapter(sqlite))
 ```
 
+## Cloudflare D1 note
+
+`remix/data-table-sqlite` expects a `better-sqlite3` connection object. For D1,
+use a D1-specific adapter (for this repo, `worker/d1-data-table-adapter.ts`)
+instead of `createSqliteDatabaseAdapter(...)`.
+
 ## Default capabilities
 
 - `returning: true`
