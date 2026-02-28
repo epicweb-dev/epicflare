@@ -1,7 +1,7 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
-import { routes } from '#server/routes.ts'
+import { type routes } from '#server/routes.ts'
 
 export const home = {
 	middleware: [],

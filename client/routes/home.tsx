@@ -1,6 +1,12 @@
 import { type Handle } from 'remix/component'
 import { Counter } from '#client/counter.tsx'
-import { colors, radius, shadows, spacing, typography } from '#client/styles/tokens.ts'
+import {
+	colors,
+	radius,
+	shadows,
+	spacing,
+	typography,
+} from '#client/styles/tokens.ts'
 
 export function HomeRoute(_handle: Handle) {
 	return () => (

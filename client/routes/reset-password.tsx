@@ -1,5 +1,11 @@
 import { type Handle } from 'remix/component'
-import { colors, radius, shadows, spacing, typography } from '#client/styles/tokens.ts'
+import {
+	colors,
+	radius,
+	shadows,
+	spacing,
+	typography,
+} from '#client/styles/tokens.ts'
 
 type ResetStatus = 'idle' | 'submitting' | 'success' | 'error'
 

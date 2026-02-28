@@ -4,7 +4,7 @@ import { createAuthCookie } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
-import { routes } from '#server/routes.ts'
+import { type routes } from '#server/routes.ts'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, usersTable } from '#worker/db.ts'
 
