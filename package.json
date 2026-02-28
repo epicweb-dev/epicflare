@@ -58,7 +58,7 @@
     "@modelcontextprotocol/sdk": "1.26.0",
     "agents": "^0.5.0",
     "get-port": "^7.1.0",
-    "remix": "^3.0.0-alpha.2",
+    "remix": "^3.0.0-alpha.3",
     "zod": "^4.3.6"
   }
 }
