@@ -1,4 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
+import { enum_, object, parseSafe, string } from 'remix/data-schema'
 import { z } from 'zod'
 import { createAuthCookie } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
@@ -8,17 +9,20 @@ import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, sql } from '#worker/db.ts'
 import type routes from '#server/routes.ts'
 
-type AuthMode = 'login' | 'signup'
-
-function isAuthMode(value: string): value is AuthMode {
-	return value === 'login' || value === 'signup'
-}
+const authModes = ['login', 'signup'] as const
+type AuthMode = (typeof authModes)[number]
 
 function isUniqueConstraintError(error: unknown) {
 	return (
 		error instanceof Error && /unique constraint failed/i.test(error.message)
 	)
 }
+
+const authRequestSchema = object({
+	email: string(),
+	password: string(),
+	mode: enum_(authModes),
+})
 
 const userLookupSchema = z.object({ id: z.number(), password_hash: z.string() })
 const userIdSchema = z.object({ id: z.number() })
@@ -42,22 +46,20 @@ export function createAuthHandler(appEnv: AppEnv) {
 				)
 			}
 
-			if (!body || typeof body !== 'object') {
+			const parsedBody = parseSafe(authRequestSchema, body)
+			if (!parsedBody.success) {
 				return Response.json(
 					{ error: 'Invalid request body.' },
 					{ status: 400 },
 				)
 			}
 
-			const { email, password, mode } = body as Record<string, unknown>
-			const normalizedEmail =
-				typeof email === 'string' ? normalizeEmail(email) : ''
-			const normalizedPassword = typeof password === 'string' ? password : ''
-			const normalizedMode =
-				typeof mode === 'string' && isAuthMode(mode) ? mode : null
+			const normalizedEmail = normalizeEmail(parsedBody.value.email)
+			const normalizedPassword = parsedBody.value.password
+			const normalizedMode: AuthMode = parsedBody.value.mode
 			const requestIp = getRequestIp(request) ?? undefined
 
-			if (!normalizedEmail || !normalizedPassword || !normalizedMode) {
+			if (!normalizedEmail || !normalizedPassword) {
 				void logAuditEvent({
 					category: 'auth',
 					action: 'authenticate',

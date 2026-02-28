@@ -61,6 +61,9 @@ handled by the static asset fetcher in `worker/index.ts`.
 
 - Assert user-facing results (success message, redirect, visible element).
 - For async actions, wait on the UI result, not arbitrary timeouts.
+- For client-router regressions, you may set a `window` marker before clicking a
+  link and assert it survives navigation to prove there was no full document
+  reload.
 
 ## Running tests
 

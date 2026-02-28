@@ -1,4 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
+import { object, parseSafe, string } from 'remix/data-schema'
 import { z } from 'zod'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, sql } from '#worker/db.ts'
@@ -12,13 +13,13 @@ import type routes from '#server/routes.ts'
 const resetTokenBytes = 32
 const resetTokenExpiryMs = 60 * 60 * 1000
 
-const resetRequestSchema = z.object({
-	email: z.string().min(1),
+const resetRequestSchema = object({
+	email: string(),
 })
 
-const resetConfirmSchema = z.object({
-	token: z.string().min(1),
-	password: z.string().min(1),
+const resetConfirmSchema = object({
+	token: string(),
+	password: string(),
 })
 
 const resetUserSchema = z.object({
@@ -94,10 +95,10 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 					{ status: 400 },
 				)
 			}
-			const parsed = resetRequestSchema.safeParse(body)
+			const parsed = parseSafe(resetRequestSchema, body)
 			const requestIp = getRequestIp(request) ?? undefined
 			const normalizedEmail = parsed.success
-				? normalizeEmail(parsed.data.email)
+				? normalizeEmail(parsed.value.email)
 				: ''
 
 			if (!parsed.success || !normalizedEmail) {
@@ -218,10 +219,10 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 					{ status: 400 },
 				)
 			}
-			const parsed = resetConfirmSchema.safeParse(body)
+			const parsed = parseSafe(resetConfirmSchema, body)
 			const requestIp = getRequestIp(request) ?? undefined
-			const token = parsed.success ? parsed.data.token.trim() : ''
-			const password = parsed.success ? parsed.data.password : ''
+			const token = parsed.success ? parsed.value.token.trim() : ''
+			const password = parsed.success ? parsed.value.password : ''
 
 			if (!parsed.success || !token || !password) {
 				void logAuditEvent({
