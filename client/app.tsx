@@ -27,9 +27,10 @@ export function App(handle: Handle) {
 		sessionRefreshQueued = false
 		sessionRefreshInFlight = true
 		handle.queueTask(async (signal) => {
-			session = await fetchSessionInfo(signal)
+			const nextSession = await fetchSessionInfo(signal)
 			sessionRefreshInFlight = false
 			if (signal.aborted) return
+			session = nextSession
 			sessionStatus = 'ready'
 			handle.update()
 			if (sessionRefreshQueued) {

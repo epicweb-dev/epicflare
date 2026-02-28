@@ -141,7 +141,7 @@ function resolveFormSubmitDetails(
 function formDataToSearchParams(formData: FormData) {
 	const params = new URLSearchParams()
 	for (const [name, value] of formData.entries()) {
-		params.append(name, typeof value === 'string' ? value : value.name)
+		params.append(name, getFormDataValueText(value))
 	}
 	return params
 }
@@ -149,9 +149,15 @@ function formDataToSearchParams(formData: FormData) {
 function formDataToPlainText(formData: FormData) {
 	const lines: Array<string> = []
 	for (const [name, value] of formData.entries()) {
-		lines.push(`${name}=${typeof value === 'string' ? value : value.name}`)
+		lines.push(`${name}=${getFormDataValueText(value)}`)
 	}
 	return lines.join('\r\n')
+}
+
+function getFormDataValueText(value: FormDataEntryValue) {
+	if (typeof value === 'string') return value
+	const fileName = (value as { name?: unknown }).name
+	return typeof fileName === 'string' ? fileName : 'blob'
 }
 
 function buildGetDestination(action: URL, formData: FormData) {
