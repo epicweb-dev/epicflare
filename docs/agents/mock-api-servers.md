@@ -27,3 +27,5 @@ it can also be deployed alongside the main app.
   all mock Workers for request authentication. The preview workflow includes an
   authenticated dashboard link in the PR comment (href includes `?token=...`) so
   you can open `/<service>/__mocks` without manually copying secrets.
+- Set `"preview_urls": true` in each mock Worker `wrangler.jsonc` so Cloudflare
+  emits version preview URLs in CI summaries when available.

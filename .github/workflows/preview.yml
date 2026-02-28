@@ -176,17 +176,25 @@ jobs:
 
             bunx wrangler deploy --env preview --name "$mock_worker_name" --config "$dir/wrangler.jsonc" 2>&1 | tee "$deploy_log"
 
-            mock_url="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync(process.argv[1],'utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')" "$deploy_log")"
+            mock_url="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const worker = process.argv[2]; const escaped = worker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const workerUrlRegex = new RegExp(`https://(?:[a-zA-Z0-9-]+\\.)?${escaped}\\.[a-zA-Z0-9._-]+\\.workers\\.dev`, "g"); const matches = text.match(workerUrlRegex); process.stdout.write(matches?.at(-1) ?? "")' "$deploy_log" "$mock_worker_name")"
             if [ -z "$mock_url" ]; then
               echo "Failed to parse mock URL for $service." >&2
               exit 1
             fi
+            mock_version_preview_url="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const match = text.match(/(?:Version\\s+)?Preview URL:\\s*(https:\\/\\/\\S+)/i); process.stdout.write(match?.[1] ?? "")' "$deploy_log")"
 
             echo "${service_key}_API_BASE_URL=$mock_url" >> "$OVERRIDES_FILE"
             echo "${service_key}_API_KEY=$MOCK_API_TOKEN" >> "$OVERRIDES_FILE"
 
-            mock_summary="${mock_summary}\n- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
-            mock_comment_summary="${mock_comment_summary}\n- ${service}: [${mock_url}/__mocks](${mock_url}/__mocks?token=${MOCK_API_TOKEN}) (\`${mock_worker_name}\`)"
+            mock_summary_line="- ${service}: ${mock_url} (\`${mock_worker_name}\`)"
+            mock_comment_summary_line="- ${service}: [${mock_url}/__mocks](${mock_url}/__mocks?token=${MOCK_API_TOKEN}) (\`${mock_worker_name}\`)"
+            if [ -n "$mock_version_preview_url" ]; then
+              mock_summary_line="${mock_summary_line} | version preview: ${mock_version_preview_url}"
+              mock_comment_summary_line="${mock_comment_summary_line} | version preview: [${mock_version_preview_url}](${mock_version_preview_url})"
+            fi
+
+            mock_summary="${mock_summary}\n${mock_summary_line}"
+            mock_comment_summary="${mock_comment_summary}\n${mock_comment_summary_line}"
           done
 
           if [ -n "$mock_summary" ]; then
@@ -238,9 +246,13 @@ jobs:
 
           bun run deploy -- --name "$APP_WORKER_NAME" --config "$WRANGLER_CONFIG" 2>&1 | tee deploy.log
 
-          PREVIEW_URL="$(node -e "const fs = require('node:fs'); const t = fs.readFileSync('deploy.log','utf8'); const m = t.match(/https:\\/\\/[a-zA-Z0-9._-]+\\.workers\\.dev/g); process.stdout.write(m?.at(-1) ?? '')")"
+          PREVIEW_URL="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const worker = process.argv[2]; const escaped = worker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const workerUrlRegex = new RegExp(`https://(?:[a-zA-Z0-9-]+\\.)?${escaped}\\.[a-zA-Z0-9._-]+\\.workers\\.dev`, "g"); const matches = text.match(workerUrlRegex); process.stdout.write(matches?.at(-1) ?? "")' deploy.log "$APP_WORKER_NAME")"
           if [ -n "$PREVIEW_URL" ]; then
             echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          fi
+          PREVIEW_VERSION_URL="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const match = text.match(/(?:Version\\s+)?Preview URL:\\s*(https:\\/\\/\\S+)/i); process.stdout.write(match?.[1] ?? "")' deploy.log)"
+          if [ -n "$PREVIEW_VERSION_URL" ]; then
+            echo "version_preview_url=$PREVIEW_VERSION_URL" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 🩺 Healthcheck (preview)
@@ -283,6 +295,8 @@ jobs:
         if: steps.deploy_preview.outputs.url != ''
         env:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+          PREVIEW_VERSION_URL:
+            '${{ steps.deploy_preview.outputs.version_preview_url }}'
           WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
           MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_summary }}
           D1_DATABASE_NAME: ${{ steps.resources.outputs.d1_database_name }}
@@ -294,6 +308,9 @@ jobs:
             echo "$PREVIEW_URL"
             echo ""
             printf 'Worker: `%s`\n' "$WORKER_NAME"
+            if [ -n "${PREVIEW_VERSION_URL:-}" ]; then
+              printf 'Version preview: %s\n' "$PREVIEW_VERSION_URL"
+            fi
             if [ -n "${D1_DATABASE_NAME:-}" ]; then
               printf 'D1: `%s`\n' "$D1_DATABASE_NAME"
             fi
@@ -314,6 +331,8 @@ jobs:
         uses: actions/github-script@v7
         env:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+          PREVIEW_VERSION_URL:
+            '${{ steps.deploy_preview.outputs.version_preview_url }}'
           WORKER_NAME: ${{ steps.deploy_preview.outputs.worker_name }}
           MOCK_SUMMARY: ${{ steps.deploy_mocks.outputs.mock_comment_summary }}
           D1_DATABASE_NAME: ${{ steps.resources.outputs.d1_database_name }}
@@ -327,6 +346,11 @@ jobs:
               "",
               `Worker: \`${process.env.WORKER_NAME}\``,
             ];
+            if (process.env.PREVIEW_VERSION_URL?.trim()) {
+              bodyLines.push(
+                `Version preview: ${process.env.PREVIEW_VERSION_URL.trim()}`,
+              );
+            }
             if (process.env.D1_DATABASE_NAME?.trim()) {
               bodyLines.push(`D1: \`${process.env.D1_DATABASE_NAME.trim()}\``);
             }
