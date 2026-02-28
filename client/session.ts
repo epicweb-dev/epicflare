@@ -9,7 +9,13 @@ export async function fetchSessionInfo(
 ): Promise<SessionInfo | null> {
 	try {
 		const response = await fetch('/session', {
-			headers: { Accept: 'application/json' },
+			headers: {
+				Accept: 'application/json',
+				'X-Agent-Debug-Session-Fetch':
+					typeof window === 'undefined'
+						? 'n/a'
+						: `${window.location.pathname}${window.location.search}`,
+			},
 			credentials: 'include',
 			signal,
 		})

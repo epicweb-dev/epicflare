@@ -1,5 +1,3 @@
-// @ts-expect-error debug-only host fs instrumentation
-import { appendFileSync } from 'node:fs'
 import { type BuildAction } from 'remix/fetch-router'
 import { readAuthSession } from '#server/auth-session.ts'
 import type routes from '#server/routes.ts'
@@ -20,23 +18,21 @@ export default {
 	async action({ request }) {
 		const session = await readAuthSession(request)
 		// #region agent log
-		try {
-			appendFileSync(
-				'/opt/cursor/logs/debug.log',
-				`${JSON.stringify({
-					hypothesisId: 'H3',
-					location: 'server/handlers/session.ts:23',
-					message: 'session handler evaluated auth session',
-					data: {
-						requestPath: new URL(request.url).pathname,
-						hasCookieHeader: Boolean(request.headers.get('cookie')),
-						hasSession: Boolean(session),
-						emailLength: session?.email.length ?? 0,
-					},
-					timestamp: Date.now(),
-				})}\n`,
-			)
-		} catch {}
+		console.log(
+			JSON.stringify({
+				hypothesisId: 'H3',
+				location: 'server/handlers/session.ts:22',
+				message: 'session handler evaluated auth session',
+				data: {
+					requestPath: new URL(request.url).pathname,
+					hasCookieHeader: Boolean(request.headers.get('cookie')),
+					hasSession: Boolean(session),
+					emailLength: session?.email.length ?? 0,
+					debugSessionFetch: request.headers.get('x-agent-debug-session-fetch'),
+				},
+				timestamp: Date.now(),
+			}),
+		)
 		// #endregion
 		if (!session) {
 			return jsonResponse({ ok: false })

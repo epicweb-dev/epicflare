@@ -238,6 +238,15 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 	} else {
 		init.body = details.formData
 	}
+	const requestHeaders = new Headers(init.headers)
+	requestHeaders.set(
+		'X-Agent-Debug-Route-From',
+		typeof window === 'undefined'
+			? 'n/a'
+			: `${window.location.pathname}${window.location.search}`,
+	)
+	requestHeaders.set('X-Agent-Debug-Route-Action', details.action.pathname)
+	init.headers = requestHeaders
 
 	// #region agent log
 	console.log(
