@@ -106,7 +106,7 @@ export function navigate(to: string) {
 
 export function Router(handle: Handle, setup: RouterSetup) {
 	ensureRouter()
-	handle.on(routerEvents, { navigate: () => handle.update() })
+	handle.on(routerEvents, { navigate: () => void handle.update() })
 
 	return () => {
 		const path = getPathname()

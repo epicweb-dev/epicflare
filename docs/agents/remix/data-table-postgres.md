@@ -1,6 +1,7 @@
 # data-table-postgres
 
-Source: https://github.com/remix-run/remix/tree/main/packages/data-table-postgres
+Source:
+https://github.com/remix-run/remix/tree/main/packages/data-table-postgres
 
 ## README
 
