@@ -33,7 +33,9 @@ export async function registerOpenCalculatorUiTool(agent: MCP) {
 			title: openCalculatorUiTool.title,
 			description: openCalculatorUiTool.description,
 			outputSchema: {
-				widget: z.literal('calculator').describe('Identifier for the calculator widget.'),
+				widget: z
+					.literal('calculator')
+					.describe('Identifier for the calculator widget.'),
 				resourceUri: z
 					.literal(calculatorUiResourceUri)
 					.describe('MCP App resource URI associated with this widget.'),

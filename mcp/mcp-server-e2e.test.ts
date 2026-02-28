@@ -471,7 +471,9 @@ test(
 		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
 
 		const resourcesResult = await mcpClient.client.listResources()
-		const resourceUris = resourcesResult.resources.map((resource) => resource.uri)
+		const resourceUris = resourcesResult.resources.map(
+			(resource) => resource.uri,
+		)
 
 		expect(resourceUris).toContain(calculatorUiResourceUri)
 	},

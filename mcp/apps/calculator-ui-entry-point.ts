@@ -1,4 +1,5 @@
-export const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html' as const
+export const calculatorUiResourceUri =
+	'ui://calculator-app/entry-point.html' as const
 
 const calculatorUiEntryPointHtml = `
 <!doctype html>
