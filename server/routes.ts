@@ -1,4 +1,4 @@
-import { post, route } from 'remix/fetch-router'
+import { post, route } from 'remix/fetch-router/routes'
 
 const routes = route({
 	home: '/',

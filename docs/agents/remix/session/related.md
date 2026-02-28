@@ -4,10 +4,14 @@ Source: https://github.com/remix-run/remix/tree/main/packages/session
 
 ## Related packages
 
-- [`@remix-run/cookie`](https://github.com/remix-run/remix/tree/main/packages/cookie) -
+- [`cookie`](https://github.com/remix-run/remix/tree/main/packages/cookie) -
   Cookie parsing and serialization
-- [`@remix-run/fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
+- [`fetch-router`](https://github.com/remix-run/remix/tree/main/packages/fetch-router) -
   Router with built-in session middleware
+- [`session-storage-memcache`](https://github.com/remix-run/remix/tree/main/packages/session-storage-memcache) -
+  Memcache-backed session storage adapter
+- [`session-storage-redis`](https://github.com/remix-run/remix/tree/main/packages/session-storage-redis) -
+  Redis-backed session storage adapter
 
 ## License
 

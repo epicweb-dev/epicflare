@@ -10,7 +10,7 @@ way to add functionality to your app.
 A basic logging middleware might look like this:
 
 ```ts
-import type { Middleware } from '@remix-run/fetch-router'
+import type { Middleware } from 'remix/fetch-router'
 
 // You can use the `Middleware` type to type middleware functions.
 function logger(): Middleware {

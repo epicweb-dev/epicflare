@@ -13,10 +13,12 @@ Current schema is defined by migrations in `migrations/`:
 
 App access pattern:
 
-- SQL helpers in `worker/db.ts` provide typed wrappers (`queryFirst`,
-  `queryAll`, `exec`)
-- app handlers (for example `server/handlers/auth.ts`) use these helpers for
-  database calls
+- `worker/db.ts` defines shared `remix/data-table` table metadata and creates a
+  D1-backed database runtime via `worker/d1-data-table-adapter.ts`
+- Database row validation and API payload parsing use `remix/data-schema`
+- app handlers and the mock Resend worker perform CRUD/query operations through
+  `remix/data-table` (including `findOne`, `create`, `update`, `deleteMany`, and
+  `count`)
 
 ## KV (`OAUTH_KV`)
 

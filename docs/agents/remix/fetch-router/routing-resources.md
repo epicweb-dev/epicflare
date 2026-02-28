@@ -9,7 +9,8 @@ of resource-based routes, useful when defining RESTful API routes or modeling
 resources in a web application (similar to Rails' `resources` helper).
 
 ```ts
-import { createRouter, route, resources } from '@remix-run/fetch-router'
+import { createRouter } from 'remix/fetch-router'
+import { resources, route } from 'remix/fetch-router/routes'
 
 let routes = route({
 	brands: {
@@ -61,12 +62,8 @@ that is part of a collection). This is useful when defining operations on a
 singleton resource, like a user profile.
 
 ```tsx
-import {
-	createRouter,
-	route,
-	resources,
-	resource,
-} from '@remix-run/fetch-router'
+import { createRouter } from 'remix/fetch-router'
+import { resource, resources, route } from 'remix/fetch-router/routes'
 
 let routes = route({
 	user: {
@@ -131,7 +128,8 @@ prefer not to use the default
 `index`/`new`/`show`/`create`/`edit`/`update`/`destroy` route names.
 
 ```tsx
-import { createRouter, route, resources } from '@remix-run/fetch-router'
+import { createRouter } from 'remix/fetch-router'
+import { resources, route } from 'remix/fetch-router/routes'
 
 let routes = route({
 	users: resources('users', {
@@ -149,7 +147,8 @@ type Routes = typeof routes.users
 If you want to use a param name other than `id`, you can use the `param` option.
 
 ```tsx
-import { createRouter, route, resources } from '@remix-run/fetch-router'
+import { createRouter } from 'remix/fetch-router'
+import { resources, route } from 'remix/fetch-router/routes'
 
 let routes = route({
 	users: resources('users', {

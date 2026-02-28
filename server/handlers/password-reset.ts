@@ -1,7 +1,7 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { z } from 'zod'
+import { object, parseSafe, string } from 'remix/data-schema'
 import { type AppEnv } from '#types/env-schema.ts'
-import { createDb, sql } from '#worker/db.ts'
+import { createDb, passwordResetsTable, usersTable } from '#worker/db.ts'
 import { logAuditEvent, getRequestIp } from '#server/audit-log.ts'
 import { sendResendEmail } from '#server/email/resend.ts'
 import { toHex } from '#server/hex.ts'
@@ -12,24 +12,13 @@ import type routes from '#server/routes.ts'
 const resetTokenBytes = 32
 const resetTokenExpiryMs = 60 * 60 * 1000
 
-const resetRequestSchema = z.object({
-	email: z.string().min(1),
+const resetRequestSchema = object({
+	email: string(),
 })
 
-const resetConfirmSchema = z.object({
-	token: z.string().min(1),
-	password: z.string().min(1),
-})
-
-const resetUserSchema = z.object({
-	id: z.number(),
-	email: z.string(),
-})
-
-const resetTokenSchema = z.object({
-	id: z.number(),
-	user_id: z.number(),
-	expires_at: z.number(),
+const resetConfirmSchema = object({
+	token: string(),
+	password: string(),
 })
 
 function buildResetEmail(resetUrl: string) {
@@ -94,10 +83,10 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 					{ status: 400 },
 				)
 			}
-			const parsed = resetRequestSchema.safeParse(body)
+			const parsed = parseSafe(resetRequestSchema, body)
 			const requestIp = getRequestIp(request) ?? undefined
 			const normalizedEmail = parsed.success
-				? normalizeEmail(parsed.data.email)
+				? normalizeEmail(parsed.value.email)
 				: ''
 
 			if (!parsed.success || !normalizedEmail) {
@@ -113,29 +102,24 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 				return Response.json({ error: 'Email is required.' }, { status: 400 })
 			}
 
-			const userRecord = await db.queryFirst(
-				sql`SELECT id, email FROM users WHERE email = ${normalizedEmail}`,
-				resetUserSchema,
-			)
+			const userRecord = await db.findOne(usersTable, {
+				where: { email: normalizedEmail },
+			})
 
 			const token = generateResetToken()
 			const tokenHash = await hashResetToken(token)
 			const expiresAt = Date.now() + resetTokenExpiryMs
 
-			await db.exec(
-				sql`
-					DELETE FROM password_resets
-					WHERE user_id = (SELECT id FROM users WHERE email = ${normalizedEmail})
-				`,
-			)
-			await db.exec(
-				sql`
-					INSERT INTO password_resets (user_id, token_hash, expires_at)
-					SELECT id, ${tokenHash}, ${expiresAt}
-					FROM users
-					WHERE email = ${normalizedEmail}
-				`,
-			)
+			if (userRecord) {
+				await db.deleteMany(passwordResetsTable, {
+					where: { user_id: userRecord.id },
+				})
+				await db.create(passwordResetsTable, {
+					user_id: userRecord.id,
+					token_hash: tokenHash,
+					expires_at: expiresAt,
+				})
+			}
 
 			if (userRecord) {
 				const appBaseUrl = appEnv.APP_BASE_URL ?? url.origin
@@ -218,10 +202,10 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 					{ status: 400 },
 				)
 			}
-			const parsed = resetConfirmSchema.safeParse(body)
+			const parsed = parseSafe(resetConfirmSchema, body)
 			const requestIp = getRequestIp(request) ?? undefined
-			const token = parsed.success ? parsed.data.token.trim() : ''
-			const password = parsed.success ? parsed.data.password : ''
+			const token = parsed.success ? parsed.value.token.trim() : ''
+			const password = parsed.success ? parsed.value.password : ''
 
 			if (!parsed.success || !token || !password) {
 				void logAuditEvent({
@@ -239,17 +223,14 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 			}
 
 			const tokenHash = await hashResetToken(token)
-			const resetRecord = await db.queryFirst(
-				sql`SELECT id, user_id, expires_at FROM password_resets WHERE token_hash = ${tokenHash}`,
-				resetTokenSchema,
-			)
+			const resetRecord = await db.findOne(passwordResetsTable, {
+				where: { token_hash: tokenHash },
+			})
 			const now = Date.now()
 
 			if (!resetRecord || resetRecord.expires_at < now) {
 				if (resetRecord && resetRecord.expires_at < now) {
-					await db.exec(
-						sql`DELETE FROM password_resets WHERE id = ${resetRecord.id}`,
-					)
+					await db.delete(passwordResetsTable, resetRecord.id)
 				}
 				void logAuditEvent({
 					category: 'auth',
@@ -266,16 +247,13 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 			}
 
 			const passwordHash = await createPasswordHash(password)
-			await db.exec(
-				sql`
-					UPDATE users
-					SET password_hash = ${passwordHash}, updated_at = CURRENT_TIMESTAMP
-					WHERE id = ${resetRecord.user_id}
-				`,
-			)
-			await db.exec(
-				sql`DELETE FROM password_resets WHERE user_id = ${resetRecord.user_id}`,
-			)
+			await db.update(usersTable, resetRecord.user_id, {
+				password_hash: passwordHash,
+				updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+			})
+			await db.deleteMany(passwordResetsTable, {
+				where: { user_id: resetRecord.user_id },
+			})
 
 			void logAuditEvent({
 				category: 'auth',

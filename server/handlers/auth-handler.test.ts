@@ -36,87 +36,79 @@ function createTestDb() {
 	const users = new Map<string, TestUser>()
 	const db = {
 		prepare(query: string) {
+			const normalizedQuery = query.replace(/\s+/g, ' ').trim().toLowerCase()
 			return {
 				bind(...params: Array<unknown>) {
-					const normalizedQuery = query
-						.replace(/\s+/g, ' ')
-						.trim()
-						.toLowerCase()
+					const readUserByEmail = () => {
+						const email = String(params[0] ?? '').toLowerCase()
+						return users.get(email) ?? null
+					}
+
+					const insertUser = () => {
+						const [username, email, passwordHash] = params as Array<string>
+						const normalizedEmail = String(email).toLowerCase()
+						if (users.has(normalizedEmail)) {
+							throw new Error('UNIQUE constraint failed: users.email')
+						}
+						const user: TestUser = {
+							id: nextId,
+							email: String(email),
+							username: String(username),
+							password_hash: String(passwordHash),
+						}
+						nextId += 1
+						users.set(normalizedEmail, user)
+						return user
+					}
+
+					const executeAll = async () => {
+						if (
+							normalizedQuery.startsWith('select') &&
+							normalizedQuery.includes('from "users"') &&
+							normalizedQuery.includes('email')
+						) {
+							const user = readUserByEmail()
+							return {
+								results: user ? [{ ...user }] : [],
+								meta: { changes: 0, last_row_id: 0 },
+							}
+						}
+
+						if (normalizedQuery.includes('insert into "users"')) {
+							const user = insertUser()
+							return {
+								results: [{ ...user }],
+								meta: { changes: 1, last_row_id: user.id },
+							}
+						}
+
+						return {
+							results: [],
+							meta: { changes: 0, last_row_id: 0 },
+						}
+					}
+
 					return {
+						async all() {
+							return executeAll()
+						},
 						async first() {
-							if (normalizedQuery.startsWith('select id from users')) {
-								const email = String(params[0] ?? '').toLowerCase()
-								const user = users.get(email)
-								return user ? { id: user.id } : null
-							}
-							if (
-								normalizedQuery.startsWith(
-									'select id, password_hash from users where email = ?',
-								)
-							) {
-								const email = String(params[0] ?? '').toLowerCase()
-								const user = users.get(email)
-								return user
-									? { id: user.id, password_hash: user.password_hash }
-									: null
-							}
-							if (
-								normalizedQuery.startsWith('insert into users') &&
-								normalizedQuery.includes('returning id')
-							) {
-								const [username, email, passwordHash] = params as Array<string>
-								const normalizedEmail = String(email).toLowerCase()
-								if (users.has(normalizedEmail)) {
-									throw new Error('UNIQUE constraint failed: users.email')
-								}
-								const user: TestUser = {
-									id: nextId,
-									email: String(email),
-									username: String(username),
-									password_hash: String(passwordHash),
-								}
-								nextId += 1
-								users.set(normalizedEmail, user)
-								return { id: user.id }
-							}
-							return null
+							const result = await executeAll()
+							return result.results[0] ?? null
 						},
 						async run() {
-							if (normalizedQuery.startsWith('insert into users')) {
-								const [username, email, passwordHash] = params as Array<string>
-								const normalizedEmail = String(email).toLowerCase()
-								if (users.has(normalizedEmail)) {
-									throw new Error('UNIQUE constraint failed: users.email')
-								}
-								const user: TestUser = {
-									id: nextId,
-									email: String(email),
-									username: String(username),
-									password_hash: String(passwordHash),
-								}
-								nextId += 1
-								users.set(normalizedEmail, user)
-								return { success: true }
+							if (normalizedQuery.includes('insert into "users"')) {
+								const user = insertUser()
+								return { meta: { changes: 1, last_row_id: user.id } }
 							}
-							if (
-								normalizedQuery.startsWith(
-									'update users set password_hash = ? where id = ?',
-								)
-							) {
-								const [passwordHash, id] = params as Array<unknown>
-								const user = Array.from(users.values()).find(
-									(entry) => entry.id === Number(id),
-								)
-								if (user) {
-									user.password_hash = String(passwordHash)
-								}
-								return { success: true }
-							}
-							return { success: true }
+							return { meta: { changes: 0, last_row_id: 0 } }
 						},
 					}
 				},
 			}
+		},
+		async exec() {
+			return
 		},
 	} as unknown as D1Database
 
@@ -168,7 +160,7 @@ test('auth handler returns 400 for missing fields', async () => {
 	expect(response.status).toBe(400)
 	const payload = await response.json()
 	expect(payload).toEqual({
-		error: 'Email, password, and mode are required.',
+		error: 'Invalid request body.',
 	})
 })
 

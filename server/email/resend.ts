@@ -1,3 +1,4 @@
+import { parseSafe } from 'remix/data-schema'
 import { resendEmailSchema, type ResendEmail } from '#shared/resend-email.ts'
 
 type ResendClientConfig = {
@@ -13,11 +14,20 @@ type ResendSendResult = {
 }
 
 function normalizeEmailPayload(message: ResendEmail) {
-	const result = resendEmailSchema.safeParse(message)
+	const result = parseSafe(resendEmailSchema, message)
 	if (!result.success) {
-		throw new Error(`Invalid Resend email payload: ${result.error.message}`)
+		const issueMessage = result.issues
+			.map((issue) => {
+				const path =
+					Array.isArray(issue.path) && issue.path.length > 0
+						? issue.path.join('.')
+						: 'payload'
+				return `${path}: ${issue.message}`
+			})
+			.join(', ')
+		throw new Error(`Invalid Resend email payload: ${issueMessage}`)
 	}
-	return result.data
+	return result.value
 }
 
 function logSkippedEmail(reason: string, message: ResendEmail) {

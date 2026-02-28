@@ -25,7 +25,8 @@ request method. This can be more convenient than using `router.get()` and
 
 ```ts
 import * as assert from 'node:assert/strict'
-import { createRouter, route } from '@remix-run/fetch-router'
+import { createRouter } from 'remix/fetch-router'
+import { route } from 'remix/fetch-router/routes'
 
 let routes = route({
 	home: { method: 'GET', pattern: '/' },
@@ -89,9 +90,10 @@ route is a `GET` route that shows the form, and the `action` route is a `POST`
 route that handles the form submission.
 
 ```tsx
-import { createRouter, route, form } from '@remix-run/fetch-router'
-import { createHtmlResponse } from '@remix-run/response/html'
-import { html } from '@remix-run/html-template'
+import { createRouter } from 'remix/fetch-router'
+import { form, route } from 'remix/fetch-router/routes'
+import { createHtmlResponse } from 'remix/response/html'
+import { html } from 'remix/html-template'
 
 let routes = route({
 	home: '/',

@@ -1,12 +1,16 @@
+import { parseSafe } from 'remix/data-schema'
 import { EnvSchema, type AppEnv } from '#types/env-schema.ts'
 
 export function getEnv(env: Env): AppEnv {
-	const result = EnvSchema.safeParse(env)
+	const result = parseSafe(EnvSchema, env)
 
 	if (!result.success) {
-		const message = result.error.issues
+		const message = result.issues
 			.map((issue) => {
-				const key = issue.path.join('.') || 'env'
+				const key =
+					Array.isArray(issue.path) && issue.path.length > 0
+						? issue.path.join('.')
+						: 'env'
 				return `${key}: ${issue.message}`
 			})
 			.join(', ')
@@ -16,5 +20,5 @@ export function getEnv(env: Env): AppEnv {
 		)
 	}
 
-	return result.data
+	return result.value
 }

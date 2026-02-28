@@ -4,9 +4,7 @@ import type routes from '#server/routes.ts'
 export default {
 	middleware: [],
 	async action() {
-		return new Response(JSON.stringify({ ok: true }), {
-			headers: { 'Content-Type': 'application/json' },
-		})
+		return Response.json({ ok: true })
 	},
 } satisfies BuildAction<
 	typeof routes.health.method,

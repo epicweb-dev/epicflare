@@ -1,12 +1,21 @@
-import { z } from 'zod'
+import {
+	array,
+	object,
+	string,
+	union,
+	type InferOutput,
+} from 'remix/data-schema'
+import { minLength } from 'remix/data-schema/checks'
 
-const resendEmailSchema = z.object({
-	from: z.string().min(1),
-	to: z.union([z.string().min(1), z.array(z.string().min(1))]),
-	subject: z.string().min(1),
-	html: z.string().min(1),
+const nonEmptyStringSchema = string().pipe(minLength(1))
+
+const resendEmailSchema = object({
+	from: nonEmptyStringSchema,
+	to: union([nonEmptyStringSchema, array(nonEmptyStringSchema)]),
+	subject: nonEmptyStringSchema,
+	html: nonEmptyStringSchema,
 })
 
-export type ResendEmail = z.infer<typeof resendEmailSchema>
+export type ResendEmail = InferOutput<typeof resendEmailSchema>
 
 export { resendEmailSchema }

@@ -1,18 +1,15 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { z } from 'zod'
+import { enum_, object, parseSafe, string } from 'remix/data-schema'
 import { createAuthCookie } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
 import { type AppEnv } from '#types/env-schema.ts'
-import { createDb, sql } from '#worker/db.ts'
+import { createDb, usersTable } from '#worker/db.ts'
 import type routes from '#server/routes.ts'
 
-type AuthMode = 'login' | 'signup'
-
-function isAuthMode(value: string): value is AuthMode {
-	return value === 'login' || value === 'signup'
-}
+const authModes = ['login', 'signup'] as const
+type AuthMode = (typeof authModes)[number]
 
 function isUniqueConstraintError(error: unknown) {
 	return (
@@ -20,8 +17,12 @@ function isUniqueConstraintError(error: unknown) {
 	)
 }
 
-const userLookupSchema = z.object({ id: z.number(), password_hash: z.string() })
-const userIdSchema = z.object({ id: z.number() })
+const authRequestSchema = object({
+	email: string(),
+	password: string(),
+	mode: enum_(authModes),
+})
+
 const dummyPasswordHash =
 	'pbkdf2_sha256$100000$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000'
 
@@ -42,22 +43,20 @@ export function createAuthHandler(appEnv: AppEnv) {
 				)
 			}
 
-			if (!body || typeof body !== 'object') {
+			const parsedBody = parseSafe(authRequestSchema, body)
+			if (!parsedBody.success) {
 				return Response.json(
 					{ error: 'Invalid request body.' },
 					{ status: 400 },
 				)
 			}
 
-			const { email, password, mode } = body as Record<string, unknown>
-			const normalizedEmail =
-				typeof email === 'string' ? normalizeEmail(email) : ''
-			const normalizedPassword = typeof password === 'string' ? password : ''
-			const normalizedMode =
-				typeof mode === 'string' && isAuthMode(mode) ? mode : null
+			const normalizedEmail = normalizeEmail(parsedBody.value.email)
+			const normalizedPassword = parsedBody.value.password
+			const normalizedMode: AuthMode = parsedBody.value.mode
 			const requestIp = getRequestIp(request) ?? undefined
 
-			if (!normalizedEmail || !normalizedPassword || !normalizedMode) {
+			if (!normalizedEmail || !normalizedPassword) {
 				void logAuditEvent({
 					category: 'auth',
 					action: 'authenticate',
@@ -74,10 +73,9 @@ export function createAuthHandler(appEnv: AppEnv) {
 			}
 
 			if (normalizedMode === 'signup') {
-				const existingUser = await db.queryFirst(
-					sql`SELECT id FROM users WHERE email = ${normalizedEmail}`,
-					userIdSchema,
-				)
+				const existingUser = await db.findOne(usersTable, {
+					where: { email: normalizedEmail },
+				})
 				if (existingUser) {
 					void logAuditEvent({
 						category: 'auth',
@@ -98,14 +96,18 @@ export function createAuthHandler(appEnv: AppEnv) {
 				const username = normalizedEmail
 				let record: { id: number } | null = null
 				try {
-					record = await db.queryFirst(
-						sql`
-							INSERT INTO users (username, email, password_hash)
-							VALUES (${username}, ${normalizedEmail}, ${passwordHash})
-							RETURNING id
-						`,
-						userIdSchema,
+					const createdUser = await db.create(
+						usersTable,
+						{
+							username,
+							email: normalizedEmail,
+							password_hash: passwordHash,
+						},
+						{
+							returnRow: true,
+						},
 					)
+					record = { id: createdUser.id }
 				} catch (error) {
 					if (isUniqueConstraintError(error)) {
 						void logAuditEvent({
@@ -162,10 +164,9 @@ export function createAuthHandler(appEnv: AppEnv) {
 				)
 			}
 
-			const userRecord = await db.queryFirst(
-				sql`SELECT id, password_hash FROM users WHERE email = ${normalizedEmail}`,
-				userLookupSchema,
-			)
+			const userRecord = await db.findOne(usersTable, {
+				where: { email: normalizedEmail },
+			})
 			let passwordValid = false
 			if (userRecord) {
 				passwordValid = await verifyPassword(
