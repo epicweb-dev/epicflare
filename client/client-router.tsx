@@ -1,15 +1,8 @@
 import { type Handle } from 'remix/component'
 
-type RouteMatch = {
-	path: string
-	params: Record<string, string>
-}
-
-type RouteView = (match: RouteMatch) => JSX.Element
-
 type RouterSetup = {
-	routes: Record<string, RouteView>
-	fallback?: RouteView
+	routes: Record<string, JSX.Element>
+	fallback?: JSX.Element
 }
 
 type FormMethod = 'get' | 'post'
@@ -29,39 +22,24 @@ function notify() {
 }
 
 function compileRoutePattern(pattern: string) {
-	const paramNames: Array<string> = []
 	const regexPattern = pattern
-		.replace(/:([^/]+)/g, (_, name) => {
-			paramNames.push(name)
-			return '([^/]+)'
-		})
+		.replace(/:([^/]+)/g, '([^/]+)')
 		.replace(/\*/g, '.*')
 
 	return {
 		pattern: new RegExp(`^${regexPattern}$`),
-		paramNames,
 	}
 }
 
 function matchRoute(
 	path: string,
-	routes: Record<string, RouteView>,
-): { view: RouteView; match: RouteMatch } | null {
-	for (const [pattern, view] of Object.entries(routes)) {
-		const { pattern: compiled, paramNames } = compileRoutePattern(pattern)
+	routes: Record<string, JSX.Element>,
+): JSX.Element | null {
+	for (const [pattern, routeElement] of Object.entries(routes)) {
+		const { pattern: compiled } = compileRoutePattern(pattern)
 		const result = compiled.exec(path)
 		if (!result) continue
-
-		const params: Record<string, string> = {}
-		paramNames.forEach((name, index) => {
-			const value = result[index + 1]
-			if (value !== undefined) params[name] = value
-		})
-
-		return {
-			view,
-			match: { path, params },
-		}
+		return routeElement
 	}
 
 	return null
@@ -304,11 +282,8 @@ export function Router(handle: Handle, setup: RouterSetup) {
 
 	return () => {
 		const path = getPathname()
-		const result = matchRoute(path, setup.routes)
-		if (result) {
-			return result.view(result.match)
-		}
-
-		return setup.fallback ? setup.fallback({ path, params: {} }) : null
+		const routeElement = matchRoute(path, setup.routes)
+		if (routeElement) return routeElement
+		return setup.fallback ?? null
 	}
 }

@@ -1,13 +1,5 @@
 import { type Handle } from 'remix/component'
-import {
-	AccountRoute,
-	ChatRoute,
-	HomeRoute,
-	LoginRoute,
-	OAuthAuthorizeRoute,
-	OAuthCallbackRoute,
-	ResetPasswordRoute,
-} from './client-routes.tsx'
+import { clientRoutes } from './routes/index.tsx'
 import { listenToRouterNavigation, Router } from './client-router.tsx'
 import {
 	fetchSessionInfo,
@@ -127,17 +119,8 @@ export function App(handle: Handle) {
 				</nav>
 				<Router
 					setup={{
-						routes: {
-							'/': HomeRoute(),
-							'/chat': ChatRoute(),
-							'/account': AccountRoute(),
-							'/login': LoginRoute('login'),
-							'/signup': LoginRoute('signup'),
-							'/reset-password': ResetPasswordRoute(),
-							'/oauth/authorize': OAuthAuthorizeRoute(),
-							'/oauth/callback': OAuthCallbackRoute(),
-						},
-						fallback: () => (
+						routes: clientRoutes,
+						fallback: (
 							<section>
 								<h2
 									css={{
