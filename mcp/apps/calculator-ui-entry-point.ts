@@ -1,21 +1,12 @@
 export const calculatorUiResourceUri =
 	'ui://calculator-app/entry-point.html' as const
 
-function escapeHtmlAttribute(value: string) {
-	return value
-		.replaceAll('&', '&amp;')
-		.replaceAll('"', '&quot;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-}
-
 export function renderCalculatorUiEntryPoint(baseUrl: string | URL) {
-	const stylesheetHref = escapeHtmlAttribute(
-		new URL('/styles.css', baseUrl).toString(),
-	)
-	const widgetScriptHref = escapeHtmlAttribute(
-		new URL('/mcp-apps/calculator-widget.js', baseUrl).toString(),
-	)
+	const stylesheetHref = new URL('/styles.css', baseUrl).toString()
+	const widgetScriptHref = new URL(
+		'/mcp-apps/calculator-widget.js',
+		baseUrl,
+	).toString()
 
 	return `
 <!doctype html>
