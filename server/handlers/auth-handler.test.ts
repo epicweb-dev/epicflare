@@ -160,7 +160,7 @@ test('auth handler returns 400 for missing fields', async () => {
 	expect(response.status).toBe(400)
 	const payload = await response.json()
 	expect(payload).toEqual({
-		error: 'Email, password, and mode are required.',
+		error: 'Invalid request body.',
 	})
 })
 
