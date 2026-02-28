@@ -33,7 +33,7 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 - [Setup](./docs/agents/setup.md)
 - [Code Style](./docs/agents/code-style.md)
 - [Cloudflare Agents SDK](./docs/agents/cloudflare-agents-sdk.md)
-- [MCP App Calculator UI](./docs/agents/mcp-app-calculator-ui.md)
+- [MCP Apps Starter Guide](./docs/agents/mcp-apps-starter-guide.md)
 - [Harness Engineering](./docs/agents/harness-engineering.md)
 - [Remix Packages](./docs/agents/remix/index.md)
 - [Testing Principles](./docs/agents/testing-principles.md)
