@@ -23,6 +23,8 @@ entry point and a tool that points at it.
   - Exports `calculatorUiResourceUri`.
   - Exports `renderCalculatorUiEntryPoint()` (the HTML payload served by MCP).
   - Emits calculator results back to the host agent as MCP App messages.
+  - Uses the same design-token names as the app (`--color-*`, `--spacing-*`,
+    `--radius-*`, `--shadow-*`) so widget styling matches core surfaces/buttons.
 - `mcp/resources/calculator-app-resource.ts`
   - Registers the `ui://` resource.
 - `mcp/tools/open-calculator-ui.ts`

@@ -11,6 +11,59 @@ const calculatorUiEntryPointHtml = `
 		<style>
 			:root {
 				color-scheme: light dark;
+
+				/* App design tokens - light mode */
+				--color-primary: #f47c00;
+				--color-primary-hover: #e26c00;
+				--color-primary-active: #c85a00;
+				--color-on-primary: #120b08;
+				--color-primary-text: #b04700;
+				--color-background: #f6f6f8;
+				--color-surface: #ececf1;
+				--color-text: #2f2f34;
+				--color-text-muted: #676770;
+				--color-border: #d7d7df;
+
+				--font-family: system-ui, sans-serif;
+				--font-size-xs: 0.75rem;
+				--font-size-sm: 0.875rem;
+				--font-size-base: 1rem;
+				--font-size-lg: 1.25rem;
+				--font-size-xl: 2rem;
+
+				--font-weight-medium: 500;
+				--font-weight-semibold: 600;
+
+				--spacing-xs: 0.25rem;
+				--spacing-sm: 0.5rem;
+				--spacing-md: 1rem;
+				--spacing-lg: 1.5rem;
+
+				--radius-md: 0.5rem;
+				--radius-lg: 0.75rem;
+				--radius-full: 999px;
+
+				--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+
+				--transition-fast: 0.15s ease;
+				--transition-normal: 0.2s ease;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root {
+					/* App design tokens - dark mode */
+					--color-primary: #f6a23a;
+					--color-primary-hover: #f08b1a;
+					--color-primary-active: #d87305;
+					--color-on-primary: #120b08;
+					--color-primary-text: #f6a23a;
+					--color-background: #121216;
+					--color-surface: #1c1c22;
+					--color-text: #f1f1f5;
+					--color-text-muted: #b3b3bd;
+					--color-border: #2b2b33;
+					--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+				}
 			}
 
 			* {
@@ -19,121 +72,131 @@ const calculatorUiEntryPointHtml = `
 
 			body {
 				margin: 0;
-				padding: 0;
-				font-family:
-					Inter,
-					ui-sans-serif,
-					system-ui,
-					-apple-system,
-					BlinkMacSystemFont,
-					'Segoe UI',
-					sans-serif;
-				background: #0f172a;
-				color: #e2e8f0;
-			}
-
-			@media (prefers-color-scheme: light) {
-				body {
-					background: #e2e8f0;
-					color: #0f172a;
-				}
+				padding: var(--spacing-md);
+				font-family: var(--font-family);
+				font-size: var(--font-size-base);
+				color: var(--color-text);
+				background: var(--color-background);
 			}
 
 			.calculator-root {
-				width: min(420px, 100vw);
-				padding: 1rem;
-				display: grid;
-				gap: 0.75rem;
+				width: min(100%, 28rem);
 				margin: 0 auto;
+				padding: var(--spacing-lg);
+				display: grid;
+				gap: var(--spacing-md);
+				border-radius: var(--radius-lg);
+				border: 1px solid var(--color-border);
+				background-color: var(--color-surface);
+				box-shadow: var(--shadow-sm);
 			}
 
 			.calculator-title {
 				margin: 0;
-				font-size: 1rem;
-				font-weight: 600;
+				font-size: var(--font-size-lg);
+				font-weight: var(--font-weight-semibold);
+				color: var(--color-text);
 			}
 
 			.calculator-help {
 				margin: 0;
-				font-size: 0.8rem;
-				opacity: 0.82;
+				font-size: var(--font-size-sm);
+				color: var(--color-text-muted);
 			}
 
 			.calculator-display {
-				border-radius: 0.75rem;
-				padding: 0.75rem;
-				background: #1e293b;
-				border: 1px solid #334155;
+				border-radius: var(--radius-md);
+				padding: var(--spacing-md);
+				background: color-mix(
+					in srgb,
+					var(--color-background) 72%,
+					var(--color-surface)
+				);
+				border: 1px solid var(--color-border);
 				min-height: 80px;
 				display: grid;
 				align-content: center;
-				gap: 0.25rem;
-			}
-
-			@media (prefers-color-scheme: light) {
-				.calculator-display {
-					background: #f8fafc;
-					border-color: #cbd5e1;
-				}
+				gap: var(--spacing-xs);
 			}
 
 			.calculator-expression {
-				font-size: 0.85rem;
+				font-size: var(--font-size-sm);
 				min-height: 1rem;
-				opacity: 0.75;
+				color: var(--color-text-muted);
 				word-break: break-word;
 			}
 
 			.calculator-result {
-				font-size: 2rem;
+				font-size: var(--font-size-xl);
 				line-height: 1;
 				font-variant-numeric: tabular-nums;
 				word-break: break-all;
+				color: var(--color-text);
 			}
 
 			.calculator-keypad {
 				display: grid;
 				grid-template-columns: repeat(4, minmax(0, 1fr));
-				gap: 0.5rem;
+				gap: var(--spacing-sm);
 			}
 
 			.calculator-key {
-				border: 1px solid #475569;
-				background: #1e293b;
-				color: inherit;
-				padding: 0.75rem;
-				border-radius: 0.625rem;
-				font-size: 1.05rem;
+				border: 1px solid var(--color-border);
+				background-color: var(--color-background);
+				color: var(--color-text);
+				padding: var(--spacing-sm);
+				border-radius: var(--radius-md);
+				font-family: var(--font-family);
+				font-size: var(--font-size-base);
+				font-weight: var(--font-weight-medium);
 				cursor: pointer;
+				transition:
+					transform var(--transition-fast),
+					background-color var(--transition-normal),
+					color var(--transition-normal),
+					border-color var(--transition-normal);
 			}
 
-			.calculator-key:hover {
-				filter: brightness(1.1);
+			.calculator-key:hover:not(:disabled) {
+				background-color: color-mix(
+					in srgb,
+					var(--color-surface) 78%,
+					var(--color-primary) 22%
+				);
+				transform: translateY(-1px);
 			}
 
 			.calculator-key:active {
 				transform: translateY(1px);
 			}
 
+			.calculator-key:focus-visible {
+				outline: 2px solid var(--color-primary);
+				outline-offset: 1px;
+			}
+
 			.calculator-key.operator {
-				background: #1d4ed8;
-				border-color: #1e40af;
-				color: #eff6ff;
+				background-color: var(--color-primary);
+				border-color: transparent;
+				color: var(--color-on-primary);
+				font-weight: var(--font-weight-semibold);
 			}
 
-			.calculator-key.control {
-				background: #334155;
+			.calculator-key.operator:hover:not(:disabled) {
+				background-color: var(--color-primary-hover);
 			}
 
-			@media (prefers-color-scheme: light) {
-				.calculator-key {
-					background: #f8fafc;
-					border-color: #cbd5e1;
-				}
+			.calculator-key.operator:active {
+				background-color: var(--color-primary-active);
+			}
 
-				.calculator-key.control {
-					background: #e2e8f0;
-				}
+			.calculator-key.control,
+			.calculator-key.utility {
+				background-color: var(--color-surface);
+			}
+
+			.calculator-key.span-two {
+				grid-column: span 2;
 			}
 		</style>
 	</head>
@@ -170,11 +233,11 @@ const calculatorUiEntryPointHtml = `
 				<button class="calculator-key" data-action="digit" data-value="3" type="button">3</button>
 				<button class="calculator-key operator" data-action="evaluate" type="button">=</button>
 
-				<button class="calculator-key" data-action="digit" data-value="0" type="button" style="grid-column: span 2">
+				<button class="calculator-key span-two" data-action="digit" data-value="0" type="button">
 					0
 				</button>
 				<button class="calculator-key" data-action="decimal" type="button">.</button>
-				<button class="calculator-key control" data-action="reset" type="button">AC</button>
+				<button class="calculator-key utility" data-action="reset" type="button">AC</button>
 			</div>
 		</section>
 
