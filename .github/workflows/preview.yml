@@ -181,7 +181,7 @@ jobs:
               echo "Failed to parse mock URL for $service." >&2
               exit 1
             fi
-            mock_version_preview_url="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const match = text.match(/(?:Version\\s+)?Preview URL:\\s*(https:\\/\\/\\S+)/i); process.stdout.write(match?.[1] ?? "")' "$deploy_log")"
+            mock_version_preview_url="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const match = text.match(/(?:Version\s+)?Preview URL:\s*(https:\/\/\S+)/i); process.stdout.write(match?.[1] ?? "")' "$deploy_log")"
 
             echo "${service_key}_API_BASE_URL=$mock_url" >> "$OVERRIDES_FILE"
             echo "${service_key}_API_KEY=$MOCK_API_TOKEN" >> "$OVERRIDES_FILE"
@@ -250,7 +250,7 @@ jobs:
           if [ -n "$PREVIEW_URL" ]; then
             echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
           fi
-          PREVIEW_VERSION_URL="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const match = text.match(/(?:Version\\s+)?Preview URL:\\s*(https:\\/\\/\\S+)/i); process.stdout.write(match?.[1] ?? "")' deploy.log)"
+          PREVIEW_VERSION_URL="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const match = text.match(/(?:Version\s+)?Preview URL:\s*(https:\/\/\S+)/i); process.stdout.write(match?.[1] ?? "")' deploy.log)"
           if [ -n "$PREVIEW_VERSION_URL" ]; then
             echo "version_preview_url=$PREVIEW_VERSION_URL" >> "$GITHUB_OUTPUT"
           fi
