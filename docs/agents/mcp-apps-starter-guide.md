@@ -86,15 +86,20 @@ At minimum, cover:
 
 When a UI should communicate back to the host agent:
 
-- Send MCP-UI actions via `window.parent.postMessage(...)`:
-  - `type: 'tool'` (call another tool)
-  - `type: 'prompt'` (send a user-style message)
-  - `type: 'notify'` (host logging/notification)
-  - `type: 'link'` (request external link open)
+- Prefer the standard MCP Apps bridge (`App` from
+  `@modelcontextprotocol/ext-apps`) and call host methods such as:
+  - `ui/message` (send a user-style message)
+  - `tools/call` (call server tools)
+  - `ui/open-link` (request external link open)
 - Keep messages concise and deterministic where possible.
+- For inline `rawHtml` widgets in this repo, prefer reusing the shared runtime
+  in `client/mcp-apps/widget-host-bridge.ts` (built to
+  `public/mcp-apps/widget-host-bridge.js`) instead of duplicating bridge code.
 
-If you rely on this pattern, enable the `mcpApps` adapter in resource generation
-so messages are translated to MCP Apps JSON-RPC methods.
+You can also send simplified MCP-UI actions via `window.parent.postMessage(...)`
+(`type: 'tool' | 'prompt' | 'notify' | 'link'`) when using the `mcpApps`
+adapter. Those shorthand actions depend on adapter translation and may not be
+available in every host runtime.
 
 ## Theme and design-system guidance
 

@@ -1,9 +1,6 @@
 import { type Handle } from 'remix/component'
 import { navigate } from '#client/client-router.tsx'
-import {
-	fetchSessionInfo,
-	type SessionStatus,
-} from '#client/session.ts'
+import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import {
 	colors,
 	radius,

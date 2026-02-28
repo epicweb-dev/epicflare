@@ -3,7 +3,7 @@ import { readAuthSession } from '#server/auth-session.ts'
 import { redirectToLogin } from '#server/auth-redirect.ts'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
-import { routes } from '#server/routes.ts'
+import { type routes } from '#server/routes.ts'
 
 export const chat = {
 	middleware: [],
