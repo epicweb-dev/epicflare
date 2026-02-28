@@ -191,7 +191,9 @@ test(
 		})
 		expect(createResp.status).toBe(200)
 		const createJson = (await createResp.json()) as { id?: string }
-		expect(typeof createJson.id).toBe('string')
+		if (!createJson.id) {
+			throw new Error('Create email response was missing id.')
+		}
 
 		const metaResp = await fetch(new URL('/__mocks/meta', server.origin), {
 			headers: { authorization: `Bearer ${token}` },
@@ -223,15 +225,16 @@ test(
 			}>
 		}
 		expect(listJson.count).toBe(1)
-		expect(listJson.messages[0]?.subject).toBe(email.subject)
-		expect(listJson.messages[0]?.from_email).toBe(email.from)
-		expect(JSON.parse(listJson.messages[0]?.to_json ?? 'null')).toEqual(
-			email.to,
-		)
-		expect(listJson.messages[0]?.html).toBe(email.html)
-		expect(JSON.parse(listJson.messages[0]?.payload_json ?? 'null')).toEqual(
-			email,
-		)
+		const firstMessage = listJson.messages[0]
+		if (!firstMessage) {
+			throw new Error('Expected one persisted message in D1.')
+		}
+		expect(firstMessage.id).toBe(createJson.id)
+		expect(firstMessage.subject).toBe(email.subject)
+		expect(firstMessage.from_email).toBe(email.from)
+		expect(JSON.parse(firstMessage.to_json)).toEqual(email.to)
+		expect(firstMessage.html).toBe(email.html)
+		expect(JSON.parse(firstMessage.payload_json)).toEqual(email)
 	},
 	{ timeout: defaultTimeoutMs },
 )

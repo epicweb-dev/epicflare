@@ -8,7 +8,7 @@ magic.
 - Prefer flat test files: use top-level `test(...)` and avoid `describe`
   nesting.
 - Avoid shared setup like `beforeEach`/`afterEach`; inline setup per test.
-- Don't write tests for what the type system already guarantees.
+- Do not test what the type system already guarantees.
 - Use disposable objects only when there is real cleanup. If no cleanup, skip
   `using` and `Symbol.dispose`.
 - Build helpers that return ready-to-run objects (factory pattern), not globals.
@@ -20,6 +20,21 @@ magic.
 - Run server tests with `bun test server` to avoid Playwright spec discovery.
 
 ## Examples
+
+### Avoid type-system-only assertions
+
+Tests should prove behavior, not restate static guarantees from TypeScript.
+
+```ts
+// Bad: mostly checks shape/type.
+const payload = (await response.json()) as { id?: string }
+expect(typeof payload.id).toBe('string')
+
+// Good: checks behavior users care about.
+const payload = (await response.json()) as { id?: string }
+expect(payload.id).toBeDefined()
+expect(savedItems.some((item) => item.id === payload.id)).toBe(true)
+```
 
 ### `Symbol.dispose` with `using`
 
