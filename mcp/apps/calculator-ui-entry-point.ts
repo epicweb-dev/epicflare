@@ -345,8 +345,8 @@ const calculatorUiEntryPointTemplate = `
 					if (state.leftOperand === null || state.operator === null) {
 						state.leftOperand = inputValue
 					} else {
-						const result = compute(state.leftOperand, state.operator, inputValue)
-						if (result === null) {
+					const result = compute(state.leftOperand, state.operator, inputValue)
+					if (!Number.isFinite(result)) {
 							setError()
 							return
 						}
@@ -371,7 +371,7 @@ const calculatorUiEntryPointTemplate = `
 
 					const rightOperand = Number(state.displayValue)
 					const result = compute(state.leftOperand, state.operator, rightOperand)
-					if (result === null) {
+					if (!Number.isFinite(result)) {
 						setError()
 						return
 					}
@@ -447,7 +447,7 @@ const calculatorUiEntryPointTemplate = `
 						removeLastCharacter()
 						return
 					}
-					if (event.key.toLowerCase() === 'c') {
+					if (event.key.toLowerCase() === 'c' && !event.ctrlKey && !event.metaKey) {
 						event.preventDefault()
 						resetAll()
 					}
