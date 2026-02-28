@@ -43,6 +43,13 @@ each PR preview is isolated:
 When a PR is closed, the cleanup job deletes the preview Worker(s) and these
 resources as well.
 
+Cloudflare Workers supports version `preview_urls`, but those preview URLs are
+not currently available for Workers that use Durable Objects. The main app
+Worker binds `MCP_OBJECT`, so app previews continue to use per-PR Worker names.
+Mock Workers do not use Durable Objects, so their Wrangler configs opt into
+`preview_urls = true` and the workflow includes mock version preview links when
+Cloudflare returns them.
+
 Both the preview and production deploy workflows run a post-deploy healthcheck
 against `<deploy-url>/health` and fail the job if it does not return
 `{ ok: true }`.
