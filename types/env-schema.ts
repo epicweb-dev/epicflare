@@ -7,7 +7,7 @@ import {
 } from 'remix/data-schema'
 
 const d1DatabaseSchema = createSchema<unknown, D1Database>((value, context) => {
-	if (Boolean(value)) {
+	if (value) {
 		return { value: value as D1Database }
 	}
 	return fail('Missing APP_DB binding for database access.', context.path)
