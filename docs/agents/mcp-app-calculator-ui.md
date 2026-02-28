@@ -25,6 +25,9 @@ entry point and a tool that points at it.
   - Emits calculator results back to the host agent as MCP App messages.
   - Uses the same design-token names as the app (`--color-*`, `--spacing-*`,
     `--radius-*`, `--shadow-*`) so widget styling matches core surfaces/buttons.
+  - Supports both light and dark mode:
+    - Fallback from `prefers-color-scheme`.
+    - Host-driven theme updates via MCP App render-data messages.
 - `mcp/resources/calculator-app-resource.ts`
   - Registers the `ui://` resource.
 - `mcp/tools/open-calculator-ui.ts`
@@ -45,6 +48,8 @@ entry point and a tool that points at it.
 5. On each successful `=` evaluation, the widget sends:
    - `Calculator result: <equation> = <result>`
    - Routed as a host message via the MCP Apps adapter.
+6. The widget asks for host render data (`ui-request-render-data`) and applies
+   `renderData.theme` (`light`/`dark`) when available.
 
 ## Updating the calculator widget
 

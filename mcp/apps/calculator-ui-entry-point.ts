@@ -49,9 +49,24 @@ const calculatorUiEntryPointHtml = `
 				--transition-normal: 0.2s ease;
 			}
 
+			:root[data-theme='dark'] {
+				/* App design tokens - dark mode */
+				--color-primary: #f6a23a;
+				--color-primary-hover: #f08b1a;
+				--color-primary-active: #d87305;
+				--color-on-primary: #120b08;
+				--color-primary-text: #f6a23a;
+				--color-background: #121216;
+				--color-surface: #1c1c22;
+				--color-text: #f1f1f5;
+				--color-text-muted: #b3b3bd;
+				--color-border: #2b2b33;
+				--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+			}
+
 			@media (prefers-color-scheme: dark) {
-				:root {
-					/* App design tokens - dark mode */
+				:root:not([data-theme]) {
+					/* App design tokens - dark mode fallback */
 					--color-primary: #f6a23a;
 					--color-primary-hover: #f08b1a;
 					--color-primary-active: #d87305;
@@ -243,9 +258,11 @@ const calculatorUiEntryPointHtml = `
 
 		<script>
 			;(function () {
+				const rootElement = document.documentElement
 				const expressionElement = document.querySelector('[data-expression]')
 				const resultElement = document.querySelector('[data-result]')
 				const keyElements = Array.from(document.querySelectorAll('[data-action]'))
+				const renderDataMessageType = 'ui-lifecycle-iframe-render-data'
 
 				if (!expressionElement || !resultElement) {
 					return
@@ -293,6 +310,20 @@ const calculatorUiEntryPointHtml = `
 					} catch {
 						// Ignore host messaging errors; calculator behavior should still work locally.
 					}
+				}
+
+				function applyTheme(theme) {
+					if (theme === 'dark' || theme === 'light') {
+						rootElement.setAttribute('data-theme', theme)
+						return
+					}
+					rootElement.removeAttribute('data-theme')
+				}
+
+				function applyThemeFromHostMessage(message) {
+					if (!message || message.type !== renderDataMessageType) return
+					const theme = message.payload?.renderData?.theme
+					applyTheme(theme)
 				}
 
 				function resetAll() {
@@ -478,6 +509,24 @@ const calculatorUiEntryPointHtml = `
 						resetAll()
 					}
 				})
+
+				window.addEventListener('message', (event) => {
+					const message = event.data
+					if (!message || typeof message !== 'object') return
+					applyThemeFromHostMessage(message)
+				})
+
+				try {
+					window.parent.postMessage(
+						{
+							type: 'ui-request-render-data',
+							payload: {},
+						},
+						'*',
+					)
+				} catch {
+					// Ignore render-data request failures outside MCP hosts.
+				}
 
 				updateView()
 			})()
