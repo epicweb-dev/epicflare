@@ -58,6 +58,8 @@ test('logs out from the account page', async ({ page }) => {
 	await expect(
 		page.getByRole('heading', { name: 'Welcome back' }),
 	).toBeVisible()
+	await expect(page.getByRole('link', { name: 'Login' })).toBeVisible()
+	await expect(page.getByRole('button', { name: 'Log out' })).toHaveCount(0)
 	const markerAfterLogout = await page.evaluate(
 		() => (window as { __formSpaMarker?: string }).__formSpaMarker ?? null,
 	)

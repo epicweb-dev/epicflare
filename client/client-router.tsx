@@ -182,6 +182,21 @@ function buildGetDestination(action: URL, formData: FormData) {
 	return destination
 }
 
+function getPathWithSearchAndHashFromUrl(url: URL) {
+	return `${url.pathname}${url.search}${url.hash}`
+}
+
+function navigateWithRefreshForSamePath(destination: URL) {
+	if (
+		getPathWithSearchAndHashFromUrl(destination) ===
+		getCurrentPathWithSearchAndHash()
+	) {
+		notify()
+		return
+	}
+	navigate(destination.toString())
+}
+
 async function submitFormThroughRouter(details: FormSubmitDetails) {
 	if (details.method === 'get') {
 		navigate(buildGetDestination(details.action, details.formData).toString())
@@ -210,13 +225,13 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 
 	const response = await fetch(details.action.toString(), init)
 	if (response.redirected) {
-		navigate(response.url)
+		navigateWithRefreshForSamePath(new URL(response.url, window.location.href))
 		return
 	}
 
 	const location = response.headers.get('Location')
 	if (location) {
-		navigate(new URL(location, details.action).toString())
+		navigateWithRefreshForSamePath(new URL(location, details.action))
 		return
 	}
 
@@ -260,6 +275,13 @@ function ensureRouter() {
 	document.addEventListener('submit', handleDocumentSubmit)
 }
 
+export function listenToRouterNavigation(handle: Handle, listener: () => void) {
+	ensureRouter()
+	handle.on(routerEvents, {
+		navigate: () => listener(),
+	})
+}
+
 export function getPathname() {
 	if (typeof window === 'undefined') return '/'
 	return window.location.pathname
@@ -286,8 +308,9 @@ export function navigate(to: string) {
 }
 
 export function Router(handle: Handle, setup: RouterSetup) {
-	ensureRouter()
-	handle.on(routerEvents, { navigate: () => void handle.update() })
+	listenToRouterNavigation(handle, () => {
+		void handle.update()
+	})
 
 	return () => {
 		const path = getPathname()

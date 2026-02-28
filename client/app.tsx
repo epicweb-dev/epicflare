@@ -8,7 +8,7 @@ import {
 	OAuthCallbackRoute,
 	ResetPasswordRoute,
 } from './client-routes.tsx'
-import { Router, routerEvents } from './client-router.tsx'
+import { listenToRouterNavigation, Router } from './client-router.tsx'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
@@ -19,29 +19,29 @@ import { colors, spacing, typography } from './styles/tokens.ts'
 export function App(handle: Handle) {
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
+	let sessionRefreshInFlight = false
 
-	function queueSessionFetch() {
-		if (sessionStatus !== 'idle') return
-		sessionStatus = 'loading'
+	function queueSessionRefresh() {
+		if (sessionRefreshInFlight) return
+		sessionRefreshInFlight = true
+
+		// Preserve current nav state during refreshes after first load.
+		if (sessionStatus === 'idle') {
+			sessionStatus = 'loading'
+			handle.update()
+		}
 
 		handle.queueTask(async (signal) => {
 			session = await fetchSessionInfo(signal)
+			sessionRefreshInFlight = false
 			if (signal.aborted) return
-
 			sessionStatus = 'ready'
 			handle.update()
 		})
 	}
 
-	function refreshSession() {
-		if (sessionStatus === 'loading') return
-		sessionStatus = 'idle'
-		queueSessionFetch()
-		handle.update()
-	}
-
-	queueSessionFetch()
-	handle.on(routerEvents, { navigate: refreshSession })
+	queueSessionRefresh()
+	listenToRouterNavigation(handle, queueSessionRefresh)
 
 	const navLinkCss = {
 		color: colors.primaryText,
