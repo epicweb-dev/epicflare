@@ -18,6 +18,9 @@ App access pattern:
 - Database row validation and API payload parsing use `remix/data-schema`
 - app handlers (for example `server/handlers/auth.ts`) use these helpers for
   database calls
+- Experimental `remix/data-table` D1 compatibility lives in
+  `worker/d1-data-table-adapter.ts`; run `GET /health?probe=data-table` to
+  execute an upsert/find/count smoke test against local D1
 
 ## KV (`OAUTH_KV`)
 

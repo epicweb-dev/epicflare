@@ -30,3 +30,22 @@ test('login link navigates without full page reload', async ({ page }) => {
 	)
 	expect(markerAfterNavigation).toBe(marker)
 })
+
+test('health probe verifies data-table can use D1', async ({ request }) => {
+	const response = await request.get('/health?probe=data-table')
+	expect(response.ok()).toBeTruthy()
+
+	const payload = await response.json()
+	expect(payload).toMatchObject({
+		ok: true,
+		dataTableProbe: {
+			canUse: true,
+			row: {
+				id: 'health-check',
+				value: 'ok',
+			},
+		},
+	})
+	expect(typeof payload.dataTableProbe.count).toBe('number')
+	expect(typeof payload.dataTableProbe.row.updated_at).toBe('number')
+})
