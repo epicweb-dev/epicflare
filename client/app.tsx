@@ -20,10 +20,11 @@ export function App(handle: Handle) {
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionRefreshInFlight = false
+	let sessionRefreshQueued = false
 
 	function queueSessionRefresh() {
+		sessionRefreshQueued = true
 		if (sessionRefreshInFlight) return
-		sessionRefreshInFlight = true
 
 		// Preserve current nav state during refreshes after first load.
 		if (sessionStatus === 'idle') {
@@ -31,12 +32,17 @@ export function App(handle: Handle) {
 			handle.update()
 		}
 
+		sessionRefreshQueued = false
+		sessionRefreshInFlight = true
 		handle.queueTask(async (signal) => {
 			session = await fetchSessionInfo(signal)
 			sessionRefreshInFlight = false
 			if (signal.aborted) return
 			sessionStatus = 'ready'
 			handle.update()
+			if (sessionRefreshQueued) {
+				queueSessionRefresh()
+			}
 		})
 	}
 
