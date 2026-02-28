@@ -12,6 +12,7 @@ function createWidgetHostBridge(options) {
 
 	let requestCounter = 0
 	let initialized = false
+	let initializationFailed = false
 	let initializationPromise = null
 	const pendingRequests = new Map()
 
@@ -112,6 +113,7 @@ function createWidgetHostBridge(options) {
 
 	async function initialize() {
 		if (initialized) return true
+		if (initializationFailed) return false
 		if (initializationPromise) return initializationPromise
 
 		initializationPromise = sendBridgeRequest('ui/initialize', {
@@ -134,7 +136,10 @@ function createWidgetHostBridge(options) {
 				}
 				return true
 			})
-			.catch(() => false)
+			.catch(() => {
+				initializationFailed = true
+				return false
+			})
 			.finally(() => {
 				initializationPromise = null
 			})
