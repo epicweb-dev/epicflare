@@ -1,9 +1,7 @@
-export const widgetHostBridgeRuntime = `
-function createWidgetHostBridge(options) {
-	const bridgeOptions = options || {}
-	const protocolVersion = bridgeOptions.protocolVersion || '2025-11-21'
-	const requestTimeoutMs = bridgeOptions.requestTimeoutMs || 1500
-	const appInfo = bridgeOptions.appInfo || {
+export function createWidgetHostBridge(options = {}) {
+	const protocolVersion = options.protocolVersion ?? '2025-11-21'
+	const requestTimeoutMs = options.requestTimeoutMs ?? 1500
+	const appInfo = options.appInfo ?? {
 		name: 'mcp-widget',
 		version: '1.0.0',
 	}
@@ -17,7 +15,11 @@ function createWidgetHostBridge(options) {
 	const pendingRequests = new Map()
 
 	function postMessageToHost(message) {
-		window.parent.postMessage(message, '*')
+		const hostWindow = globalThis.window?.parent
+		if (!hostWindow) {
+			throw new Error('Host window is unavailable')
+		}
+		hostWindow.postMessage(message, '*')
 	}
 
 	function getBridgeErrorMessage(error) {
@@ -32,14 +34,14 @@ function createWidgetHostBridge(options) {
 	}
 
 	function dispatchRenderData(renderData) {
-		if (typeof bridgeOptions.onRenderData === 'function') {
-			bridgeOptions.onRenderData(renderData)
+		if (typeof options.onRenderData === 'function') {
+			options.onRenderData(renderData)
 		}
 	}
 
 	function dispatchHostContext(hostContext) {
-		if (typeof bridgeOptions.onHostContextChanged === 'function') {
-			bridgeOptions.onHostContextChanged(hostContext)
+		if (typeof options.onHostContextChanged === 'function') {
+			options.onHostContextChanged(hostContext)
 		}
 	}
 
@@ -52,7 +54,7 @@ function createWidgetHostBridge(options) {
 		const pendingRequest = pendingRequests.get(requestId)
 		if (!pendingRequest) return
 
-		clearTimeout(pendingRequest.timeoutId)
+		globalThis.clearTimeout(pendingRequest.timeoutId)
 		pendingRequests.delete(requestId)
 
 		if ('error' in message && message.error) {
@@ -85,7 +87,7 @@ function createWidgetHostBridge(options) {
 		return new Promise((resolve, reject) => {
 			requestCounter += 1
 			const requestId = appInfo.name + '-bridge-' + requestCounter
-			const timeoutId = setTimeout(() => {
+			const timeoutId = globalThis.setTimeout(() => {
 				pendingRequests.delete(requestId)
 				reject(new Error('Bridge request timed out'))
 			}, requestTimeoutMs)
@@ -105,7 +107,7 @@ function createWidgetHostBridge(options) {
 				})
 			} catch (error) {
 				pendingRequests.delete(requestId)
-				clearTimeout(timeoutId)
+				globalThis.clearTimeout(timeoutId)
 				reject(error)
 			}
 		})
@@ -197,4 +199,3 @@ function createWidgetHostBridge(options) {
 		requestRenderData,
 	}
 }
-`.trim()

@@ -1,9 +1,8 @@
-import { widgetHostBridgeRuntime } from '#mcp/apps/widget-host-bridge-runtime.ts'
-
 export const calculatorUiResourceUri =
 	'ui://calculator-app/entry-point.html' as const
 
 const appStylesheetHrefPlaceholder = '__APP_STYLESHEET_HREF__'
+const widgetScriptHrefPlaceholder = '__WIDGET_SCRIPT_HREF__'
 
 const calculatorUiEntryPointTemplate = `
 <!doctype html>
@@ -201,276 +200,14 @@ const calculatorUiEntryPointTemplate = `
 			</div>
 		</section>
 
-		<script>
-			;(function () {
-				${widgetHostBridgeRuntime}
-
-				const rootElement = document.documentElement
-				const expressionElement = document.querySelector('[data-expression]')
-				const resultElement = document.querySelector('[data-result]')
-				const keyElements = Array.from(document.querySelectorAll('[data-action]'))
-
-				if (!expressionElement || !resultElement) {
-					return
-				}
-
-				const state = {
-					leftOperand: null,
-					operator: null,
-					displayValue: '0',
-					waitingForNextOperand: false,
-					expressionText: '',
-				}
-
-				function applyTheme(theme) {
-					if (theme === 'dark' || theme === 'light') {
-						rootElement.setAttribute('data-theme', theme)
-						return
-					}
-					rootElement.removeAttribute('data-theme')
-				}
-
-				const hostBridge = createWidgetHostBridge({
-					appInfo: {
-						name: 'calculator-widget',
-						version: '1.0.0',
-					},
-					onRenderData: (renderData) => {
-						applyTheme(renderData?.theme)
-					},
-					onHostContextChanged: (hostContext) => {
-						applyTheme(hostContext?.theme)
-					},
-				})
-
-				function formatNumber(value) {
-					if (!Number.isFinite(value)) return 'Error'
-					return Number(value.toPrecision(12)).toString()
-				}
-
-				function compute(left, operator, right) {
-					if (operator === '+') return left + right
-					if (operator === '-') return left - right
-					if (operator === '*') return left * right
-					if (operator === '/') {
-						if (right === 0) return null
-						return left / right
-					}
-					return right
-				}
-
-				function updateView() {
-					expressionElement.textContent = state.expressionText || ' '
-					resultElement.textContent = state.displayValue
-				}
-
-				function sendResultToHostAgent(expression, resultValue) {
-					const prompt = 'Calculator result: ' + expression + ' = ' + resultValue
-					void hostBridge.sendUserMessageWithFallback(prompt)
-				}
-
-				function resetAll() {
-					state.leftOperand = null
-					state.operator = null
-					state.displayValue = '0'
-					state.waitingForNextOperand = false
-					state.expressionText = ''
-					updateView()
-				}
-
-				function setError() {
-					state.leftOperand = null
-					state.operator = null
-					state.displayValue = 'Error'
-					state.waitingForNextOperand = true
-					state.expressionText = 'Invalid operation'
-					updateView()
-				}
-
-				function addDigit(digit) {
-					if (state.displayValue === 'Error' || state.waitingForNextOperand) {
-						state.displayValue = digit
-						state.waitingForNextOperand = false
-						updateView()
-						return
-					}
-
-					state.displayValue =
-						state.displayValue === '0'
-							? digit
-							: state.displayValue + digit
-					updateView()
-				}
-
-				function addDecimal() {
-					if (state.displayValue === 'Error' || state.waitingForNextOperand) {
-						state.displayValue = '0.'
-						state.waitingForNextOperand = false
-						updateView()
-						return
-					}
-
-					if (!state.displayValue.includes('.')) {
-						state.displayValue += '.'
-						updateView()
-					}
-				}
-
-				function removeLastCharacter() {
-					if (state.displayValue === 'Error' || state.waitingForNextOperand) {
-						state.displayValue = '0'
-						state.waitingForNextOperand = false
-						updateView()
-						return
-					}
-
-					state.displayValue = state.displayValue.slice(0, -1) || '0'
-					updateView()
-				}
-
-				function useOperator(nextOperator) {
-					const inputValue = Number(state.displayValue)
-					if (!Number.isFinite(inputValue)) {
-						setError()
-						return
-					}
-
-					if (state.operator && state.waitingForNextOperand) {
-						state.operator = nextOperator
-						state.expressionText = formatNumber(state.leftOperand) + ' ' + nextOperator
-						updateView()
-						return
-					}
-
-					if (state.leftOperand === null || state.operator === null) {
-						state.leftOperand = inputValue
-					} else {
-						const result = compute(state.leftOperand, state.operator, inputValue)
-						if (!Number.isFinite(result)) {
-							setError()
-							return
-						}
-						state.leftOperand = result
-						state.displayValue = formatNumber(result)
-					}
-
-					state.operator = nextOperator
-					state.waitingForNextOperand = true
-					state.expressionText = formatNumber(state.leftOperand) + ' ' + nextOperator
-					updateView()
-				}
-
-				function evaluateExpression() {
-					if (
-						state.operator === null ||
-						state.leftOperand === null ||
-						state.waitingForNextOperand
-					) {
-						return
-					}
-
-					const rightOperand = Number(state.displayValue)
-					const result = compute(state.leftOperand, state.operator, rightOperand)
-					if (!Number.isFinite(result)) {
-						setError()
-						return
-					}
-
-					const expression =
-						formatNumber(state.leftOperand) +
-						' ' +
-						state.operator +
-						' ' +
-						formatNumber(rightOperand)
-
-					state.displayValue = formatNumber(result)
-					state.leftOperand = result
-					state.operator = null
-					state.waitingForNextOperand = true
-					state.expressionText = expression + ' ='
-					updateView()
-					sendResultToHostAgent(expression, state.displayValue)
-				}
-
-				function handleAction(action, value) {
-					if (action === 'digit' && value) return addDigit(value)
-					if (action === 'decimal') return addDecimal()
-					if (action === 'operator' && value) return useOperator(value)
-					if (action === 'evaluate') return evaluateExpression()
-					if (action === 'clear') {
-						state.displayValue = '0'
-						state.waitingForNextOperand = false
-						updateView()
-						return
-					}
-					if (action === 'backspace') return removeLastCharacter()
-					if (action === 'reset') return resetAll()
-				}
-
-				for (const keyElement of keyElements) {
-					keyElement.addEventListener('click', () => {
-						handleAction(
-							keyElement.getAttribute('data-action'),
-							keyElement.getAttribute('data-value'),
-						)
-					})
-				}
-
-				document.addEventListener('keydown', (event) => {
-					if (event.key >= '0' && event.key <= '9') {
-						event.preventDefault()
-						addDigit(event.key)
-						return
-					}
-					if (event.key === '.') {
-						event.preventDefault()
-						addDecimal()
-						return
-					}
-					if (event.key === 'Enter' || event.key === '=') {
-						event.preventDefault()
-						evaluateExpression()
-						return
-					}
-					if (
-						event.key === '+' ||
-						event.key === '-' ||
-						event.key === '*' ||
-						event.key === '/'
-					) {
-						event.preventDefault()
-						useOperator(event.key)
-						return
-					}
-					if (event.key === 'Backspace') {
-						event.preventDefault()
-						removeLastCharacter()
-						return
-					}
-					if (event.key.toLowerCase() === 'c' && !event.ctrlKey && !event.metaKey) {
-						event.preventDefault()
-						handleAction('clear')
-					}
-				})
-
-				window.addEventListener('message', (event) => {
-					const message = event.data
-					if (!message || typeof message !== 'object') return
-					hostBridge.handleHostMessage(message)
-				})
-
-				void hostBridge.initialize()
-				hostBridge.requestRenderData()
-
-				updateView()
-			})()
-		</script>
+		<script type="module" src="${widgetScriptHrefPlaceholder}"></script>
 	</body>
 </html>
 `.trim()
 
 type RenderCalculatorUiEntryPointOptions = {
 	stylesheetHref?: string
+	widgetScriptHref?: string
 }
 
 function escapeHtmlAttribute(value: string) {
@@ -485,8 +222,10 @@ export function renderCalculatorUiEntryPoint(
 	options: RenderCalculatorUiEntryPointOptions = {},
 ) {
 	const stylesheetHref = options.stylesheetHref ?? '/styles.css'
-	return calculatorUiEntryPointTemplate.replace(
-		appStylesheetHrefPlaceholder,
-		escapeHtmlAttribute(stylesheetHref),
-	)
+	const widgetScriptHref =
+		options.widgetScriptHref ?? '/mcp-apps/calculator-widget.js'
+
+	return calculatorUiEntryPointTemplate
+		.replace(appStylesheetHrefPlaceholder, escapeHtmlAttribute(stylesheetHref))
+		.replace(widgetScriptHrefPlaceholder, escapeHtmlAttribute(widgetScriptHref))
 }

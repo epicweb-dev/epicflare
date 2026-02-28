@@ -19,6 +19,10 @@ const calculatorAppResource = {
 export async function registerCalculatorAppResource(agent: MCP) {
 	const baseUrl = agent.requireDomain()
 	const styleSheetUrl = new URL('/styles.css', baseUrl).toString()
+	const widgetScriptUrl = new URL(
+		'/mcp-apps/calculator-widget.js',
+		baseUrl,
+	).toString()
 	const resourceDomain = new URL(styleSheetUrl).origin
 
 	registerAppResource(
@@ -36,6 +40,7 @@ export async function registerCalculatorAppResource(agent: MCP) {
 					type: 'rawHtml',
 					htmlString: renderCalculatorUiEntryPoint({
 						stylesheetHref: styleSheetUrl,
+						widgetScriptHref: widgetScriptUrl,
 					}),
 				},
 				encoding: 'text',

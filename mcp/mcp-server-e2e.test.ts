@@ -569,17 +569,29 @@ test(
 		expect(calculatorResource?.text).toContain('--color-primary')
 		expect(calculatorResource?.text).toContain('--color-background')
 		expect(calculatorResource?.text).toContain("data-theme='dark'")
-		expect(calculatorResource?.text).toContain('ui-request-render-data')
-		expect(calculatorResource?.text).toContain(
-			'ui-lifecycle-iframe-render-data',
+		expect(calculatorResource?.text).toContain('type="module"')
+		expect(calculatorResource?.text).toContain('/mcp-apps/calculator-widget.js')
+
+		const calculatorWidgetResponse = await fetch(
+			new URL('/mcp-apps/calculator-widget.js', server.origin),
 		)
-		expect(calculatorResource?.text).toContain('ui/initialize')
-		expect(calculatorResource?.text).toContain('ui/message')
-		expect(calculatorResource?.text).toContain(
-			'function createWidgetHostBridge',
+		expect(calculatorWidgetResponse.ok).toBe(true)
+		const calculatorWidgetSource = await calculatorWidgetResponse.text()
+		expect(calculatorWidgetSource).toContain('createWidgetHostBridge')
+		expect(calculatorWidgetSource).toContain('./widget-host-bridge.js')
+		expect(calculatorWidgetSource).toContain('Calculator result:')
+		expect(calculatorWidgetSource).toContain('sendUserMessageWithFallback')
+
+		const widgetBridgeResponse = await fetch(
+			new URL('/mcp-apps/widget-host-bridge.js', server.origin),
 		)
-		expect(calculatorResource?.text).toContain('Calculator result:')
-		expect(calculatorResource?.text).toContain("type: 'prompt'")
+		expect(widgetBridgeResponse.ok).toBe(true)
+		const widgetBridgeSource = await widgetBridgeResponse.text()
+		expect(widgetBridgeSource).toContain('createWidgetHostBridge')
+		expect(widgetBridgeSource).toContain('ui/initialize')
+		expect(widgetBridgeSource).toContain('ui/message')
+		expect(widgetBridgeSource).toContain('type: "prompt"')
+
 		expect(calculatorResourceMeta?.ui?.domain).toBe(server.origin)
 		expect(calculatorResourceMeta?.['openai/widgetDomain']).toBe(server.origin)
 		expect(calculatorResourceMeta?.ui?.csp?.resourceDomains).toContain(
