@@ -1,17 +1,30 @@
 export const calculatorUiResourceUri =
 	'ui://calculator-app/entry-point.html' as const
 
-const appStylesheetHrefPlaceholder = '__APP_STYLESHEET_HREF__'
-const widgetScriptHrefPlaceholder = '__WIDGET_SCRIPT_HREF__'
+function escapeHtmlAttribute(value: string) {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+}
 
-const calculatorUiEntryPointTemplate = `
+export function renderCalculatorUiEntryPoint(baseUrl: string | URL) {
+	const stylesheetHref = escapeHtmlAttribute(
+		new URL('/styles.css', baseUrl).toString(),
+	)
+	const widgetScriptHref = escapeHtmlAttribute(
+		new URL('/mcp-apps/calculator-widget.js', baseUrl).toString(),
+	)
+
+	return `
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Calculator</title>
-		<link rel="stylesheet" href="${appStylesheetHrefPlaceholder}" />
+		<link rel="stylesheet" href="${stylesheetHref}" />
 		<style>
 			:root {
 				color-scheme: light dark;
@@ -200,32 +213,8 @@ const calculatorUiEntryPointTemplate = `
 			</div>
 		</section>
 
-		<script type="module" src="${widgetScriptHrefPlaceholder}"></script>
+		<script type="module" src="${widgetScriptHref}"></script>
 	</body>
 </html>
 `.trim()
-
-type RenderCalculatorUiEntryPointOptions = {
-	stylesheetHref?: string
-	widgetScriptHref?: string
-}
-
-function escapeHtmlAttribute(value: string) {
-	return value
-		.replaceAll('&', '&amp;')
-		.replaceAll('"', '&quot;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-}
-
-export function renderCalculatorUiEntryPoint(
-	options: RenderCalculatorUiEntryPointOptions = {},
-) {
-	const stylesheetHref = options.stylesheetHref ?? '/styles.css'
-	const widgetScriptHref =
-		options.widgetScriptHref ?? '/mcp-apps/calculator-widget.js'
-
-	return calculatorUiEntryPointTemplate
-		.replace(appStylesheetHrefPlaceholder, escapeHtmlAttribute(stylesheetHref))
-		.replace(widgetScriptHrefPlaceholder, escapeHtmlAttribute(widgetScriptHref))
 }

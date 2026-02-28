@@ -1,20 +1,40 @@
 import { createWidgetHostBridge } from './widget-host-bridge.js'
 
+type CalculatorOperator = '+' | '-' | '*' | '/'
+
+type CalculatorState = {
+	leftOperand: number | null
+	operator: CalculatorOperator | null
+	displayValue: string
+	waitingForNextOperand: boolean
+	expressionText: string
+}
+
+function readTheme(source: Record<string, unknown> | undefined) {
+	const theme = source?.theme
+	return theme === 'dark' || theme === 'light' ? theme : undefined
+}
+
 function initializeCalculatorWidget() {
 	const documentRef = globalThis.document
 	const windowRef = globalThis.window
 	if (!documentRef || !windowRef) return
 
 	const rootElement = documentRef.documentElement
-	const expressionElement = documentRef.querySelector('[data-expression]')
-	const resultElement = documentRef.querySelector('[data-result]')
-	const keyElements = Array.from(documentRef.querySelectorAll('[data-action]'))
+	const expressionElement =
+		documentRef.querySelector<HTMLElement>('[data-expression]')
+	const resultElement = documentRef.querySelector<HTMLElement>('[data-result]')
+	const keyElements = Array.from(
+		documentRef.querySelectorAll<HTMLElement>('[data-action]'),
+	)
 
 	if (!expressionElement || !resultElement) {
 		return
 	}
+	const expressionDisplayElement = expressionElement
+	const resultDisplayElement = resultElement
 
-	const state = {
+	const state: CalculatorState = {
 		leftOperand: null,
 		operator: null,
 		displayValue: '0',
@@ -22,7 +42,7 @@ function initializeCalculatorWidget() {
 		expressionText: '',
 	}
 
-	function applyTheme(theme) {
+	function applyTheme(theme: string | undefined) {
 		if (theme === 'dark' || theme === 'light') {
 			rootElement.setAttribute('data-theme', theme)
 			return
@@ -36,19 +56,23 @@ function initializeCalculatorWidget() {
 			version: '1.0.0',
 		},
 		onRenderData: (renderData) => {
-			applyTheme(renderData?.theme)
+			applyTheme(readTheme(renderData))
 		},
 		onHostContextChanged: (hostContext) => {
-			applyTheme(hostContext?.theme)
+			applyTheme(readTheme(hostContext))
 		},
 	})
 
-	function formatNumber(value) {
+	function formatNumber(value: number) {
 		if (!Number.isFinite(value)) return 'Error'
 		return Number(value.toPrecision(12)).toString()
 	}
 
-	function compute(left, operator, right) {
+	function compute(
+		left: number,
+		operator: CalculatorOperator | null,
+		right: number,
+	): number | null {
 		if (operator === '+') return left + right
 		if (operator === '-') return left - right
 		if (operator === '*') return left * right
@@ -60,11 +84,11 @@ function initializeCalculatorWidget() {
 	}
 
 	function updateView() {
-		expressionElement.textContent = state.expressionText || ' '
-		resultElement.textContent = state.displayValue
+		expressionDisplayElement.textContent = state.expressionText || ' '
+		resultDisplayElement.textContent = state.displayValue
 	}
 
-	function sendResultToHostAgent(expression, resultValue) {
+	function sendResultToHostAgent(expression: string, resultValue: string) {
 		const prompt = 'Calculator result: ' + expression + ' = ' + resultValue
 		void hostBridge.sendUserMessageWithFallback(prompt)
 	}
@@ -87,7 +111,7 @@ function initializeCalculatorWidget() {
 		updateView()
 	}
 
-	function addDigit(digit) {
+	function addDigit(digit: string) {
 		if (state.displayValue === 'Error' || state.waitingForNextOperand) {
 			state.displayValue = digit
 			state.waitingForNextOperand = false
@@ -126,7 +150,7 @@ function initializeCalculatorWidget() {
 		updateView()
 	}
 
-	function useOperator(nextOperator) {
+	function useOperator(nextOperator: CalculatorOperator) {
 		const inputValue = Number(state.displayValue)
 		if (!Number.isFinite(inputValue)) {
 			setError()
@@ -136,7 +160,7 @@ function initializeCalculatorWidget() {
 		if (state.operator && state.waitingForNextOperand) {
 			state.operator = nextOperator
 			state.expressionText =
-				formatNumber(state.leftOperand) + ' ' + nextOperator
+				formatNumber(state.leftOperand ?? 0) + ' ' + nextOperator
 			updateView()
 			return
 		}
@@ -145,7 +169,7 @@ function initializeCalculatorWidget() {
 			state.leftOperand = inputValue
 		} else {
 			const result = compute(state.leftOperand, state.operator, inputValue)
-			if (!Number.isFinite(result)) {
+			if (result === null || !Number.isFinite(result)) {
 				setError()
 				return
 			}
@@ -170,7 +194,7 @@ function initializeCalculatorWidget() {
 
 		const rightOperand = Number(state.displayValue)
 		const result = compute(state.leftOperand, state.operator, rightOperand)
-		if (!Number.isFinite(result)) {
+		if (result === null || !Number.isFinite(result)) {
 			setError()
 			return
 		}
@@ -191,10 +215,15 @@ function initializeCalculatorWidget() {
 		sendResultToHostAgent(expression, state.displayValue)
 	}
 
-	function handleAction(action, value) {
+	function handleAction(action: string | null, value: string | null) {
 		if (action === 'digit' && value) return addDigit(value)
 		if (action === 'decimal') return addDecimal()
-		if (action === 'operator' && value) return useOperator(value)
+		if (action === 'operator' && value) {
+			if (value === '+' || value === '-' || value === '*' || value === '/') {
+				return useOperator(value)
+			}
+			return
+		}
 		if (action === 'evaluate') return evaluateExpression()
 		if (action === 'clear') {
 			state.displayValue = '0'
@@ -248,14 +277,12 @@ function initializeCalculatorWidget() {
 		}
 		if (event.key.toLowerCase() === 'c' && !event.ctrlKey && !event.metaKey) {
 			event.preventDefault()
-			handleAction('clear')
+			handleAction('clear', null)
 		}
 	})
 
 	windowRef.addEventListener('message', (event) => {
-		const message = event.data
-		if (!message || typeof message !== 'object') return
-		hostBridge.handleHostMessage(message)
+		hostBridge.handleHostMessage(event.data)
 	})
 
 	void hostBridge.initialize()
@@ -263,15 +290,10 @@ function initializeCalculatorWidget() {
 	updateView()
 }
 
-const bootstrapDocument = globalThis.document
-if (bootstrapDocument?.readyState === 'loading') {
-	bootstrapDocument.addEventListener(
-		'DOMContentLoaded',
-		initializeCalculatorWidget,
-		{
-			once: true,
-		},
-	)
-} else if (bootstrapDocument) {
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initializeCalculatorWidget, {
+		once: true,
+	})
+} else {
 	initializeCalculatorWidget()
 }

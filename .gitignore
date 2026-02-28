@@ -29,3 +29,4 @@ mock-data
 playwright-report
 test-results
 public/client-entry.js
+public/mcp-apps/
