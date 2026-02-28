@@ -4,7 +4,13 @@ import {
 	type SessionInfo,
 	type SessionStatus,
 } from '#client/session.ts'
-import { colors, radius, shadows, spacing, typography } from '#client/styles/tokens.ts'
+import {
+	colors,
+	radius,
+	shadows,
+	spacing,
+	typography,
+} from '#client/styles/tokens.ts'
 
 type OAuthAuthorizeInfo = {
 	client: { id: string; name: string }

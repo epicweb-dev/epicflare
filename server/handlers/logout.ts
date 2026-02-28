@@ -1,6 +1,6 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { destroyAuthCookie } from '#server/auth-session.ts'
-import { routes } from '#server/routes.ts'
+import { type routes } from '#server/routes.ts'
 
 function normalizeProto(value: string) {
 	return value.trim().replace(/^"|"$/g, '').toLowerCase()
