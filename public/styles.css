@@ -13,6 +13,18 @@
 	--color-text-muted: #676770;
 	--color-border: #d7d7df;
 
+	/* Colors - Dark mode (smoldering ember) */
+	--color-primary-dark: #f6a23a;
+	--color-primary-hover-dark: #f08b1a;
+	--color-primary-active-dark: #d87305;
+	--color-on-primary-dark: #120b08;
+	--color-primary-text-dark: #f6a23a;
+	--color-background-dark: #121216;
+	--color-surface-dark: #1c1c22;
+	--color-text-dark: #f1f1f5;
+	--color-text-muted-dark: #b3b3bd;
+	--color-border-dark: #2b2b33;
+
 	/* Typography */
 	--font-family: system-ui, sans-serif;
 	--font-size-xs: 0.75rem;
@@ -46,6 +58,13 @@
 	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 	--shadow-lg:
 		0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+	--shadow-sm-dark: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+	--shadow-md-dark:
+		0 4px 6px -1px rgb(255 255 255 / 0.08),
+		0 2px 4px -2px rgb(255 255 255 / 0.08);
+	--shadow-lg-dark:
+		0 10px 15px -3px rgb(255 255 255 / 0.1),
+		0 4px 6px -4px rgb(255 255 255 / 0.1);
 
 	/* Transitions */
 	--transition-fast: 0.15s ease;
@@ -77,49 +96,41 @@
 
 :root[data-theme='dark'] {
 	/* Colors - Dark mode (smoldering ember) */
-	--color-primary: #f6a23a;
-	--color-primary-hover: #f08b1a;
-	--color-primary-active: #d87305;
-	--color-on-primary: #120b08;
-	--color-primary-text: #f6a23a;
-	--color-background: #121216;
-	--color-surface: #1c1c22;
-	--color-text: #f1f1f5;
-	--color-text-muted: #b3b3bd;
-	--color-border: #2b2b33;
+	--color-primary: var(--color-primary-dark);
+	--color-primary-hover: var(--color-primary-hover-dark);
+	--color-primary-active: var(--color-primary-active-dark);
+	--color-on-primary: var(--color-on-primary-dark);
+	--color-primary-text: var(--color-primary-text-dark);
+	--color-background: var(--color-background-dark);
+	--color-surface: var(--color-surface-dark);
+	--color-text: var(--color-text-dark);
+	--color-text-muted: var(--color-text-muted-dark);
+	--color-border: var(--color-border-dark);
 
 	/* Dark mode shadows - lighter for visibility */
-	--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
-	--shadow-md:
-		0 4px 6px -1px rgb(255 255 255 / 0.08),
-		0 2px 4px -2px rgb(255 255 255 / 0.08);
-	--shadow-lg:
-		0 10px 15px -3px rgb(255 255 255 / 0.1),
-		0 4px 6px -4px rgb(255 255 255 / 0.1);
+	--shadow-sm: var(--shadow-sm-dark);
+	--shadow-md: var(--shadow-md-dark);
+	--shadow-lg: var(--shadow-lg-dark);
 }
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
 		/* Colors - Dark mode (smoldering ember) */
-		--color-primary: #f6a23a;
-		--color-primary-hover: #f08b1a;
-		--color-primary-active: #d87305;
-		--color-on-primary: #120b08;
-		--color-primary-text: #f6a23a;
-		--color-background: #121216;
-		--color-surface: #1c1c22;
-		--color-text: #f1f1f5;
-		--color-text-muted: #b3b3bd;
-		--color-border: #2b2b33;
+		--color-primary: var(--color-primary-dark);
+		--color-primary-hover: var(--color-primary-hover-dark);
+		--color-primary-active: var(--color-primary-active-dark);
+		--color-on-primary: var(--color-on-primary-dark);
+		--color-primary-text: var(--color-primary-text-dark);
+		--color-background: var(--color-background-dark);
+		--color-surface: var(--color-surface-dark);
+		--color-text: var(--color-text-dark);
+		--color-text-muted: var(--color-text-muted-dark);
+		--color-border: var(--color-border-dark);
 
 		/* Dark mode shadows - lighter for visibility */
-		--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
-		--shadow-md:
-			0 4px 6px -1px rgb(255 255 255 / 0.08),
-			0 2px 4px -2px rgb(255 255 255 / 0.08);
-		--shadow-lg:
-			0 10px 15px -3px rgb(255 255 255 / 0.1),
-			0 4px 6px -4px rgb(255 255 255 / 0.1);
+		--shadow-sm: var(--shadow-sm-dark);
+		--shadow-md: var(--shadow-md-dark);
+		--shadow-lg: var(--shadow-lg-dark);
 	}
 }
 

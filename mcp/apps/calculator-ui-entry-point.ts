@@ -449,7 +449,7 @@ const calculatorUiEntryPointTemplate = `
 					}
 					if (event.key.toLowerCase() === 'c' && !event.ctrlKey && !event.metaKey) {
 						event.preventDefault()
-						resetAll()
+						handleAction('clear')
 					}
 				})
 
