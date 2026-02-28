@@ -206,6 +206,17 @@ const calculatorUiEntryPointTemplate = `
 				const resultElement = document.querySelector('[data-result]')
 				const keyElements = Array.from(document.querySelectorAll('[data-action]'))
 				const renderDataMessageType = 'ui-lifecycle-iframe-render-data'
+				const hostContextChangedMethod = 'ui/notifications/host-context-changed'
+				const mcpProtocolVersion = '2025-11-21'
+				const bridgeRequestTimeoutMs = 1500
+				const mcpAppInfo = {
+					name: 'calculator-widget',
+					version: '1.0.0',
+				}
+				let bridgeRequestCounter = 0
+				let bridgeInitialized = false
+				let bridgeInitializationPromise = null
+				const pendingBridgeRequests = new Map()
 
 				if (!expressionElement || !resultElement) {
 					return
@@ -240,19 +251,134 @@ const calculatorUiEntryPointTemplate = `
 					resultElement.textContent = state.displayValue
 				}
 
-				function sendResultToHostAgent(expression, resultValue) {
-					const prompt = 'Calculator result: ' + expression + ' = ' + resultValue
+				function postMessageToHost(message) {
+					window.parent.postMessage(message, '*')
+				}
+
+				function getBridgeErrorMessage(error) {
+					if (
+						typeof error === 'object' &&
+						error !== null &&
+						typeof error.message === 'string'
+					) {
+						return error.message
+					}
+					return 'Bridge request failed'
+				}
+
+				function handleBridgeResponseMessage(message) {
+					if (!message || typeof message !== 'object') return
+					if (message.jsonrpc !== '2.0') return
+					if (typeof message.id === 'undefined' || message.id === null) return
+
+					const requestId = String(message.id)
+					const pendingRequest = pendingBridgeRequests.get(requestId)
+					if (!pendingRequest) return
+
+					clearTimeout(pendingRequest.timeoutId)
+					pendingBridgeRequests.delete(requestId)
+
+					if ('error' in message && message.error) {
+						pendingRequest.reject(new Error(getBridgeErrorMessage(message.error)))
+						return
+					}
+
+					pendingRequest.resolve(message)
+				}
+
+				function sendBridgeRequest(method, params) {
+					return new Promise((resolve, reject) => {
+						bridgeRequestCounter += 1
+						const requestId = 'calculator-bridge-' + bridgeRequestCounter
+						const timeoutId = setTimeout(() => {
+							pendingBridgeRequests.delete(requestId)
+							reject(new Error('Bridge request timed out'))
+						}, bridgeRequestTimeoutMs)
+
+						pendingBridgeRequests.set(requestId, {
+							resolve,
+							reject,
+							timeoutId,
+						})
+
+						try {
+							postMessageToHost({
+								jsonrpc: '2.0',
+								id: requestId,
+								method,
+								params,
+							})
+						} catch (error) {
+							pendingBridgeRequests.delete(requestId)
+							clearTimeout(timeoutId)
+							reject(error)
+						}
+					})
+				}
+
+				function initializeHostBridge() {
+					if (bridgeInitialized) return Promise.resolve(true)
+					if (bridgeInitializationPromise) return bridgeInitializationPromise
+
+					bridgeInitializationPromise = sendBridgeRequest('ui/initialize', {
+						appInfo: mcpAppInfo,
+						appCapabilities: {},
+						protocolVersion: mcpProtocolVersion,
+					})
+						.then((response) => {
+							const hostTheme = response.result?.hostContext?.theme
+							applyTheme(hostTheme)
+							bridgeInitialized = true
+							try {
+								postMessageToHost({
+									jsonrpc: '2.0',
+									method: 'ui/notifications/initialized',
+									params: {},
+								})
+							} catch {
+								// Ignore initialized notification failures and continue.
+							}
+							return true
+						})
+						.catch(() => false)
+						.finally(() => {
+							bridgeInitializationPromise = null
+						})
+
+					return bridgeInitializationPromise
+				}
+
+				async function sendPromptToHost(prompt) {
+					const bridgeReady = await initializeHostBridge()
+					if (bridgeReady) {
+						try {
+							const response = await sendBridgeRequest('ui/message', {
+								role: 'user',
+								content: [{ type: 'text', text: prompt }],
+							})
+							if (!response?.result?.isError) {
+								return true
+							}
+						} catch {
+							// Fall through to compatibility fallback.
+						}
+					}
+
 					try {
-						window.parent.postMessage(
-							{
-								type: 'prompt',
-								payload: { prompt },
-							},
-							'*',
-						)
+						postMessageToHost({
+							type: 'prompt',
+							payload: { prompt },
+						})
+						return true
 					} catch {
 						// Ignore host messaging errors; calculator behavior should still work locally.
+						return false
 					}
+				}
+
+				function sendResultToHostAgent(expression, resultValue) {
+					const prompt = 'Calculator result: ' + expression + ' = ' + resultValue
+					void sendPromptToHost(prompt)
 				}
 
 				function applyTheme(theme) {
@@ -264,9 +390,15 @@ const calculatorUiEntryPointTemplate = `
 				}
 
 				function applyThemeFromHostMessage(message) {
-					if (!message || message.type !== renderDataMessageType) return
-					const theme = message.payload?.renderData?.theme
-					applyTheme(theme)
+					if (!message || typeof message !== 'object') return
+					if (message.type === renderDataMessageType) {
+						const theme = message.payload?.renderData?.theme
+						applyTheme(theme)
+						return
+					}
+					if (message.method === hostContextChangedMethod) {
+						applyTheme(message.params?.theme)
+					}
 				}
 
 				function resetAll() {
@@ -456,6 +588,7 @@ const calculatorUiEntryPointTemplate = `
 				window.addEventListener('message', (event) => {
 					const message = event.data
 					if (!message || typeof message !== 'object') return
+					handleBridgeResponseMessage(message)
 					applyThemeFromHostMessage(message)
 				})
 

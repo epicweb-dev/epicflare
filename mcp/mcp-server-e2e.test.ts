@@ -573,6 +573,8 @@ test(
 		expect(calculatorResource?.text).toContain(
 			'ui-lifecycle-iframe-render-data',
 		)
+		expect(calculatorResource?.text).toContain('ui/initialize')
+		expect(calculatorResource?.text).toContain('ui/message')
 		expect(calculatorResource?.text).toContain('Calculator result:')
 		expect(calculatorResource?.text).toContain("type: 'prompt'")
 		expect(calculatorResourceMeta?.ui?.domain).toBe(server.origin)
