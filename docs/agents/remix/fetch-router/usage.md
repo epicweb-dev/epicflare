@@ -10,8 +10,9 @@ a [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response).
 The example below is a small site with a home page, an "about" page, and a blog.
 
 ```ts
-import { createRouter, route } from '@remix-run/fetch-router'
-import { logger } from '@remix-run/logger-middleware'
+import { createRouter } from 'remix/fetch-router'
+import { route } from 'remix/fetch-router/routes'
+import { logger } from 'remix/logger-middleware'
 
 // `route()` creates a "route map" that organizes routes by name. The keys
 // of the map may be any name, and may be nested to group related routes.
@@ -82,14 +83,15 @@ a route. The example below is a small site with a home page and a "Contact Us"
 page.
 
 Note: We're using the
-[`createHtmlResponse` helper from `@remix-run/response`](https://github.com/remix-run/remix/tree/main/packages/response/README.md#html-responses)
+[`createHtmlResponse` helper from `remix/response`](https://github.com/remix-run/remix/tree/main/packages/response/README.md#html-responses)
 below to create `Response`s with `Content-Type: text/html`. We're also using the
 `html` template tag to create safe HTML strings to use in the response body.
 
 ```ts
-import { createRouter, route } from '@remix-run/fetch-router'
-import { html } from '@remix-run/html-template'
-import { createHtmlResponse } from '@remix-run/response/html'
+import { createRouter } from 'remix/fetch-router'
+import { route } from 'remix/fetch-router/routes'
+import { html } from 'remix/html-template'
+import { createHtmlResponse } from 'remix/response/html'
 
 let routes = route({
 	home: '/',

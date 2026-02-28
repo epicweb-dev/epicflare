@@ -7,6 +7,7 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 - [Start here](#start-here)
 - [UI and components](#ui-and-components)
 - [Routing and requests](#routing-and-requests)
+- [Data and SQL](#data-and-sql)
 - [Sessions and cookies](#sessions-and-cookies)
 - [Responses and headers](#responses-and-headers)
 - [Uploads and parsing](#uploads-and-parsing)
@@ -24,11 +25,14 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
   [session-middleware](./session-middleware.md) + [cookie](./cookie.md)
 - Responses, headers, and HTML safety: [response](./response/index.md) +
   [headers](./headers/index.md) + [html-template](./html-template.md)
+- Data validation and SQL tables: [data-schema](./data-schema.md) +
+  [data-table](./data-table.md)
 - File upload pipelines: [form-data-middleware](./form-data-middleware.md) +
   [form-data-parser](./form-data-parser.md) +
   [multipart-parser](./multipart-parser/index.md)
 - File storage and streaming: [file-storage](./file-storage.md) +
-  [lazy-file](./lazy-file.md) + [fs](./fs.md)
+  [file-storage-s3](./file-storage-s3.md) + [lazy-file](./lazy-file.md) +
+  [fs](./fs.md)
 - Static assets and compression: [static-middleware](./static-middleware.md) +
   [compression-middleware](./compression-middleware/index.md)
 
@@ -60,6 +64,14 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
   - [Demos and benchmark](./node-fetch-server/demos-and-benchmark.md)
 - [fetch-proxy](./fetch-proxy.md)
 
+## Data and SQL
+
+- [data-schema](./data-schema.md)
+- [data-table](./data-table.md)
+- [data-table-postgres](./data-table-postgres.md)
+- [data-table-mysql](./data-table-mysql.md)
+- [data-table-sqlite](./data-table-sqlite.md)
+
 ## Sessions and cookies
 
 - [session](./session/index.md)
@@ -67,6 +79,8 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
   - [Storage strategies](./session/storage-strategies.md)
   - [Related packages](./session/related.md)
 - [session-middleware](./session-middleware.md)
+- [session-storage-memcache](./session-storage-memcache.md)
+- [session-storage-redis](./session-storage-redis.md)
 - [cookie](./cookie.md)
 
 ## Responses and headers
@@ -97,6 +111,7 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 ## Files and storage
 
 - [file-storage](./file-storage.md)
+- [file-storage-s3](./file-storage-s3.md)
 - [lazy-file](./lazy-file.md)
 - [fs](./fs.md)
 - [tar-parser](./tar-parser.md)
@@ -120,9 +135,15 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 | component                  | Remix Component UI system                  | [component](./component/index.md)                             |
 | compression-middleware     | Response compression for fetch-router      | [compression-middleware](./compression-middleware/index.md)   |
 | cookie                     | Cookie parsing, signing, and serialization | [cookie](./cookie.md)                                         |
+| data-schema                | Runtime validation and schema parsing      | [data-schema](./data-schema.md)                               |
+| data-table                 | Typed SQL query toolkit                    | [data-table](./data-table.md)                                 |
+| data-table-mysql           | MySQL adapter for data-table               | [data-table-mysql](./data-table-mysql.md)                     |
+| data-table-postgres        | Postgres adapter for data-table            | [data-table-postgres](./data-table-postgres.md)               |
+| data-table-sqlite          | SQLite adapter for data-table              | [data-table-sqlite](./data-table-sqlite.md)                   |
 | fetch-proxy                | Fetch-based HTTP proxy                     | [fetch-proxy](./fetch-proxy.md)                               |
 | fetch-router               | Fetch-based router and middleware          | [fetch-router](./fetch-router/index.md)                       |
 | file-storage               | Storage abstraction for files              | [file-storage](./file-storage.md)                             |
+| file-storage-s3            | S3 backend for file-storage                | [file-storage-s3](./file-storage-s3.md)                       |
 | form-data-middleware       | Request FormData middleware                | [form-data-middleware](./form-data-middleware.md)             |
 | form-data-parser           | Streaming multipart/form-data parser       | [form-data-parser](./form-data-parser.md)                     |
 | fs                         | Lazy file system utilities                 | [fs](./fs.md)                                                 |
@@ -138,8 +159,10 @@ Docs for every package in https://github.com/remix-run/remix/tree/main/packages.
 | remix                      | Remix framework package                    | [remix](./remix.md)                                           |
 | response                   | Response helpers                           | [response](./response/index.md)                               |
 | route-pattern              | URL matching and href generation           | [route-pattern](./route-pattern.md)                           |
-| session-middleware         | Session middleware for fetch-router        | [session-middleware](./session-middleware.md)                 |
 | session                    | Session management and storage             | [session](./session/index.md)                                 |
+| session-middleware         | Session middleware for fetch-router        | [session-middleware](./session-middleware.md)                 |
+| session-storage-memcache   | Memcache storage adapter for sessions      | [session-storage-memcache](./session-storage-memcache.md)     |
+| session-storage-redis      | Redis storage adapter for sessions         | [session-storage-redis](./session-storage-redis.md)           |
 | static-middleware          | Static file middleware                     | [static-middleware](./static-middleware.md)                   |
 | tar-parser                 | Streaming tar parser                       | [tar-parser](./tar-parser.md)                                 |
 

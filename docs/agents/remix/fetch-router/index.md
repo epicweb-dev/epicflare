@@ -36,8 +36,11 @@ server-rendered applications across any JavaScript runtime.
 ## Installation
 
 ```sh
-npm install @remix-run/fetch-router
+npm i remix
 ```
+
+Import route definition helpers from `remix/fetch-router/routes`, and runtime
+APIs from `remix/fetch-router`.
 
 ## Navigation
 

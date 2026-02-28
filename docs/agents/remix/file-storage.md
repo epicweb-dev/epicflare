@@ -35,7 +35,7 @@ mechanism.
 Install from [npm](https://www.npmjs.com/):
 
 ```sh
-npm install @remix-run/file-storage
+npm i remix
 ```
 
 ## Usage
@@ -43,7 +43,7 @@ npm install @remix-run/file-storage
 ### File System
 
 ```ts
-import { createFsFileStorage } from '@remix-run/file-storage/fs'
+import { createFsFileStorage } from 'remix/file-storage/fs'
 
 let storage = createFsFileStorage('./user/files')
 
@@ -65,6 +65,8 @@ await storage.remove(key)
 
 ## Related Packages
 
+- [`file-storage-s3`](https://github.com/remix-run/remix/tree/main/packages/file-storage-s3) -
+  S3 backend for `file-storage`
 - [`form-data-parser`](https://github.com/remix-run/remix/tree/main/packages/form-data-parser) -
   Pairs well with this library for storing `FileUpload` objects received in
   `multipart/form-data` requests
