@@ -66,6 +66,41 @@ const appHandler = withCors({
 			})
 		}
 
+		// Sandboxed widget iframes have an opaque origin, so JS/CSS loads become CORS fetches.
+		// ChatGPT/MCP Jam can render with sandbox="allow-scripts", which requires these headers.
+		if (
+			env.ASSETS &&
+			(request.method === 'GET' || request.method === 'HEAD') &&
+			(url.pathname.startsWith('/mcp-apps/') || url.pathname === '/styles.css')
+		) {
+			const assetResponse = await env.ASSETS.fetch(request)
+			if (assetResponse.status !== 404) {
+				const headers = new Headers(assetResponse.headers)
+				headers.set('Access-Control-Allow-Origin', '*')
+				return new Response(assetResponse.body, {
+					status: assetResponse.status,
+					statusText: assetResponse.statusText,
+					headers,
+				})
+			}
+		}
+
+		// Dev route: serve calculator UI for iframe testing (simulates ChatGPT/MCP Jam)
+		if (
+			url.pathname === '/dev/calculator-ui' &&
+			(request.method === 'GET' || request.method === 'HEAD')
+		) {
+			const { renderCalculatorUiEntryPoint } =
+				await import('#mcp/apps/calculator-ui-entry-point.ts')
+			const baseUrl = new URL('/', url.origin)
+			const html = renderCalculatorUiEntryPoint(baseUrl)
+			return new Response(html, {
+				headers: {
+					'Content-Type': 'text/html; charset=utf-8',
+				},
+			})
+		}
+
 		// Try to serve static assets for safe methods only
 		if (env.ASSETS && (request.method === 'GET' || request.method === 'HEAD')) {
 			const response = await env.ASSETS.fetch(request)

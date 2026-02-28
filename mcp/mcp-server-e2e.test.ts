@@ -569,7 +569,7 @@ test(
 		expect(calculatorResource?.text).toContain('--color-primary')
 		expect(calculatorResource?.text).toContain('--color-background')
 		expect(calculatorResource?.text).toContain("data-theme='dark'")
-		expect(calculatorResource?.text).toContain('type="module"')
+		expect(calculatorResource?.text).toContain('<script src=')
 		expect(calculatorResource?.text).toContain('/mcp-apps/calculator-widget.js')
 
 		const calculatorWidgetResponse = await fetch(
@@ -578,19 +578,13 @@ test(
 		expect(calculatorWidgetResponse.ok).toBe(true)
 		const calculatorWidgetSource = await calculatorWidgetResponse.text()
 		expect(calculatorWidgetSource).toContain('createWidgetHostBridge')
-		expect(calculatorWidgetSource).toContain('./widget-host-bridge.js')
 		expect(calculatorWidgetSource).toContain('Calculator result:')
 		expect(calculatorWidgetSource).toContain('sendUserMessageWithFallback')
+		expect(calculatorWidgetSource).toContain('ui/initialize')
+		expect(calculatorWidgetSource).toContain('ui/message')
 
-		const widgetBridgeResponse = await fetch(
-			new URL('/mcp-apps/widget-host-bridge.js', server.origin),
-		)
-		expect(widgetBridgeResponse.ok).toBe(true)
-		const widgetBridgeSource = await widgetBridgeResponse.text()
-		expect(widgetBridgeSource).toContain('createWidgetHostBridge')
-		expect(widgetBridgeSource).toContain('ui/initialize')
-		expect(widgetBridgeSource).toContain('ui/message')
-		expect(widgetBridgeSource).toContain('type: "prompt"')
+		const stylesResponse = await fetch(new URL('/styles.css', server.origin))
+		expect(stylesResponse.ok).toBe(true)
 
 		expect(calculatorResourceMeta?.ui?.domain).toBe(server.origin)
 		expect(calculatorResourceMeta?.['openai/widgetDomain']).toBe(server.origin)

@@ -204,7 +204,7 @@ export function renderCalculatorUiEntryPoint(baseUrl: string | URL) {
 			</div>
 		</section>
 
-		<script type="module" src="${widgetScriptHref}"></script>
+		<script src="${widgetScriptHref}"></script>
 	</body>
 </html>
 `.trim()
