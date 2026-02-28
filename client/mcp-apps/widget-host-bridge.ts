@@ -61,6 +61,7 @@ export function createWidgetHostBridge(
 
 	let requestCounter = 0
 	let initialized = false
+	let initializationFailed = false
 	let initializationPromise: Promise<boolean> | null = null
 	const pendingRequests = new Map<string, PendingBridgeRequest>()
 
@@ -165,6 +166,7 @@ export function createWidgetHostBridge(
 
 	async function initialize() {
 		if (initialized) return true
+		if (initializationFailed) return false
 		if (initializationPromise) return initializationPromise
 
 		initializationPromise = sendBridgeRequest('ui/initialize', {
@@ -175,6 +177,7 @@ export function createWidgetHostBridge(
 			.then((response) => {
 				dispatchHostContext(response.result?.hostContext)
 				initialized = true
+				initializationFailed = false
 				try {
 					postMessageToHost({
 						jsonrpc: '2.0',
@@ -186,7 +189,10 @@ export function createWidgetHostBridge(
 				}
 				return true
 			})
-			.catch(() => false)
+			.catch(() => {
+				initializationFailed = true
+				return false
+			})
 			.finally(() => {
 				initializationPromise = null
 			})
