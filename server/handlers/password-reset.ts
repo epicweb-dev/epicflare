@@ -249,7 +249,7 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 			const passwordHash = await createPasswordHash(password)
 			await db.update(usersTable, resetRecord.user_id, {
 				password_hash: passwordHash,
-				updated_at: new Date().toISOString(),
+				updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
 			})
 			await db.deleteMany(passwordResetsTable, {
 				where: { user_id: resetRecord.user_id },
