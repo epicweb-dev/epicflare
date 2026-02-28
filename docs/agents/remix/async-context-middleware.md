@@ -16,7 +16,7 @@ async execution context.
 ## Installation
 
 ```sh
-npm install @remix-run/async-context-middleware
+bun add @remix-run/async-context-middleware
 ```
 
 ## Usage

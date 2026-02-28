@@ -1,6 +1,6 @@
 import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import { type MCP } from '../index.ts'
+import { type MCP } from '#mcp/index.ts'
 
 type OperationFn = (left: number, right: number) => number
 type MathOperator = '+' | '-' | '*' | '/'

@@ -14,7 +14,7 @@ methods like PUT, PATCH, or DELETE by including a special form field.
 ## Installation
 
 ```sh
-npm install @remix-run/method-override-middleware
+bun add @remix-run/method-override-middleware
 ```
 
 ## Usage

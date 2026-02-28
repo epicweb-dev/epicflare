@@ -1,6 +1,6 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { destroyAuthCookie } from '#server/auth-session.ts'
-import type routes from '#server/routes.ts'
+import { routes } from '#server/routes.ts'
 
 function normalizeProto(value: string) {
 	return value.trim().replace(/^"|"$/g, '').toLowerCase()
@@ -36,7 +36,7 @@ function isSecureRequest(request: Request) {
 	return new URL(request.url).protocol === 'https:'
 }
 
-export default {
+export const logout = {
 	middleware: [],
 	async action({ request }) {
 		const cookie = await destroyAuthCookie(isSecureRequest(request))

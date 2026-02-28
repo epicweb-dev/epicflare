@@ -15,7 +15,7 @@ filtering and threshold-based compression.
 ## Installation
 
 ```sh
-npm install @remix-run/compression-middleware
+bun add @remix-run/compression-middleware
 ```
 
 ## Usage

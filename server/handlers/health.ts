@@ -1,7 +1,7 @@
 import { type BuildAction } from 'remix/fetch-router'
-import type routes from '#server/routes.ts'
+import { routes } from '#server/routes.ts'
 
-export default {
+export const health = {
 	middleware: [],
 	async action() {
 		return Response.json({ ok: true })

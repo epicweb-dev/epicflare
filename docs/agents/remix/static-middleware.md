@@ -24,7 +24,7 @@ conditional requests.
 ## Installation
 
 ```sh
-npm install @remix-run/static-middleware
+bun add @remix-run/static-middleware
 ```
 
 ## Usage

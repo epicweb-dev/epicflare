@@ -11,7 +11,7 @@ via securely signed cookies.
 ## Installation
 
 ```sh
-npm install @remix-run/session-middleware
+bun add @remix-run/session-middleware
 ```
 
 ## Usage

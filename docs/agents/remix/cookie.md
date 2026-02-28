@@ -28,7 +28,7 @@ to you.
 ## Installation
 
 ```sh
-npm install @remix-run/cookie
+bun add @remix-run/cookie
 ```
 
 ## Usage

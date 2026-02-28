@@ -12,7 +12,7 @@ Data used for these utilities is generated at build time from
 ## Installation
 
 ```bash
-npm install @remix-run/mime
+bun add @remix-run/mime
 ```
 
 ## Usage

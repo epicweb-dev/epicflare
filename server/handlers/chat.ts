@@ -3,9 +3,9 @@ import { readAuthSession } from '#server/auth-session.ts'
 import { redirectToLogin } from '#server/auth-redirect.ts'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
-import type routes from '#server/routes.ts'
+import { routes } from '#server/routes.ts'
 
-export default {
+export const chat = {
 	middleware: [],
 	async action({ request }) {
 		const session = await readAuthSession(request)

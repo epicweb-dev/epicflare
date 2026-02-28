@@ -1,21 +1,21 @@
 import { createRouter } from 'remix/fetch-router'
 import { type AppEnv } from '#types/env-schema.ts'
-import account from './handlers/account.ts'
+import { account } from './handlers/account.ts'
 import { createAuthHandler } from './handlers/auth.ts'
-import chat from './handlers/chat.ts'
-import health from './handlers/health.ts'
-import home from './handlers/home.ts'
-import login from './handlers/login.ts'
-import logout from './handlers/logout.ts'
+import { chat } from './handlers/chat.ts'
+import { health } from './handlers/health.ts'
+import { home } from './handlers/home.ts'
+import { login } from './handlers/login.ts'
+import { logout } from './handlers/logout.ts'
 import {
 	createPasswordResetConfirmHandler,
 	createPasswordResetRequestHandler,
 } from './handlers/password-reset.ts'
-import session from './handlers/session.ts'
-import signup from './handlers/signup.ts'
+import { session } from './handlers/session.ts'
+import { signup } from './handlers/signup.ts'
 import { Layout } from './layout.ts'
 import { render } from './render.ts'
-import routes from './routes.ts'
+import { routes } from './routes.ts'
 
 export function createAppRouter(appEnv: AppEnv) {
 	const router = createRouter({

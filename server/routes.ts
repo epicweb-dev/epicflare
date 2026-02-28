@@ -1,6 +1,6 @@
 import { post, route } from 'remix/fetch-router/routes'
 
-const routes = route({
+export const routes = route({
 	home: '/',
 	chat: '/chat',
 	health: '/health',
@@ -13,5 +13,3 @@ const routes = route({
 	passwordResetRequest: post('/password-reset'),
 	passwordResetConfirm: post('/password-reset/confirm'),
 })
-
-export default routes

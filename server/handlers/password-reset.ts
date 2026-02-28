@@ -7,7 +7,7 @@ import { sendResendEmail } from '#server/email/resend.ts'
 import { toHex } from '#server/hex.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
-import type routes from '#server/routes.ts'
+import { routes } from '#server/routes.ts'
 
 const resetTokenBytes = 32
 const resetTokenExpiryMs = 60 * 60 * 1000

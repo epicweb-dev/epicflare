@@ -32,7 +32,7 @@ all runtimes.
 Install from [npm](https://www.npmjs.com/):
 
 ```sh
-npm install @remix-run/tar-parser
+bun add @remix-run/tar-parser
 ```
 
 ## Usage

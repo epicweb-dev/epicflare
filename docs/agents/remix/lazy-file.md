@@ -59,7 +59,7 @@ All other `File` functionality works as you'd expect.
 Install from [npm](https://www.npmjs.com/):
 
 ```sh
-npm install @remix-run/lazy-file
+bun add @remix-run/lazy-file
 ```
 
 ## Usage

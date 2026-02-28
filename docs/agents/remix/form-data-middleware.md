@@ -13,7 +13,7 @@ incoming request bodies for use with
 ## Installation
 
 ```sh
-npm install @remix-run/form-data-middleware
+bun add @remix-run/form-data-middleware
 ```
 
 ## Usage
