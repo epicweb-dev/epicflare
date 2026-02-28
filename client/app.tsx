@@ -8,7 +8,7 @@ import {
 	OAuthCallbackRoute,
 	ResetPasswordRoute,
 } from './client-routes.tsx'
-import { Router } from './client-router.tsx'
+import { Router, routerEvents } from './client-router.tsx'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
@@ -20,16 +20,28 @@ export function App(handle: Handle) {
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
 
-	handle.queueTask(async (signal) => {
+	function queueSessionFetch() {
 		if (sessionStatus !== 'idle') return
 		sessionStatus = 'loading'
 
-		session = await fetchSessionInfo(signal)
-		if (signal.aborted) return
+		handle.queueTask(async (signal) => {
+			session = await fetchSessionInfo(signal)
+			if (signal.aborted) return
 
-		sessionStatus = 'ready'
+			sessionStatus = 'ready'
+			handle.update()
+		})
+	}
+
+	function refreshSession() {
+		if (sessionStatus === 'loading') return
+		sessionStatus = 'idle'
+		queueSessionFetch()
 		handle.update()
-	})
+	}
+
+	queueSessionFetch()
+	handle.on(routerEvents, { navigate: refreshSession })
 
 	const navLinkCss = {
 		color: colors.primaryText,

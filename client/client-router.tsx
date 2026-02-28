@@ -21,7 +21,7 @@ type FormSubmitDetails = {
 	formData: FormData
 }
 
-const routerEvents = new EventTarget()
+export const routerEvents = new EventTarget()
 let routerInitialized = false
 
 function notify() {
@@ -178,7 +178,7 @@ function formDataToPlainText(formData: FormData) {
 
 function buildGetDestination(action: URL, formData: FormData) {
 	const destination = new URL(action.toString())
-	const searchParams = new URLSearchParams(destination.search)
+	const searchParams = new URLSearchParams()
 	for (const [name, value] of formData.entries()) {
 		searchParams.append(name, typeof value === 'string' ? value : value.name)
 	}
