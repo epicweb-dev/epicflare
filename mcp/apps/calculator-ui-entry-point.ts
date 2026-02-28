@@ -345,8 +345,8 @@ const calculatorUiEntryPointTemplate = `
 					if (state.leftOperand === null || state.operator === null) {
 						state.leftOperand = inputValue
 					} else {
-					const result = compute(state.leftOperand, state.operator, inputValue)
-					if (!Number.isFinite(result)) {
+						const result = compute(state.leftOperand, state.operator, inputValue)
+						if (!Number.isFinite(result)) {
 							setError()
 							return
 						}
