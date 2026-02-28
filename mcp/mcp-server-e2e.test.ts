@@ -549,6 +549,8 @@ test(
 		expect(calculatorResource).toBeDefined()
 		expect(calculatorResource?.mimeType).toBe('text/html;profile=mcp-app')
 		expect(calculatorResource?.text).toContain('data-calculator-ui')
+		expect(calculatorResource?.text).toContain('rel="stylesheet"')
+		expect(calculatorResource?.text).toContain('styles.css')
 		expect(calculatorResource?.text).toContain('--color-primary')
 		expect(calculatorResource?.text).toContain('--color-background')
 		expect(calculatorResource?.text).toContain("data-theme='dark'")

@@ -114,6 +114,11 @@ Prefer app token names so widgets stay visually consistent with the host app:
 - `--shadow-*`
 - shared typography tokens (`--font-*`)
 
+When app and widget are served from the same origin, prefer referencing the
+canonical stylesheet directly (for example `/styles.css`) instead of copying
+token values into widget CSS. If you do this in an MCP App resource, set
+`_meta.ui.csp.resourceDomains` to allow that stylesheet origin.
+
 ## Security and metadata checklist
 
 - Keep resources sandbox-friendly (no unnecessary external dependencies).

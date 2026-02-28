@@ -17,6 +17,10 @@ const calculatorAppResource = {
 } as const
 
 export async function registerCalculatorAppResource(agent: MCP) {
+	const baseUrl = agent.requireDomain()
+	const styleSheetUrl = new URL('/styles.css', baseUrl).toString()
+	const resourceDomain = new URL(styleSheetUrl).origin
+
 	registerAppResource(
 		agent.server,
 		calculatorAppResource.name,
@@ -30,7 +34,9 @@ export async function registerCalculatorAppResource(agent: MCP) {
 				uri: calculatorUiResourceUri,
 				content: {
 					type: 'rawHtml',
-					htmlString: renderCalculatorUiEntryPoint(),
+					htmlString: renderCalculatorUiEntryPoint({
+						stylesheetHref: styleSheetUrl,
+					}),
 				},
 				encoding: 'text',
 				adapters: {
@@ -48,6 +54,9 @@ export async function registerCalculatorAppResource(agent: MCP) {
 						_meta: {
 							ui: {
 								prefersBorder: true,
+								csp: {
+									resourceDomains: [resourceDomain],
+								},
 							},
 						},
 					},

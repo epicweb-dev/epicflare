@@ -75,8 +75,31 @@
 	}
 }
 
+:root[data-theme='dark'] {
+	/* Colors - Dark mode (smoldering ember) */
+	--color-primary: #f6a23a;
+	--color-primary-hover: #f08b1a;
+	--color-primary-active: #d87305;
+	--color-on-primary: #120b08;
+	--color-primary-text: #f6a23a;
+	--color-background: #121216;
+	--color-surface: #1c1c22;
+	--color-text: #f1f1f5;
+	--color-text-muted: #b3b3bd;
+	--color-border: #2b2b33;
+
+	/* Dark mode shadows - lighter for visibility */
+	--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+	--shadow-md:
+		0 4px 6px -1px rgb(255 255 255 / 0.08),
+		0 2px 4px -2px rgb(255 255 255 / 0.08);
+	--shadow-lg:
+		0 10px 15px -3px rgb(255 255 255 / 0.1),
+		0 4px 6px -4px rgb(255 255 255 / 0.1);
+}
+
 @media (prefers-color-scheme: dark) {
-	:root {
+	:root:not([data-theme='light']) {
 		/* Colors - Dark mode (smoldering ember) */
 		--color-primary: #f6a23a;
 		--color-primary-hover: #f08b1a;

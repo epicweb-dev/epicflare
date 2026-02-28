@@ -1,84 +1,27 @@
 export const calculatorUiResourceUri =
 	'ui://calculator-app/entry-point.html' as const
 
-const calculatorUiEntryPointHtml = `
+const appStylesheetHrefPlaceholder = '__APP_STYLESHEET_HREF__'
+
+const calculatorUiEntryPointTemplate = `
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Calculator</title>
+		<link rel="stylesheet" href="${appStylesheetHrefPlaceholder}" />
 		<style>
 			:root {
 				color-scheme: light dark;
+			}
 
-				/* App design tokens - light mode */
-				--color-primary: #f47c00;
-				--color-primary-hover: #e26c00;
-				--color-primary-active: #c85a00;
-				--color-on-primary: #120b08;
-				--color-primary-text: #b04700;
-				--color-background: #f6f6f8;
-				--color-surface: #ececf1;
-				--color-text: #2f2f34;
-				--color-text-muted: #676770;
-				--color-border: #d7d7df;
-
-				--font-family: system-ui, sans-serif;
-				--font-size-xs: 0.75rem;
-				--font-size-sm: 0.875rem;
-				--font-size-base: 1rem;
-				--font-size-lg: 1.25rem;
-				--font-size-xl: 2rem;
-
-				--font-weight-medium: 500;
-				--font-weight-semibold: 600;
-
-				--spacing-xs: 0.25rem;
-				--spacing-sm: 0.5rem;
-				--spacing-md: 1rem;
-				--spacing-lg: 1.5rem;
-
-				--radius-md: 0.5rem;
-				--radius-lg: 0.75rem;
-				--radius-full: 999px;
-
-				--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-
-				--transition-fast: 0.15s ease;
-				--transition-normal: 0.2s ease;
+			:root[data-theme='light'] {
+				color-scheme: light;
 			}
 
 			:root[data-theme='dark'] {
-				/* App design tokens - dark mode */
-				--color-primary: #f6a23a;
-				--color-primary-hover: #f08b1a;
-				--color-primary-active: #d87305;
-				--color-on-primary: #120b08;
-				--color-primary-text: #f6a23a;
-				--color-background: #121216;
-				--color-surface: #1c1c22;
-				--color-text: #f1f1f5;
-				--color-text-muted: #b3b3bd;
-				--color-border: #2b2b33;
-				--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
-			}
-
-			@media (prefers-color-scheme: dark) {
-				:root:not([data-theme]) {
-					/* App design tokens - dark mode fallback */
-					--color-primary: #f6a23a;
-					--color-primary-hover: #f08b1a;
-					--color-primary-active: #d87305;
-					--color-on-primary: #120b08;
-					--color-primary-text: #f6a23a;
-					--color-background: #121216;
-					--color-surface: #1c1c22;
-					--color-text: #f1f1f5;
-					--color-text-muted: #b3b3bd;
-					--color-border: #2b2b33;
-					--shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
-				}
+				color-scheme: dark;
 			}
 
 			* {
@@ -535,6 +478,24 @@ const calculatorUiEntryPointHtml = `
 </html>
 `.trim()
 
-export function renderCalculatorUiEntryPoint() {
-	return calculatorUiEntryPointHtml
+type RenderCalculatorUiEntryPointOptions = {
+	stylesheetHref?: string
+}
+
+function escapeHtmlAttribute(value: string) {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+}
+
+export function renderCalculatorUiEntryPoint(
+	options: RenderCalculatorUiEntryPointOptions = {},
+) {
+	const stylesheetHref = options.stylesheetHref ?? '/styles.css'
+	return calculatorUiEntryPointTemplate.replace(
+		appStylesheetHrefPlaceholder,
+		escapeHtmlAttribute(stylesheetHref),
+	)
 }
