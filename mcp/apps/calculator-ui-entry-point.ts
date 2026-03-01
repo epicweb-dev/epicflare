@@ -204,7 +204,7 @@ export function renderCalculatorUiEntryPoint(baseUrl: string | URL) {
 			</div>
 		</section>
 
-		<script src="${widgetScriptHref}" crossorigin="anonymous"></script>
+		<script type="module" src="${widgetScriptHref}" crossorigin="anonymous"></script>
 	</body>
 </html>
 `.trim()

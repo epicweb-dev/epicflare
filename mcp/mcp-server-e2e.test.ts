@@ -569,7 +569,7 @@ test(
 		expect(calculatorResource?.text).toContain('--color-primary')
 		expect(calculatorResource?.text).toContain('--color-background')
 		expect(calculatorResource?.text).toContain("data-theme='dark'")
-		expect(calculatorResource?.text).not.toContain('type="module"')
+		expect(calculatorResource?.text).toContain('type="module"')
 		expect(calculatorResource?.text).toContain('/mcp-apps/calculator-widget.js')
 
 		const calculatorWidgetResponse = await fetch(
