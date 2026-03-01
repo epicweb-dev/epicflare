@@ -240,11 +240,12 @@ jobs:
           CLOUDFLARE_ENV: preview
           APP_WORKER_NAME: ${{ steps.names.outputs.worker_name }}
           WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
+          DEPLOY_COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           echo "worker_name=$APP_WORKER_NAME" >> "$GITHUB_OUTPUT"
 
-          bun run deploy -- --name "$APP_WORKER_NAME" --config "$WRANGLER_CONFIG" 2>&1 | tee deploy.log
+          bun run deploy -- --name "$APP_WORKER_NAME" --config "$WRANGLER_CONFIG" --var "APP_COMMIT_SHA:${DEPLOY_COMMIT_SHA}" 2>&1 | tee deploy.log
 
           PREVIEW_URL="$(node -e 'const fs = require("node:fs"); const text = fs.readFileSync(process.argv[1], "utf8").replace(/\u001b\[[0-9;]*m/g, ""); const worker = process.argv[2]; const escaped = worker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const workerUrlRegex = new RegExp(`https://(?:[a-zA-Z0-9-]+\\.)?${escaped}\\.[a-zA-Z0-9._-]+\\.workers\\.dev`, "g"); const matches = text.match(workerUrlRegex); process.stdout.write(matches?.at(-1) ?? "")' deploy.log "$APP_WORKER_NAME")"
           if [ -n "$PREVIEW_URL" ]; then
@@ -259,11 +260,17 @@ jobs:
         shell: bash
         env:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.url }}
+          EXPECTED_COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
           if [ -z "${PREVIEW_URL:-}" ]; then
             echo "Missing preview URL output; cannot run healthcheck." >&2
+            exit 1
+          fi
+
+          if [ -z "${EXPECTED_COMMIT_SHA:-}" ]; then
+            echo "Missing expected commit SHA; cannot verify deployment version." >&2
             exit 1
           fi
 
@@ -278,7 +285,7 @@ jobs:
             if curl --fail --silent --show-error --location --max-time 10 \
               --header "Accept: application/json" \
               "$HEALTHCHECK_URL" > health.json && \
-              node -e "const fs = require('node:fs'); const body = fs.readFileSync('health.json','utf8'); const json = JSON.parse(body); if (json?.ok !== true) { console.error('healthcheck-unexpected-response', json); process.exit(1); } console.log('healthcheck-ok', json);"; then
+              node -e "const fs = require('node:fs'); const body = fs.readFileSync('health.json','utf8'); const json = JSON.parse(body); const expected = process.env.EXPECTED_COMMIT_SHA; if (json?.ok !== true) { console.error('healthcheck-unexpected-response', json); process.exit(1); } if (json?.commitSha !== expected) { console.error('healthcheck-unexpected-commit-sha', { expected, actual: json?.commitSha }); process.exit(1); } console.log('healthcheck-ok', json);"; then
               exit 0
             fi
             sleep "$delay_seconds"

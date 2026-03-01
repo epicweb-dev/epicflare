@@ -94,10 +94,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          DEPLOY_COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
 
-          bun run deploy 2>&1 | tee deploy.log
+          bun run deploy -- --var "APP_COMMIT_SHA:${DEPLOY_COMMIT_SHA}" 2>&1 | tee deploy.log
 
           DEPLOY_URL="${APP_BASE_URL:-}"
           if [ -z "$DEPLOY_URL" ]; then
@@ -112,11 +113,17 @@ jobs:
         shell: bash
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          EXPECTED_COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
 
           if [ -z "${DEPLOY_URL:-}" ]; then
             echo "Missing deploy URL output; cannot run healthcheck." >&2
+            exit 1
+          fi
+
+          if [ -z "${EXPECTED_COMMIT_SHA:-}" ]; then
+            echo "Missing expected commit SHA; cannot verify deployment version." >&2
             exit 1
           fi
 
@@ -131,7 +138,7 @@ jobs:
             if curl --fail --silent --show-error --location --max-time 10 \
               --header "Accept: application/json" \
               "$HEALTHCHECK_URL" > health.json && \
-              node -e "const fs = require('node:fs'); const body = fs.readFileSync('health.json','utf8'); const json = JSON.parse(body); if (json?.ok !== true) { console.error('healthcheck-unexpected-response', json); process.exit(1); } console.log('healthcheck-ok', json);"; then
+              node -e "const fs = require('node:fs'); const body = fs.readFileSync('health.json','utf8'); const json = JSON.parse(body); const expected = process.env.EXPECTED_COMMIT_SHA; if (json?.ok !== true) { console.error('healthcheck-unexpected-response', json); process.exit(1); } if (json?.commitSha !== expected) { console.error('healthcheck-unexpected-commit-sha', { expected, actual: json?.commitSha }); process.exit(1); } console.log('healthcheck-ok', json);"; then
               exit 0
             fi
             sleep "$delay_seconds"

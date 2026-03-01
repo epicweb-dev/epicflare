@@ -52,7 +52,8 @@ Cloudflare returns them.
 
 Both the preview and production deploy workflows run a post-deploy healthcheck
 against `<deploy-url>/health` and fail the job if it does not return
-`{ ok: true }`.
+`{ ok: true, commitSha }` with `commitSha` matching the commit SHA deployed by
+that workflow.
 
 If you ever need to do the same operations manually, use:
 

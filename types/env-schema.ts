@@ -40,6 +40,24 @@ const optionalUrlStringSchema = createSchema<unknown, string | undefined>(
 	},
 )
 
+const optionalCommitShaSchema = createSchema<unknown, string | undefined>(
+	(value, context) => {
+		if (value === undefined) return { value: undefined }
+		if (typeof value !== 'string') return fail('Expected string', context.path)
+
+		const trimmed = value.trim()
+		if (!trimmed) return { value: undefined }
+		if (!/^[0-9a-f]{7,40}$/i.test(trimmed)) {
+			return fail(
+				'Expected commit SHA (7-40 hexadecimal characters)',
+				context.path,
+			)
+		}
+
+		return { value: trimmed.toLowerCase() }
+	},
+)
+
 export const EnvSchema = object({
 	COOKIE_SECRET: string().refine(
 		(value) => value.length >= 32,
@@ -47,6 +65,7 @@ export const EnvSchema = object({
 	),
 	APP_DB: d1DatabaseSchema,
 	APP_BASE_URL: optionalUrlStringSchema,
+	APP_COMMIT_SHA: optionalCommitShaSchema,
 	RESEND_API_BASE_URL: optionalUrlStringSchema,
 	RESEND_API_KEY: optionalNonEmptyStringSchema,
 	RESEND_FROM_EMAIL: optionalNonEmptyStringSchema,
