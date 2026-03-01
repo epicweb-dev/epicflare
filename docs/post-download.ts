@@ -77,34 +77,6 @@ async function promptConfirm(question: string, defaultYes: boolean) {
 	return answer.toLowerCase().startsWith('y')
 }
 
-function replaceFirstStringProperty(
-	content: string,
-	key: string,
-	value: string,
-) {
-	const regex = new RegExp(`"${key}"\\s*:\\s*"[^"]*"`)
-	return content.replace(regex, `"${key}": "${value}"`)
-}
-
-function replaceAllStringProperty(content: string, key: string, value: string) {
-	const regex = new RegExp(`"${key}"\\s*:\\s*"[^"]*"`, 'g')
-	return content.replace(regex, `"${key}": "${value}"`)
-}
-
-function replaceStringPropertySequence(
-	content: string,
-	key: string,
-	values: Array<string>,
-) {
-	const regex = new RegExp(`"${key}"\\s*:\\s*"[^"]*"`, 'g')
-	let index = 0
-	return content.replace(regex, () => {
-		const value = values[Math.min(index, values.length - 1)]
-		index += 1
-		return `"${key}": "${value}"`
-	})
-}
-
 function replaceBrandingTokens(content: string, replacement: string) {
 	const placeholders = new Map<string, string>()
 	let next = content
@@ -274,7 +246,9 @@ function isGitAvailable() {
 }
 
 function isInsideGitWorkTree() {
-	return runGit(['rev-parse', '--is-inside-work-tree'], { quiet: true }).status === 0
+	return (
+		runGit(['rev-parse', '--is-inside-work-tree'], { quiet: true }).status === 0
+	)
 }
 
 function hasGitHeadCommit() {
@@ -303,7 +277,9 @@ async function maybeInitializeGitAndCommit({
 	}
 
 	if (!isGitAvailable()) {
-		console.log(`\n${paint('⚠️  Git is not available; skipping git init.', 'yellow')}`)
+		console.log(
+			`\n${paint('⚠️  Git is not available; skipping git init.', 'yellow')}`,
+		)
 		return
 	}
 
@@ -349,7 +325,9 @@ async function maybeInitializeGitAndCommit({
 		return
 	}
 	if (!gitStatus.stdout.trim()) {
-		console.log(paint('\n  No changes to commit for initial git commit.', 'dim'))
+		console.log(
+			paint('\n  No changes to commit for initial git commit.', 'dim'),
+		)
 		return
 	}
 
@@ -390,169 +368,6 @@ function buildSummaryOutput(summary: {
 	for (const [key, value] of Object.entries(summary.changes)) {
 		console.log(`  - ${key}: ${value ? 'yes' : 'no'}`)
 	}
-}
-
-function updateWrangler({
-	workerName,
-	databaseName,
-	databaseId,
-	previewDatabaseName,
-	previewDatabaseId,
-	kvNamespaceId,
-	kvNamespacePreviewId,
-	dryRun,
-}: {
-	workerName: string
-	databaseName: string
-	databaseId: string
-	previewDatabaseName: string
-	previewDatabaseId: string
-	kvNamespaceId: string
-	kvNamespacePreviewId: string
-	dryRun: boolean
-}) {
-	const wranglerPath = join(process.cwd(), 'wrangler.jsonc')
-	const original = readFileSync(wranglerPath, 'utf8')
-	let next = original
-
-	next = replaceFirstStringProperty(next, 'name', workerName)
-	next = replaceStringPropertySequence(next, 'database_name', [
-		databaseName,
-		previewDatabaseName,
-		previewDatabaseName,
-	])
-	if (databaseId && previewDatabaseId) {
-		next = replaceStringPropertySequence(next, 'database_id', [
-			databaseId,
-			previewDatabaseId,
-			previewDatabaseId,
-		])
-	}
-	if (kvNamespaceId) {
-		next = replaceAllStringProperty(next, 'id', kvNamespaceId)
-	}
-	if (kvNamespacePreviewId) {
-		next = replaceAllStringProperty(next, 'preview_id', kvNamespacePreviewId)
-	}
-
-	const changed = next !== original
-
-	if (dryRun) {
-		logDryRun(
-			changed
-				? 'Would update wrangler.jsonc with provided values.'
-				: 'wrangler.jsonc already matches provided values.',
-		)
-		return changed
-	}
-
-	if (changed) {
-		writeFileSync(wranglerPath, next)
-	}
-	return changed
-}
-
-function updateDeployWorkflow({
-	databaseName,
-	dryRun,
-}: {
-	databaseName: string
-	dryRun: boolean
-}) {
-	const workflowPath = join(process.cwd(), '.github/workflows/deploy.yml')
-	if (!existsSync(workflowPath)) {
-		return false
-	}
-	const original = readFileSync(workflowPath, 'utf8')
-	const next = original.replace(
-		/(\bd1 migrations apply )([^\s]+)( --remote)/g,
-		(...match) => `${match[1]}${databaseName}${match[3]}`,
-	)
-	const changed = next !== original
-
-	if (dryRun) {
-		logDryRun(
-			changed
-				? 'Would update deploy workflow D1 database name.'
-				: 'deploy workflow already matches the provided database name.',
-		)
-		return changed
-	}
-
-	if (changed) {
-		writeFileSync(workflowPath, next)
-	}
-	return changed
-}
-
-function updateMockWorkers({
-	workerName,
-	databaseName,
-	databaseId,
-	previewDatabaseName,
-	previewDatabaseId,
-	dryRun,
-}: {
-	workerName: string
-	databaseName: string
-	databaseId: string
-	previewDatabaseName: string
-	previewDatabaseId: string
-	dryRun: boolean
-}) {
-	const root = process.cwd()
-	const mockServersDir = join(root, 'mock-servers')
-	if (!existsSync(mockServersDir)) {
-		return false
-	}
-
-	const entries = readdirSync(mockServersDir, { withFileTypes: true })
-	const updatedConfigs: Array<string> = []
-
-	for (const entry of entries) {
-		if (!entry.isDirectory()) continue
-		const serviceName = entry.name
-		const configPath = join(mockServersDir, serviceName, 'wrangler.jsonc')
-		if (!existsSync(configPath)) continue
-
-		const original = readFileSync(configPath, 'utf8')
-		let next = original
-
-		next = replaceFirstStringProperty(
-			next,
-			'name',
-			`${workerName}-mock-${serviceName}`,
-		)
-		next = replaceStringPropertySequence(next, 'database_name', [
-			databaseName,
-			previewDatabaseName,
-			previewDatabaseName,
-		])
-		if (databaseId && previewDatabaseId) {
-			next = replaceStringPropertySequence(next, 'database_id', [
-				databaseId,
-				previewDatabaseId,
-				previewDatabaseId,
-			])
-		}
-
-		if (next === original) continue
-
-		if (!dryRun) {
-			writeFileSync(configPath, next)
-		}
-		updatedConfigs.push(configPath)
-	}
-
-	const changed = updatedConfigs.length > 0
-	if (dryRun) {
-		logDryRun(
-			changed
-				? `Would update ${updatedConfigs.length} mock Worker wrangler config(s).`
-				: 'No mock Worker wrangler configs required updates.',
-		)
-	}
-	return changed
 }
 
 function updatePackageJson({
@@ -640,9 +455,11 @@ function removeSelf() {
 
 function showNextSteps() {
 	console.log(`\n${paint('✅ Next steps', 'bold')}`)
-	console.log('• Run `bunx wrangler login` if you have not yet.')
 	console.log(
-		'• Confirm your Cloudflare D1 and KV resources match `wrangler.jsonc`.',
+		'• For CI deploys, missing production D1/KV resources are auto-created.',
+	)
+	console.log(
+		'• This setup script does not create Cloudflare resources or rewrite Wrangler resource IDs.',
 	)
 	console.log('• Add repository secrets for deploys:')
 	console.log('  - CLOUDFLARE_API_TOKEN')
@@ -695,13 +512,10 @@ function ensureValidWorkingDirectory() {
 }
 
 function reportNonInteractiveFailure(missing: Array<string>) {
-	const suggestedWorkerName = toKebabCase(basename(process.cwd()))
 	console.error('Non-interactive mode detected; cannot prompt for input.')
 	console.error(`Missing required values: ${missing.join(', ')}`)
 	console.error('Provide flags to continue. Example:')
-	console.error(
-		`bun ./docs/post-download.ts --worker-name ${suggestedWorkerName} --database-name ${suggestedWorkerName} --database-id <id> --kv-namespace-id <id>`,
-	)
+	console.error('bun ./docs/post-download.ts --defaults')
 	process.exit(1)
 }
 
@@ -728,7 +542,7 @@ function runPreflightChecks() {
 	console.log(`- wrangler available: ${wranglerAvailable ? 'ok' : 'missing'}`)
 	console.log(`- wrangler login: ${wranglerLoggedIn ? 'ok' : 'not logged in'}`)
 
-	if (missingRootFiles.length === 0 && wranglerAvailable && wranglerLoggedIn) {
+	if (missingRootFiles.length === 0) {
 		return true
 	}
 
@@ -743,275 +557,6 @@ function runPreflightChecks() {
 		console.log('- Log in: bunx wrangler login')
 	}
 	return false
-}
-
-function printWranglerLoginInstructions() {
-	console.log(`\n${paint('🔐 Wrangler login required', 'bold')}`)
-	console.log('Run: bunx wrangler login')
-	console.log('Then re-run: bun ./docs/post-download.ts')
-}
-
-async function ensureWranglerLogin(canPrompt: boolean) {
-	if (!isWranglerAvailable()) {
-		console.log(`\n${paint('⚠️  Wrangler is not available', 'yellow')}`)
-		console.log('Install or verify with: bunx wrangler --version')
-		process.exit(1)
-	}
-	if (isWranglerLoggedIn()) {
-		return
-	}
-	if (!canPrompt) {
-		printWranglerLoginInstructions()
-		process.exit(1)
-	}
-	const shouldLogin = await promptConfirm(
-		'Wrangler is not logged in. Run `bunx wrangler login` now?',
-		true,
-	)
-	if (!shouldLogin) {
-		printWranglerLoginInstructions()
-		process.exit(1)
-	}
-	const loginResult = runWrangler(['login'], { stdio: 'inherit' })
-	if (loginResult.status !== 0 || !isWranglerLoggedIn()) {
-		printWranglerLoginInstructions()
-		process.exit(1)
-	}
-}
-
-function createD1Database({
-	databaseName,
-	dryRun,
-}: {
-	databaseName: string
-	dryRun: boolean
-}) {
-	if (dryRun) {
-		logDryRun(`Would create D1 database "${databaseName}".`)
-		return `dry-run-${databaseName}`
-	}
-	console.log(paint(`  Creating D1 database "${databaseName}"...`, 'dim'))
-	const createResult = runWrangler(['d1', 'create', databaseName])
-	if (createResult.status !== 0) {
-		console.error('\nFailed to create D1 database.')
-		throw new Error(`Failed to create D1 database "${databaseName}"`)
-	}
-	// Use wrangler d1 list --json to get structured output instead of parsing text
-	const listResult = runWrangler(['d1', 'list', '--json'])
-	if (listResult.status !== 0) {
-		console.error('\nFailed to list D1 databases.')
-		throw new Error(
-			`Failed to list D1 databases after creating "${databaseName}"`,
-		)
-	}
-	try {
-		const databases = JSON.parse(listResult.stdout) as Array<{
-			uuid: string
-			name: string
-		}>
-		const database = databases.find((db) => db.name === databaseName)
-		if (!database) {
-			console.error(
-				`\nCould not find newly created database "${databaseName}" in list.`,
-			)
-			console.error(
-				'Available databases:',
-				databases.map((d) => d.name).join(', '),
-			)
-			throw new Error(
-				`Could not find newly created database "${databaseName}" in list`,
-			)
-		}
-		return database.uuid
-	} catch (error) {
-		if (error instanceof Error) {
-			throw error
-		}
-		console.error('\nCould not parse D1 database list JSON output.')
-		console.error(listResult.stdout || listResult.stderr)
-		throw new Error('Could not parse D1 database list JSON output')
-	}
-}
-
-function createKvNamespace({
-	title,
-	preview,
-	dryRun,
-}: {
-	title: string
-	preview: boolean
-	dryRun: boolean
-}) {
-	if (dryRun) {
-		logDryRun(
-			`Would create ${preview ? 'preview ' : ''}KV namespace "${title}".`,
-		)
-		return `dry-run-${title}`
-	}
-	const args = ['kv', 'namespace', 'create', title]
-	if (preview) {
-		args.push('--preview')
-	}
-	const label = preview ? 'preview ' : ''
-	console.log(paint(`  Creating ${label}KV namespace "${title}"...`, 'dim'))
-	// Pipe "n" to suppress wrangler's prompt asking if we want to add it to config
-	// We handle config updates ourselves via updateWrangler()
-	const createResult = runWrangler(args, { input: 'n\n' })
-	if (createResult.status !== 0) {
-		console.error('\nFailed to create KV namespace.')
-		throw new Error(`Failed to create KV namespace "${title}"`)
-	}
-	// Use wrangler kv namespace list to get structured output instead of parsing text
-	// When --preview is used, wrangler appends "_preview" to the title
-	const expectedTitle = preview ? `${title}_preview` : title
-	const listResult = runWrangler(['kv', 'namespace', 'list'])
-	if (listResult.status !== 0) {
-		console.error('\nFailed to list KV namespaces.')
-		throw new Error(`Failed to list KV namespaces after creating "${title}"`)
-	}
-	try {
-		const namespaces = JSON.parse(listResult.stdout) as Array<{
-			id: string
-			title: string
-		}>
-		const namespace = namespaces.find((ns) => ns.title === expectedTitle)
-		if (!namespace) {
-			console.error(
-				`\nCould not find newly created KV namespace "${expectedTitle}" in list.`,
-			)
-			console.error(
-				'Available namespaces:',
-				namespaces.map((ns) => ns.title).join(', '),
-			)
-			throw new Error(
-				`Could not find newly created KV namespace "${expectedTitle}" in list`,
-			)
-		}
-		return namespace.id
-	} catch (error) {
-		if (error instanceof Error) {
-			throw error
-		}
-		console.error('\nCould not parse KV namespace list JSON output.')
-		console.error(listResult.stdout || listResult.stderr)
-		throw new Error('Could not parse KV namespace list JSON output')
-	}
-}
-
-function deleteD1Database({
-	databaseName,
-	dryRun,
-}: {
-	databaseName: string
-	dryRun: boolean
-}) {
-	if (dryRun) {
-		logDryRun(`Would delete D1 database "${databaseName}".`)
-		return
-	}
-	console.log(paint(`  Deleting D1 database "${databaseName}"...`, 'dim'))
-	const deleteResult = runWrangler(['d1', 'delete', databaseName], {
-		input: 'y\n',
-	})
-	if (deleteResult.status !== 0) {
-		console.error(`\nFailed to delete D1 database "${databaseName}".`)
-		console.error(deleteResult.stdout || deleteResult.stderr)
-	} else {
-		console.log(paint(`  ✓ Deleted D1 database "${databaseName}"`, 'green'))
-	}
-}
-
-function deleteKvNamespace({
-	namespaceId,
-	dryRun,
-}: {
-	namespaceId: string
-	dryRun: boolean
-}) {
-	if (dryRun) {
-		logDryRun(`Would delete KV namespace "${namespaceId}".`)
-		return
-	}
-	console.log(paint(`  Deleting KV namespace "${namespaceId}"...`, 'dim'))
-	const deleteResult = runWrangler(['kv', 'namespace', 'delete', namespaceId])
-	if (deleteResult.status !== 0) {
-		console.error(`\nFailed to delete KV namespace "${namespaceId}".`)
-		console.error(deleteResult.stdout || deleteResult.stderr)
-	} else {
-		console.log(paint(`  ✓ Deleted KV namespace "${namespaceId}"`, 'green'))
-	}
-}
-
-async function cleanupCreatedResources(
-	createdResources: {
-		databases: Array<{ name: string; id: string }>
-		kvNamespaces: Array<{ id: string; title: string }>
-	},
-	dryRun: boolean,
-	canPrompt: boolean,
-) {
-	const hasResources =
-		createdResources.databases.length > 0 ||
-		createdResources.kvNamespaces.length > 0
-
-	if (!hasResources || dryRun) {
-		return
-	}
-
-	console.log(
-		`\n${paint('⚠️  Resources were created before the failure', 'yellow')}`,
-	)
-
-	if (createdResources.databases.length > 0) {
-		console.log('Created D1 databases:')
-		for (const db of createdResources.databases) {
-			console.log(`  - ${db.name} (${db.id})`)
-		}
-	}
-
-	if (createdResources.kvNamespaces.length > 0) {
-		console.log('Created KV namespaces:')
-		for (const ns of createdResources.kvNamespaces) {
-			console.log(`  - ${ns.title} (${ns.id})`)
-		}
-	}
-
-	if (!canPrompt) {
-		console.log('\nRun the following commands to clean up created resources:')
-		for (const db of createdResources.databases) {
-			console.log(`  bunx wrangler d1 delete ${db.name}`)
-		}
-		for (const ns of createdResources.kvNamespaces) {
-			console.log(`  bunx wrangler kv namespace delete ${ns.id}`)
-		}
-		return
-	}
-
-	const shouldCleanup = await promptConfirm(
-		'Would you like to delete the created resources?',
-		true,
-	)
-
-	if (!shouldCleanup) {
-		console.log('\nYou can delete them later with:')
-		for (const db of createdResources.databases) {
-			console.log(`  bunx wrangler d1 delete ${db.name}`)
-		}
-		for (const ns of createdResources.kvNamespaces) {
-			console.log(`  bunx wrangler kv namespace delete ${ns.id}`)
-		}
-		return
-	}
-
-	console.log(`\n${paint('🧹 Cleaning up created resources...', 'bold')}`)
-
-	for (const db of createdResources.databases) {
-		deleteD1Database({ databaseName: db.name, dryRun })
-	}
-
-	for (const ns of createdResources.kvNamespaces) {
-		deleteKvNamespace({ namespaceId: ns.id, dryRun })
-	}
 }
 
 async function run() {
@@ -1042,8 +587,6 @@ async function run() {
 		logDryRun('No files will be modified.')
 	}
 
-	await ensureWranglerLogin(canPrompt)
-
 	async function resolveValue({
 		label,
 		flag,
@@ -1064,7 +607,9 @@ async function run() {
 		}
 		if (canPrompt) {
 			if (defaultValue && !showDefault) {
-				const value = await prompt(`${label} (press Enter to use generated value)`)
+				const value = await prompt(
+					`${label} (press Enter to use generated value)`,
+				)
 				return value.length > 0 ? value : defaultValue
 			}
 			return await promptRequired(label, defaultValue)
@@ -1078,19 +623,9 @@ async function run() {
 		flag: 'app-name',
 		defaultValue: defaultAppName,
 	})
-	const workerName = await resolveValue({
-		label: 'Cloudflare Worker name',
-		flag: 'worker-name',
-		defaultValue: appName,
-	})
 	const packageName = await resolveValue({
 		label: 'Package name',
 		flag: 'package-name',
-		defaultValue: appName,
-	})
-	const databaseName = await resolveValue({
-		label: 'D1 database name',
-		flag: 'database-name',
 		defaultValue: appName,
 	})
 	const cookieSecret = await resolveValue({
@@ -1100,177 +635,59 @@ async function run() {
 		showDefault: false,
 	})
 
-	const providedDatabaseId = getArgValue(args, 'database-id')
-	const providedPreviewDatabaseId = getArgValue(args, 'preview-database-id')
-	const providedKvNamespaceId = getArgValue(args, 'kv-namespace-id')
-	const providedKvNamespacePreviewId = getArgValue(
-		args,
-		'kv-namespace-preview-id',
-	)
-
-	const needsResourceIds = !providedDatabaseId || !providedKvNamespaceId
-
-	let shouldCreateResources = false
-	if (guided && canPrompt && needsResourceIds) {
-		shouldCreateResources = await promptConfirm(
-			'Create D1 and KV resources with Wrangler?',
-			true,
-		)
-	}
-
-	let skipResourceIds = false
-	if (guided && canPrompt && needsResourceIds && !shouldCreateResources) {
-		skipResourceIds = await promptConfirm(
-			'Skip resource IDs for now and set them later?',
-			false,
-		)
-	}
-
-	let databaseId = providedDatabaseId
-	let previewDatabaseId = providedPreviewDatabaseId || providedDatabaseId
-	let kvNamespaceId = providedKvNamespaceId
-	let kvNamespacePreviewId = providedKvNamespacePreviewId || providedKvNamespaceId
-	const previewDatabaseName = databaseName
-
-	// Track created resources for cleanup on failure
-	const createdResources: {
-		databases: Array<{ name: string; id: string }>
-		kvNamespaces: Array<{ id: string; title: string }>
-	} = {
-		databases: [],
-		kvNamespaces: [],
-	}
-
-	if (shouldCreateResources) {
-		const kvNamespaceTitle = await resolveValue({
-			label: 'KV namespace title (OAuth/session)',
-			flag: 'kv-namespace-title',
-			defaultValue: `${appName}-oauth`,
-		})
-
-		try {
-			databaseId = createD1Database({ databaseName, dryRun })
-			if (!dryRun && databaseId && !databaseId.startsWith('dry-run-')) {
-				createdResources.databases.push({ name: databaseName, id: databaseId })
-			}
-			previewDatabaseId = databaseId
-			kvNamespaceId = createKvNamespace({
-				title: kvNamespaceTitle,
-				preview: false,
-				dryRun,
-			})
-			if (!dryRun && kvNamespaceId && !kvNamespaceId.startsWith('dry-run-')) {
-				createdResources.kvNamespaces.push({
-					id: kvNamespaceId,
-					title: kvNamespaceTitle,
-				})
-			}
-			kvNamespacePreviewId = kvNamespaceId
-		} catch (error) {
-			await cleanupCreatedResources(createdResources, dryRun, canPrompt)
-			throw error
-		}
-	} else if (!skipResourceIds) {
-		databaseId = await resolveValue({
-			label: 'D1 database id',
-			flag: 'database-id',
-		})
-		kvNamespaceId = await resolveValue({
-			label: 'KV namespace id (OAuth/session)',
-			flag: 'kv-namespace-id',
-		})
-		previewDatabaseId = databaseId
-		kvNamespacePreviewId = kvNamespaceId
-	}
-
 	if (!canPrompt && missingFlags.length > 0) {
 		reportNonInteractiveFailure(missingFlags)
 	}
 
-	try {
-		const changedBranding = updateBrandingTokens({ appName, dryRun })
-		const changedDeployWorkflow = updateDeployWorkflow({ databaseName, dryRun })
-		const changedWrangler = updateWrangler({
-			workerName,
-			databaseName,
-			databaseId,
-			previewDatabaseName,
-			previewDatabaseId,
-			kvNamespaceId,
-			kvNamespacePreviewId,
-			dryRun,
-		})
-		const changedMockWorkers = updateMockWorkers({
-			workerName,
-			databaseName,
-			databaseId,
-			previewDatabaseName,
-			previewDatabaseId,
-			dryRun,
-		})
-		const changedPackageJson = updatePackageJson({ packageName, dryRun })
-		const changedEnv = updateEnv({ cookieSecret, dryRun })
+	const changedBranding = updateBrandingTokens({ appName, dryRun })
+	const changedPackageJson = updatePackageJson({ packageName, dryRun })
+	const changedEnv = updateEnv({ cookieSecret, dryRun })
 
-		buildSummaryOutput({
-			dryRun,
-			inputs: {
-				appName,
-				workerName,
-				packageName,
-				databaseName,
-				databaseId: databaseId || '(skipped)',
-				kvNamespaceId: kvNamespaceId || '(skipped)',
-				cookieSecret: '(hidden)',
-			},
-			changes: {
-				brandingTokens: changedBranding,
-				deployWorkflow: changedDeployWorkflow,
-				wranglerJsonc: changedWrangler,
-				mockWorkers: changedMockWorkers,
-				packageJson: changedPackageJson,
-				env: changedEnv,
-			},
-		})
+	buildSummaryOutput({
+		dryRun,
+		inputs: {
+			appName,
+			packageName,
+			cloudflareResources: 'managed during deploy',
+			cookieSecret: '(hidden)',
+		},
+		changes: {
+			brandingTokens: changedBranding,
+			packageJson: changedPackageJson,
+			env: changedEnv,
+		},
+	})
 
-		rl.close()
-		if (dryRun) {
-			logDryRun('Skipping self-delete.')
-		} else {
-			removeSelf()
-		}
-		await maybeInitializeGitAndCommit({ guided, canPrompt, dryRun })
-		showNextSteps()
+	rl.close()
+	if (dryRun) {
+		logDryRun('Skipping self-delete.')
+	} else {
+		removeSelf()
+	}
+	await maybeInitializeGitAndCommit({ guided, canPrompt, dryRun })
+	showNextSteps()
 
-		if (jsonOutput) {
-			console.log(`\n${paint('📦 JSON summary', 'bold')}`)
-			console.log(
-				JSON.stringify(
-					{
-						dryRun,
-						inputs: {
-							appName,
-							workerName,
-							packageName,
-							databaseName,
-							databaseId,
-							kvNamespaceId,
-						},
-						changes: {
-							brandingTokens: changedBranding,
-							deployWorkflow: changedDeployWorkflow,
-							wranglerJsonc: changedWrangler,
-							packageJson: changedPackageJson,
-							env: changedEnv,
-						},
+	if (jsonOutput) {
+		console.log(`\n${paint('📦 JSON summary', 'bold')}`)
+		console.log(
+			JSON.stringify(
+				{
+					dryRun,
+					inputs: {
+						appName,
+						packageName,
+						cloudflareResources: 'managed during deploy',
 					},
-					null,
-					2,
-				),
-			)
-		}
-	} catch (error) {
-		await cleanupCreatedResources(createdResources, dryRun, canPrompt)
-		throw error
+					changes: {
+						brandingTokens: changedBranding,
+						packageJson: changedPackageJson,
+						env: changedEnv,
+					},
+				},
+				null,
+				2,
+			),
+		)
 	}
 }
 

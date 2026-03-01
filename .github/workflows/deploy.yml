@@ -71,6 +71,14 @@ jobs:
       - name: 📥 Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: 🧱 Ensure production resources (D1 + KV)
+        id: resources
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          bun tools/ci/production-resources.ts ensure --out-config wrangler-production.generated.json | tee -a "$GITHUB_OUTPUT"
+
       - name: 🔐 Sync Cloudflare Secrets (bulk)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -87,7 +95,10 @@ jobs:
       - name: 🗄️ Apply D1 Migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: bun ./wrangler-env.ts d1 migrations apply APP_DB --remote
+          WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
+        run:
+          bun ./wrangler-env.ts d1 migrations apply APP_DB --remote --config
+          "$WRANGLER_CONFIG"
 
       - name: ☁️ Deploy to Cloudflare Workers
         id: deploy
@@ -95,10 +106,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           DEPLOY_COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+          WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
         run: |
           set -euo pipefail
 
-          bun run deploy -- --var "APP_COMMIT_SHA:${DEPLOY_COMMIT_SHA}" 2>&1 | tee deploy.log
+          bun run deploy -- --config "$WRANGLER_CONFIG" --var "APP_COMMIT_SHA:${DEPLOY_COMMIT_SHA}" 2>&1 | tee deploy.log
 
           DEPLOY_URL="${APP_BASE_URL:-}"
           if [ -z "$DEPLOY_URL" ]; then

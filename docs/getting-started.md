@@ -32,9 +32,8 @@ The setup flow assumes:
   `package.json`).
 - You can write to files in the repository (the script updates config files and
   replaces template `epicflare` tokens across text files).
-- Wrangler is available. If you are not logged in, the script prints
-  `bunx wrangler login` and stops. In interactive mode, it can run the login for
-  you.
+- Wrangler is optional for post-download setup. It is only needed when you
+  choose to create Cloudflare resources directly from the script.
 
 See `docs/setup-manifest.md` for required resources and secrets.
 
@@ -43,7 +42,7 @@ For optional Cloudflare offerings (R2, Workers AI, AI Gateway, extra KV), see
 
 ## Preflight checks
 
-Run a quick validation of your environment and Wrangler login:
+Run a quick validation of your environment and Wrangler login status:
 
 ```
 bun ./docs/post-download.ts --check
@@ -65,11 +64,17 @@ bun run dev
 
 ## Full Cloudflare setup (deploy)
 
-1. Run the guided setup script and create resources when prompted:
+1. Run the guided setup script:
 
 ```
 bun ./docs/post-download.ts --guided
 ```
+
+This setup step does not create Cloudflare resources or rewrite `wrangler.jsonc`
+resource IDs. The production deploy workflow creates missing D1/KV resources
+automatically on first CI deploy. Cloudflare deploys do not auto-create those
+resources from bindings alone, so the workflow runs an explicit ensure step
+before migrations/deploy.
 
 2. Configure GitHub Actions secrets for deploy:
 
@@ -88,11 +93,11 @@ bun run deploy
 ## Agent/CI setup
 
 Use non-interactive flags or `--defaults`. The `--defaults` flag skips prompts
-and uses defaults based on the current directory name (worker/package/database
-names), plus a generated cookie secret.
+and uses defaults based on the current directory name (app/package naming), plus
+a generated cookie secret.
 
 ```
-bun ./docs/post-download.ts --defaults --database-id <id> --preview-database-id <id> --kv-namespace-id <id>
+bun ./docs/post-download.ts --defaults
 ```
 
 To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
@@ -100,16 +105,16 @@ To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
 
 ### Script flags
 
-- `--guided`: interactive, state-aware flow (resource creation and optional git init/first commit prompt).
+- `--guided`: interactive, state-aware flow (optional git init/first commit
+  prompt).
 - `--check`: run preflight checks only.
 - `--defaults`: accept defaults without prompts.
 - `--dry-run`: show changes without writing or deleting the script.
 - `--json`: print a JSON summary.
-- `--app-name`, `--worker-name`, `--package-name`
-- `--database-name`, `--database-id`
-- `--preview-database-name`, `--preview-database-id`
-- `--kv-namespace-id`, `--kv-namespace-preview-id`
-- `--kv-namespace-title`, `--kv-namespace-preview-title` (used when creating)
+- `--app-name`, `--package-name`, `--cookie-secret`
+
+Cloudflare resources are managed during deploy. The setup script does not create
+Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.
 
 ## Local development
 

@@ -4,7 +4,7 @@ This document describes the infrastructure and secrets that epicflare expects.
 
 ## Cloudflare resources
 
-Create or provide the following resources:
+This project uses the following resources:
 
 - D1 database
   - `database_name`: `<app-name>`
@@ -12,9 +12,11 @@ Create or provide the following resources:
   - `binding`: `OAUTH_KV`
   - `title`: `<app-name>-oauth`
 
-The post-download script will write the resulting IDs into `wrangler.jsonc` and
-replace template `epicflare` branding tokens with your app name across text
-files.
+Production CI deploys now ensure these resources exist and create them when
+missing. The post-download script does not create Cloudflare resources and does
+not rewrite `wrangler.jsonc` resource IDs. Cloudflare deploys do not auto-create
+these resources from bindings alone, so the deploy workflow runs
+`bun tools/ci/production-resources.ts ensure` first.
 
 ## Optional Cloudflare offerings
 
@@ -69,7 +71,8 @@ How to get/set each secret:
 - `CLOUDFLARE_API_TOKEN`
   - In Cloudflare Dashboard, create an API Token with permissions to deploy
     Workers and edit D1 on the target account.
-  - In GitHub: `Settings` → `Secrets and variables` → `Actions` → `New repository secret`.
+  - In GitHub: `Settings` → `Secrets and variables` → `Actions` →
+    `New repository secret`.
 - `COOKIE_SECRET`
   - Generate locally: `openssl rand -hex 32`
   - Store the exact value as a repository secret in GitHub Actions.
