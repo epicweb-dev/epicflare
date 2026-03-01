@@ -50,6 +50,12 @@ Mock Workers do not use Durable Objects, so their Wrangler configs opt into
 `preview_urls = true` and the workflow includes mock version preview links when
 Cloudflare returns them.
 
+Production deploys also ensure required Cloudflare resources exist before
+migrations/deploy:
+
+- D1 database: from `env.production.d1_databases` binding `APP_DB`
+- KV namespace: `OAUTH_KV` (defaults to `<worker-name>-oauth` when creating)
+
 Both the preview and production deploy workflows run a post-deploy healthcheck
 against `<deploy-url>/health` and fail the job if it does not return
 `{ ok: true, commitSha }` with `commitSha` matching the commit SHA deployed by
@@ -59,6 +65,7 @@ If you ever need to do the same operations manually, use:
 
 - `bun tools/ci/preview-resources.ts ensure --worker-name <name> --out-config <path>`
 - `bun tools/ci/preview-resources.ts cleanup --worker-name <name>`
+- `bun tools/ci/production-resources.ts ensure --out-config <path>`
 
 ## Remix package docs
 

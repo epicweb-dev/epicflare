@@ -274,7 +274,9 @@ function isGitAvailable() {
 }
 
 function isInsideGitWorkTree() {
-	return runGit(['rev-parse', '--is-inside-work-tree'], { quiet: true }).status === 0
+	return (
+		runGit(['rev-parse', '--is-inside-work-tree'], { quiet: true }).status === 0
+	)
 }
 
 function hasGitHeadCommit() {
@@ -303,7 +305,9 @@ async function maybeInitializeGitAndCommit({
 	}
 
 	if (!isGitAvailable()) {
-		console.log(`\n${paint('⚠️  Git is not available; skipping git init.', 'yellow')}`)
+		console.log(
+			`\n${paint('⚠️  Git is not available; skipping git init.', 'yellow')}`,
+		)
 		return
 	}
 
@@ -349,7 +353,9 @@ async function maybeInitializeGitAndCommit({
 		return
 	}
 	if (!gitStatus.stdout.trim()) {
-		console.log(paint('\n  No changes to commit for initial git commit.', 'dim'))
+		console.log(
+			paint('\n  No changes to commit for initial git commit.', 'dim'),
+		)
 		return
 	}
 
@@ -640,9 +646,11 @@ function removeSelf() {
 
 function showNextSteps() {
 	console.log(`\n${paint('✅ Next steps', 'bold')}`)
-	console.log('• Run `bunx wrangler login` if you have not yet.')
 	console.log(
-		'• Confirm your Cloudflare D1 and KV resources match `wrangler.jsonc`.',
+		'• For CI deploys, missing production D1/KV resources are auto-created.',
+	)
+	console.log(
+		'• Run `bunx wrangler login` only if you plan to create resources manually.',
 	)
 	console.log('• Add repository secrets for deploys:')
 	console.log('  - CLOUDFLARE_API_TOKEN')
@@ -700,7 +708,7 @@ function reportNonInteractiveFailure(missing: Array<string>) {
 	console.error(`Missing required values: ${missing.join(', ')}`)
 	console.error('Provide flags to continue. Example:')
 	console.error(
-		`bun ./docs/post-download.ts --worker-name ${suggestedWorkerName} --database-name ${suggestedWorkerName} --database-id <id> --kv-namespace-id <id>`,
+		`bun ./docs/post-download.ts --defaults --worker-name ${suggestedWorkerName} --database-name ${suggestedWorkerName}`,
 	)
 	process.exit(1)
 }
@@ -1042,8 +1050,6 @@ async function run() {
 		logDryRun('No files will be modified.')
 	}
 
-	await ensureWranglerLogin(canPrompt)
-
 	async function resolveValue({
 		label,
 		flag,
@@ -1064,7 +1070,9 @@ async function run() {
 		}
 		if (canPrompt) {
 			if (defaultValue && !showDefault) {
-				const value = await prompt(`${label} (press Enter to use generated value)`)
+				const value = await prompt(
+					`${label} (press Enter to use generated value)`,
+				)
 				return value.length > 0 ? value : defaultValue
 			}
 			return await promptRequired(label, defaultValue)
@@ -1107,29 +1115,31 @@ async function run() {
 		args,
 		'kv-namespace-preview-id',
 	)
+	const createResourcesRequested = args['create-resources'] === true
 
 	const needsResourceIds = !providedDatabaseId || !providedKvNamespaceId
 
-	let shouldCreateResources = false
-	if (guided && canPrompt && needsResourceIds) {
+	let shouldCreateResources = createResourcesRequested && needsResourceIds
+	if (guided && canPrompt && needsResourceIds && !shouldCreateResources) {
 		shouldCreateResources = await promptConfirm(
 			'Create D1 and KV resources with Wrangler?',
 			true,
 		)
 	}
 
-	let skipResourceIds = false
+	let skipResourceIds = !shouldCreateResources && (!guided || !canPrompt)
 	if (guided && canPrompt && needsResourceIds && !shouldCreateResources) {
 		skipResourceIds = await promptConfirm(
-			'Skip resource IDs for now and set them later?',
-			false,
+			'Skip resource IDs for now and let CI create missing resources on first deploy?',
+			true,
 		)
 	}
 
 	let databaseId = providedDatabaseId
 	let previewDatabaseId = providedPreviewDatabaseId || providedDatabaseId
 	let kvNamespaceId = providedKvNamespaceId
-	let kvNamespacePreviewId = providedKvNamespacePreviewId || providedKvNamespaceId
+	let kvNamespacePreviewId =
+		providedKvNamespacePreviewId || providedKvNamespaceId
 	const previewDatabaseName = databaseName
 
 	// Track created resources for cleanup on failure
@@ -1142,6 +1152,8 @@ async function run() {
 	}
 
 	if (shouldCreateResources) {
+		await ensureWranglerLogin(canPrompt)
+
 		const kvNamespaceTitle = await resolveValue({
 			label: 'KV namespace title (OAuth/session)',
 			flag: 'kv-namespace-title',
