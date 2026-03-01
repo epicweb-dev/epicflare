@@ -67,6 +67,9 @@ OAuth endpoints are implemented in `worker/oauth-handlers.ts` and routed from
 - Token endpoint: `/oauth/token` (via provider)
 - Client registration: `/oauth/register` (via provider)
 - Supported scopes: `profile`, `email`
+- On `/oauth/authorize`, unauthenticated users can log in inline or via top-nav
+  auth links; those links preserve the full authorize URL in `redirectTo` so
+  successful login/signup returns to the original OAuth request
 
 `/mcp` is protected by `worker/mcp-auth.ts`:
 

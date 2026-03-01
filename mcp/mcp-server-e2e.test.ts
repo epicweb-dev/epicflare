@@ -315,7 +315,30 @@ async function startDevServer(persistDir: string) {
 async function authorizeWithPassword(
 	authorizationUrl: URL,
 	user: { email: string; password: string },
+	options: { simulateInteractiveAuthorize?: boolean } = {},
 ) {
+	if (options.simulateInteractiveAuthorize) {
+		const authorizeInfoUrl = new URL('/oauth/authorize-info', authorizationUrl)
+		authorizeInfoUrl.search = authorizationUrl.search
+		const authorizeInfoResponse = await fetch(authorizeInfoUrl, {
+			headers: { Accept: 'application/json' },
+		})
+		const authorizeInfoPayload = (await authorizeInfoResponse
+			.json()
+			.catch(() => null)) as unknown
+		const authorizeInfo =
+			authorizeInfoPayload &&
+			typeof authorizeInfoPayload === 'object' &&
+			'ok' in authorizeInfoPayload
+				? (authorizeInfoPayload as { ok?: unknown })
+				: null
+		if (!authorizeInfoResponse.ok || authorizeInfo?.ok !== true) {
+			throw new Error(
+				`OAuth authorize-info failed (${authorizeInfoResponse.status}). ${JSON.stringify(authorizeInfoPayload)}`,
+			)
+		}
+	}
+
 	const response = await fetch(authorizationUrl, {
 		method: 'POST',
 		headers: {
@@ -421,6 +444,7 @@ async function ensureAuthorized(
 async function createMcpClient(
 	origin: string,
 	user: { email: string; password: string },
+	options: { simulateInteractiveAuthorize?: boolean } = {},
 ) {
 	const redirectUrl = new URL('/oauth/callback', origin)
 	const provider = createOAuthProvider({
@@ -433,7 +457,7 @@ async function createMcpClient(
 			token_endpoint_auth_method: 'client_secret_post',
 		},
 		authorize: (authorizationUrl) =>
-			authorizeWithPassword(authorizationUrl, user),
+			authorizeWithPassword(authorizationUrl, user, options),
 	})
 	const serverUrl = new URL('/mcp', origin)
 	const transport = new StreamableHTTPClientTransport(serverUrl, {
@@ -454,6 +478,27 @@ async function createMcpClient(
 		},
 	}
 }
+
+test(
+	'mcp server lists tools after interactive oauth authorize flow',
+	async () => {
+		await using database = await createTestDatabase()
+		await using server = await startDevServer(database.persistDir)
+		await using mcpClient = await createMcpClient(
+			server.origin,
+			database.user,
+			{
+				simulateInteractiveAuthorize: true,
+			},
+		)
+
+		const result = await mcpClient.client.listTools()
+		const toolNames = result.tools.map((tool) => tool.name)
+
+		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
+	},
+	{ timeout: defaultTimeoutMs },
+)
 
 test(
 	'mcp server lists tools after oauth flow',

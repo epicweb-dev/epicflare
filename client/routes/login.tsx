@@ -1,4 +1,5 @@
 import { type Handle } from 'remix/component'
+import { buildAuthLink } from '#client/auth-links.ts'
 import { navigate } from '#client/client-router.tsx'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import {
@@ -32,9 +33,7 @@ function normalizeRedirectTo(value: string | null) {
 
 function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
 	const path = mode === 'signup' ? '/signup' : '/login'
-	if (!redirectTo) return path
-	const params = new URLSearchParams({ redirectTo })
-	return `${path}?${params.toString()}`
+	return buildAuthLink(path, redirectTo)
 }
 
 export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
