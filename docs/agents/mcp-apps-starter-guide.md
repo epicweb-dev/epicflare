@@ -93,8 +93,8 @@ When a UI should communicate back to the host agent:
   - `ui/open-link` (request external link open)
 - Keep messages concise and deterministic where possible.
 - For inline `rawHtml` widgets in this repo, prefer reusing the shared runtime
-  in `client/mcp-apps/widget-host-bridge.ts` (built to
-  `public/mcp-apps/widget-host-bridge.js`) instead of duplicating bridge code.
+  in `client/mcp-apps/widget-host-bridge.ts` (bundled into
+  `public/mcp-apps/calculator-widget.js`) instead of duplicating bridge code.
 
 You can also send simplified MCP-UI actions via `window.parent.postMessage(...)`
 (`type: 'tool' | 'prompt' | 'notify' | 'link'`) when using the `mcpApps`
@@ -132,6 +132,11 @@ token values into widget CSS. If you do this in an MCP App resource, set
 
 - Keep resources sandbox-friendly (no unnecessary external dependencies).
 - If loading external assets/APIs, define explicit `_meta.ui.csp` domains.
+- When serving widget JS/CSS from your app origin (for example `/mcp-apps/*` or
+  `/styles.css`), add `Access-Control-Allow-Origin` so sandboxed iframes with
+  opaque origins can fetch assets in ChatGPT/MCP Jam.
+- If you use Workers static assets, configure `assets.run_worker_first` for
+  widget asset paths so those requests pass through your CORS logic.
 - Always set `_meta.ui.domain` and `_meta["openai/widgetDomain"]` to your app's
   dedicated widget origin.
 - Request only required permissions in `_meta.ui.permissions`.

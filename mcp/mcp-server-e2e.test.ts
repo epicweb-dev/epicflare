@@ -576,21 +576,19 @@ test(
 			new URL('/mcp-apps/calculator-widget.js', server.origin),
 		)
 		expect(calculatorWidgetResponse.ok).toBe(true)
+		expect(
+			calculatorWidgetResponse.headers.get('access-control-allow-origin'),
+		).toBe('*')
 		const calculatorWidgetSource = await calculatorWidgetResponse.text()
 		expect(calculatorWidgetSource).toContain('createWidgetHostBridge')
-		expect(calculatorWidgetSource).toContain('./widget-host-bridge.js')
 		expect(calculatorWidgetSource).toContain('Calculator result:')
 		expect(calculatorWidgetSource).toContain('sendUserMessageWithFallback')
+		expect(calculatorWidgetSource).toContain('ui/initialize')
+		expect(calculatorWidgetSource).toContain('ui/message')
 
-		const widgetBridgeResponse = await fetch(
-			new URL('/mcp-apps/widget-host-bridge.js', server.origin),
-		)
-		expect(widgetBridgeResponse.ok).toBe(true)
-		const widgetBridgeSource = await widgetBridgeResponse.text()
-		expect(widgetBridgeSource).toContain('createWidgetHostBridge')
-		expect(widgetBridgeSource).toContain('ui/initialize')
-		expect(widgetBridgeSource).toContain('ui/message')
-		expect(widgetBridgeSource).toContain('type: "prompt"')
+		const stylesResponse = await fetch(new URL('/styles.css', server.origin))
+		expect(stylesResponse.ok).toBe(true)
+		expect(stylesResponse.headers.get('access-control-allow-origin')).toBe('*')
 
 		expect(calculatorResourceMeta?.ui?.domain).toBe(server.origin)
 		expect(calculatorResourceMeta?.['openai/widgetDomain']).toBe(server.origin)

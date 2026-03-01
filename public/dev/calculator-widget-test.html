@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Calculator Widget Test (iframe)</title>
+		<style>
+			body {
+				font-family: system-ui;
+				padding: 1rem;
+			}
+			iframe {
+				border: 1px solid #ccc;
+				width: 100%;
+				min-height: 400px;
+			}
+			.stack {
+				display: grid;
+				gap: 1rem;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Calculator Widget Test</h1>
+		<div class="stack">
+			<section>
+				<h2>Default iframe</h2>
+				<iframe
+					id="calc-default"
+					src="/dev/calculator-ui"
+					title="Calculator"
+				></iframe>
+			</section>
+			<section>
+				<h2>Sandboxed iframe (MCP host style)</h2>
+				<p>
+					Uses <code>sandbox="allow-scripts"</code> to match ChatGPT/MCP Jam
+					widget restrictions.
+				</p>
+				<iframe
+					id="calc-sandboxed"
+					src="/dev/calculator-ui"
+					sandbox="allow-scripts"
+					title="Calculator (sandboxed)"
+				></iframe>
+			</section>
+		</div>
+	</body>
+</html>
