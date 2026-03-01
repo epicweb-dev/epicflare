@@ -50,7 +50,7 @@ function getBridgeErrorMessage(error: unknown) {
 export function createWidgetHostBridge(
 	options: WidgetHostBridgeOptions = {},
 ): WidgetHostBridge {
-	const protocolVersion = options.protocolVersion ?? '2025-11-21'
+	const protocolVersion = options.protocolVersion ?? '2026-01-26'
 	const requestTimeoutMs = options.requestTimeoutMs ?? 1500
 	const appInfo = options.appInfo ?? {
 		name: 'mcp-widget',
@@ -61,7 +61,6 @@ export function createWidgetHostBridge(
 
 	let requestCounter = 0
 	let initialized = false
-	let initializationFailed = false
 	let initializationPromise: Promise<boolean> | null = null
 	const pendingRequests = new Map<string, PendingBridgeRequest>()
 
@@ -166,7 +165,6 @@ export function createWidgetHostBridge(
 
 	async function initialize() {
 		if (initialized) return true
-		if (initializationFailed) return false
 		if (initializationPromise) return initializationPromise
 
 		initializationPromise = sendBridgeRequest('ui/initialize', {
@@ -177,7 +175,6 @@ export function createWidgetHostBridge(
 			.then((response) => {
 				dispatchHostContext(response.result?.hostContext)
 				initialized = true
-				initializationFailed = false
 				try {
 					postMessageToHost({
 						jsonrpc: '2.0',
@@ -190,7 +187,6 @@ export function createWidgetHostBridge(
 				return true
 			})
 			.catch(() => {
-				initializationFailed = true
 				return false
 			})
 			.finally(() => {
