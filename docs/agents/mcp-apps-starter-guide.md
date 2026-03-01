@@ -135,6 +135,8 @@ token values into widget CSS. If you do this in an MCP App resource, set
 - When serving widget JS/CSS from your app origin (for example `/mcp-apps/*` or
   `/styles.css`), add `Access-Control-Allow-Origin` so sandboxed iframes with
   opaque origins can fetch assets in ChatGPT/MCP Jam.
+- If you use Workers static assets, configure `assets.run_worker_first` for
+  widget asset paths so those requests pass through your CORS logic.
 - Always set `_meta.ui.domain` and `_meta["openai/widgetDomain"]` to your app's
   dedicated widget origin.
 - Request only required permissions in `_meta.ui.permissions`.

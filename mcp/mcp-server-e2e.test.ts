@@ -569,13 +569,16 @@ test(
 		expect(calculatorResource?.text).toContain('--color-primary')
 		expect(calculatorResource?.text).toContain('--color-background')
 		expect(calculatorResource?.text).toContain("data-theme='dark'")
-		expect(calculatorResource?.text).toContain('<script src=')
+		expect(calculatorResource?.text).toContain('type="module"')
 		expect(calculatorResource?.text).toContain('/mcp-apps/calculator-widget.js')
 
 		const calculatorWidgetResponse = await fetch(
 			new URL('/mcp-apps/calculator-widget.js', server.origin),
 		)
 		expect(calculatorWidgetResponse.ok).toBe(true)
+		expect(
+			calculatorWidgetResponse.headers.get('access-control-allow-origin'),
+		).toBe('*')
 		const calculatorWidgetSource = await calculatorWidgetResponse.text()
 		expect(calculatorWidgetSource).toContain('createWidgetHostBridge')
 		expect(calculatorWidgetSource).toContain('Calculator result:')
@@ -585,6 +588,7 @@ test(
 
 		const stylesResponse = await fetch(new URL('/styles.css', server.origin))
 		expect(stylesResponse.ok).toBe(true)
+		expect(stylesResponse.headers.get('access-control-allow-origin')).toBe('*')
 
 		expect(calculatorResourceMeta?.ui?.domain).toBe(server.origin)
 		expect(calculatorResourceMeta?.['openai/widgetDomain']).toBe(server.origin)
