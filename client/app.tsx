@@ -6,13 +6,8 @@ import {
 	type SessionInfo,
 	type SessionStatus,
 } from './session.ts'
+import { buildAuthLink } from './auth-links.ts'
 import { colors, spacing, typography } from './styles/tokens.ts'
-
-function buildAuthLink(path: '/login' | '/signup', redirectTo: string | null) {
-	if (!redirectTo) return path
-	const params = new URLSearchParams({ redirectTo })
-	return `${path}?${params.toString()}`
-}
 
 export function App(handle: Handle) {
 	let session: SessionInfo | null = null
