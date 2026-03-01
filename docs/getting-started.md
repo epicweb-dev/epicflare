@@ -70,8 +70,11 @@ bun run dev
 bun ./docs/post-download.ts --guided
 ```
 
-You can skip resource IDs in this step. The production deploy workflow creates
-missing D1/KV resources automatically on first CI deploy.
+This setup step does not create Cloudflare resources or rewrite `wrangler.jsonc`
+resource IDs. The production deploy workflow creates missing D1/KV resources
+automatically on first CI deploy. Cloudflare deploys do not auto-create those
+resources from bindings alone, so the workflow runs an explicit ensure step
+before migrations/deploy.
 
 2. Configure GitHub Actions secrets for deploy:
 
@@ -90,8 +93,8 @@ bun run deploy
 ## Agent/CI setup
 
 Use non-interactive flags or `--defaults`. The `--defaults` flag skips prompts
-and uses defaults based on the current directory name (worker/package/database
-names), plus a generated cookie secret.
+and uses defaults based on the current directory name (app/package naming), plus
+a generated cookie secret.
 
 ```
 bun ./docs/post-download.ts --defaults
@@ -102,19 +105,16 @@ To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
 
 ### Script flags
 
-- `--guided`: interactive, state-aware flow (resource creation and optional git
-  init/first commit prompt).
-- `--create-resources`: force D1/KV creation with Wrangler (requires login).
+- `--guided`: interactive, state-aware flow (optional git init/first commit
+  prompt).
 - `--check`: run preflight checks only.
 - `--defaults`: accept defaults without prompts.
 - `--dry-run`: show changes without writing or deleting the script.
 - `--json`: print a JSON summary.
-- `--app-name`, `--worker-name`, `--package-name`
-- `--database-name`, `--database-id` (optional; CI can auto-create)
-- `--preview-database-name`, `--preview-database-id` (optional)
-- `--kv-namespace-id`, `--kv-namespace-preview-id` (optional; CI can
-  auto-create)
-- `--kv-namespace-title`, `--kv-namespace-preview-title` (used when creating)
+- `--app-name`, `--package-name`, `--cookie-secret`
+
+Cloudflare resources are managed during deploy. The setup script does not create
+Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.
 
 ## Local development
 

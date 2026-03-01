@@ -13,9 +13,10 @@ This project uses the following resources:
   - `title`: `<app-name>-oauth`
 
 Production CI deploys now ensure these resources exist and create them when
-missing. The post-download script can still write IDs into `wrangler.jsonc` when
-provided (or when you explicitly choose resource creation), and it replaces
-template `epicflare` branding tokens with your app name across text files.
+missing. The post-download script does not create Cloudflare resources and does
+not rewrite `wrangler.jsonc` resource IDs. Cloudflare deploys do not auto-create
+these resources from bindings alone, so the deploy workflow runs
+`bun tools/ci/production-resources.ts ensure` first.
 
 ## Optional Cloudflare offerings
 
