@@ -560,12 +560,11 @@ function ensureValidWorkingDirectory() {
 
 function reportNonInteractiveFailure(missing: Array<string>) {
 	const suggestedWorkerName = toKebabCase(basename(process.cwd()))
-	const suggestedPreviewName = `${suggestedWorkerName}-preview`
 	console.error('Non-interactive mode detected; cannot prompt for input.')
 	console.error(`Missing required values: ${missing.join(', ')}`)
 	console.error('Provide flags to continue. Example:')
 	console.error(
-		`bun ./docs/post-download.ts --worker-name ${suggestedWorkerName} --database-name ${suggestedWorkerName} --preview-database-name ${suggestedPreviewName} --database-id <id> --preview-database-id <id> --kv-namespace-id <id>`,
+		`bun ./docs/post-download.ts --worker-name ${suggestedWorkerName} --database-name ${suggestedWorkerName} --database-id <id> --kv-namespace-id <id>`,
 	)
 	process.exit(1)
 }
@@ -958,11 +957,6 @@ async function run() {
 		flag: 'database-name',
 		defaultValue: appName,
 	})
-	const previewDatabaseName = await resolveValue({
-		label: 'D1 database name (preview/test)',
-		flag: 'preview-database-name',
-		defaultValue: `${appName}-preview`,
-	})
 	const cookieSecret = await resolveValue({
 		label: 'COOKIE_SECRET for .env',
 		flag: 'cookie-secret',
@@ -978,11 +972,7 @@ async function run() {
 		'kv-namespace-preview-id',
 	)
 
-	const needsResourceIds =
-		!providedDatabaseId ||
-		!providedPreviewDatabaseId ||
-		!providedKvNamespaceId ||
-		!providedKvNamespacePreviewId
+	const needsResourceIds = !providedDatabaseId || !providedKvNamespaceId
 
 	let shouldCreateResources = false
 	if (guided && canPrompt && needsResourceIds) {
@@ -1001,9 +991,10 @@ async function run() {
 	}
 
 	let databaseId = providedDatabaseId
-	let previewDatabaseId = providedPreviewDatabaseId
+	let previewDatabaseId = providedPreviewDatabaseId || providedDatabaseId
 	let kvNamespaceId = providedKvNamespaceId
-	let kvNamespacePreviewId = providedKvNamespacePreviewId
+	let kvNamespacePreviewId = providedKvNamespacePreviewId || providedKvNamespaceId
+	const previewDatabaseName = databaseName
 
 	// Track created resources for cleanup on failure
 	const createdResources: {
@@ -1020,31 +1011,13 @@ async function run() {
 			flag: 'kv-namespace-title',
 			defaultValue: `${appName}-oauth`,
 		})
-		const kvNamespacePreviewTitle = await resolveValue({
-			label: 'KV namespace title (preview)',
-			flag: 'kv-namespace-preview-title',
-			defaultValue: `${appName}-oauth-preview`,
-		})
 
 		try {
 			databaseId = createD1Database({ databaseName, dryRun })
 			if (!dryRun && databaseId && !databaseId.startsWith('dry-run-')) {
 				createdResources.databases.push({ name: databaseName, id: databaseId })
 			}
-			previewDatabaseId = createD1Database({
-				databaseName: previewDatabaseName,
-				dryRun,
-			})
-			if (
-				!dryRun &&
-				previewDatabaseId &&
-				!previewDatabaseId.startsWith('dry-run-')
-			) {
-				createdResources.databases.push({
-					name: previewDatabaseName,
-					id: previewDatabaseId,
-				})
-			}
+			previewDatabaseId = databaseId
 			kvNamespaceId = createKvNamespace({
 				title: kvNamespaceTitle,
 				preview: false,
@@ -1056,21 +1029,7 @@ async function run() {
 					title: kvNamespaceTitle,
 				})
 			}
-			kvNamespacePreviewId = createKvNamespace({
-				title: kvNamespacePreviewTitle,
-				preview: true,
-				dryRun,
-			})
-			if (
-				!dryRun &&
-				kvNamespacePreviewId &&
-				!kvNamespacePreviewId.startsWith('dry-run-')
-			) {
-				createdResources.kvNamespaces.push({
-					id: kvNamespacePreviewId,
-					title: kvNamespacePreviewTitle,
-				})
-			}
+			kvNamespacePreviewId = kvNamespaceId
 		} catch (error) {
 			await cleanupCreatedResources(createdResources, dryRun, canPrompt)
 			throw error
@@ -1080,19 +1039,12 @@ async function run() {
 			label: 'D1 database id (prod)',
 			flag: 'database-id',
 		})
-		previewDatabaseId = await resolveValue({
-			label: 'D1 database id (preview/test)',
-			flag: 'preview-database-id',
-		})
 		kvNamespaceId = await resolveValue({
 			label: 'KV namespace id (OAuth/session)',
 			flag: 'kv-namespace-id',
 		})
-		kvNamespacePreviewId = await resolveValue({
-			label: 'KV namespace preview id',
-			flag: 'kv-namespace-preview-id',
-			defaultValue: kvNamespaceId,
-		})
+		previewDatabaseId = databaseId
+		kvNamespacePreviewId = kvNamespaceId
 	}
 
 	if (!canPrompt && missingFlags.length > 0) {
