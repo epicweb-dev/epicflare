@@ -4,15 +4,13 @@ This document describes the infrastructure and secrets that epicflare expects.
 
 ## Cloudflare resources
 
-Create or provide the following resources (prod + preview):
+Create or provide the following resources:
 
 - D1 database
   - `database_name`: `<app-name>`
-  - `database_name` (preview): `<app-name>-preview`
 - KV namespace for OAuth/session storage
   - `binding`: `OAUTH_KV`
-  - title (prod): `<app-name>-oauth`
-  - title (preview): `<app-name>-oauth-preview`
+  - `title`: `<app-name>-oauth`
 
 The post-download script will write the resulting IDs into `wrangler.jsonc` and
 replace template `epicflare` branding tokens with your app name across text
@@ -65,6 +63,24 @@ Configure these secrets for GitHub Actions workflows:
 - `RESEND_API_KEY` (optional, required to send via Resend in non-mock
   environments)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
+
+How to get/set each secret:
+
+- `CLOUDFLARE_API_TOKEN`
+  - In Cloudflare Dashboard, create an API Token with permissions to deploy
+    Workers and edit D1 on the target account.
+  - In GitHub: `Settings` → `Secrets and variables` → `Actions` → `New repository secret`.
+- `COOKIE_SECRET`
+  - Generate locally: `openssl rand -hex 32`
+  - Store the exact value as a repository secret in GitHub Actions.
+- `APP_BASE_URL` (optional)
+  - Use your production app URL (for example `https://app.example.com`).
+  - Add only if you want deploy-time health/version checks to use a fixed URL.
+- `RESEND_API_KEY` (optional)
+  - Create in Resend Dashboard (API keys), then store in GitHub Actions secrets.
+- `RESEND_FROM_EMAIL` (optional)
+  - Use your verified sender/from address in Resend (for example
+    `noreply@example.com`), then store it as a secret.
 
 Preview deploys for pull requests create a separate Worker per PR named
 `<app-name>-pr-<number>` (for epicflare: `epicflare-pr-123`) plus one Worker per

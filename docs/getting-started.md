@@ -76,6 +76,8 @@ bun ./docs/post-download.ts --guided
 - `CLOUDFLARE_API_TOKEN` (Workers deploy + D1 edit access on the correct
   account)
 - `COOKIE_SECRET` (generate with `openssl rand -hex 32` or similar)
+- See `docs/setup-manifest.md` (`GitHub Actions secrets`) for full optional
+  secrets and where to get each value.
 
 3. Deploy:
 
@@ -98,7 +100,7 @@ To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
 
 ### Script flags
 
-- `--guided`: interactive, state-aware flow (resource creation optional).
+- `--guided`: interactive, state-aware flow (resource creation and optional git init/first commit prompt).
 - `--check`: run preflight checks only.
 - `--defaults`: accept defaults without prompts.
 - `--dry-run`: show changes without writing or deleting the script.

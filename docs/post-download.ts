@@ -242,6 +242,139 @@ function runWrangler(
 	}
 }
 
+function runGit(
+	args: Array<string>,
+	options?: { stdio?: 'inherit' | 'pipe'; input?: string; quiet?: boolean },
+) {
+	if (!options?.quiet) {
+		console.log(paint(`    Running:\n      git ${args.join(' ')}`, 'dim'))
+	}
+	const result = spawnSync('git', args, {
+		encoding: 'utf8',
+		stdio: options?.stdio ?? 'pipe',
+		input: options?.input,
+	})
+	const status = result.status ?? 1
+	if (status !== 0 && options?.stdio !== 'inherit' && !options?.quiet) {
+		console.error(paint(`  Command failed: git ${args.join(' ')}`, 'yellow'))
+		const output = (result.stdout ?? '') + (result.stderr ?? '')
+		if (output.trim()) {
+			console.error(output)
+		}
+	}
+	return {
+		status,
+		stdout: result.stdout ?? '',
+		stderr: result.stderr ?? '',
+	}
+}
+
+function isGitAvailable() {
+	return runGit(['--version'], { quiet: true }).status === 0
+}
+
+function isInsideGitWorkTree() {
+	return runGit(['rev-parse', '--is-inside-work-tree'], { quiet: true }).status === 0
+}
+
+function hasGitHeadCommit() {
+	return runGit(['rev-parse', '--verify', 'HEAD'], { quiet: true }).status === 0
+}
+
+async function maybeInitializeGitAndCommit({
+	guided,
+	canPrompt,
+	dryRun,
+}: {
+	guided: boolean
+	canPrompt: boolean
+	dryRun: boolean
+}) {
+	if (!guided || !canPrompt) {
+		return
+	}
+
+	const shouldInitializeGit = await promptConfirm(
+		'Initialize git and create an initial commit (`init`)?',
+		false,
+	)
+	if (!shouldInitializeGit) {
+		return
+	}
+
+	if (!isGitAvailable()) {
+		console.log(`\n${paint('⚠️  Git is not available; skipping git init.', 'yellow')}`)
+		return
+	}
+
+	const alreadyInGitRepo = isInsideGitWorkTree()
+	if (dryRun) {
+		logDryRun(
+			alreadyInGitRepo
+				? 'Would create an initial git commit with message "init".'
+				: 'Would run `git init`, `git add .`, and `git commit -m "init"`.',
+		)
+		return
+	}
+
+	if (!alreadyInGitRepo) {
+		console.log(paint('\n  Initializing git repository...', 'dim'))
+		const gitInit = runGit(['init'], { stdio: 'inherit' })
+		if (gitInit.status !== 0) {
+			console.log(
+				`\n${paint('⚠️  Failed to initialize git repository. Continue manually with:', 'yellow')}`,
+			)
+			console.log('  git init')
+			return
+		}
+	}
+
+	if (hasGitHeadCommit()) {
+		console.log(
+			paint(
+				'\n  Git repository already has commits; skipping initial commit.',
+				'dim',
+			),
+		)
+		return
+	}
+
+	const gitStatus = runGit(['status', '--porcelain'], { quiet: true })
+	if (gitStatus.status !== 0) {
+		console.log(
+			`\n${paint('⚠️  Could not read git status. Continue manually with:', 'yellow')}`,
+		)
+		console.log('  git add .')
+		console.log('  git commit -m "init"')
+		return
+	}
+	if (!gitStatus.stdout.trim()) {
+		console.log(paint('\n  No changes to commit for initial git commit.', 'dim'))
+		return
+	}
+
+	console.log(paint('\n  Creating initial git commit...', 'dim'))
+	const gitAdd = runGit(['add', '.'], { stdio: 'inherit' })
+	if (gitAdd.status !== 0) {
+		console.log(
+			`\n${paint('⚠️  Failed to stage files. Continue manually with:', 'yellow')}`,
+		)
+		console.log('  git add .')
+		console.log('  git commit -m "init"')
+		return
+	}
+	const gitCommit = runGit(['commit', '-m', 'init'], { stdio: 'inherit' })
+	if (gitCommit.status !== 0) {
+		console.log(
+			`\n${paint('⚠️  Failed to create initial commit. Continue manually with:', 'yellow')}`,
+		)
+		console.log('  git commit -m "init"')
+		return
+	}
+
+	console.log(paint('  ✓ Created initial git commit "init"', 'green'))
+}
+
 function buildSummaryOutput(summary: {
 	inputs: Record<string, string>
 	changes: Record<string, boolean>
@@ -514,6 +647,9 @@ function showNextSteps() {
 	console.log('• Add repository secrets for deploys:')
 	console.log('  - CLOUDFLARE_API_TOKEN')
 	console.log('  - COOKIE_SECRET')
+	console.log(
+		'• See `docs/setup-manifest.md` for required/optional GitHub secrets and how to get them.',
+	)
 	console.log('• Review `docs/getting-started.md` for the rest of the setup.')
 }
 
@@ -953,7 +1089,7 @@ async function run() {
 		defaultValue: appName,
 	})
 	const databaseName = await resolveValue({
-		label: 'D1 database name (prod)',
+		label: 'D1 database name',
 		flag: 'database-name',
 		defaultValue: appName,
 	})
@@ -1007,7 +1143,7 @@ async function run() {
 
 	if (shouldCreateResources) {
 		const kvNamespaceTitle = await resolveValue({
-			label: 'KV namespace title (prod)',
+			label: 'KV namespace title (OAuth/session)',
 			flag: 'kv-namespace-title',
 			defaultValue: `${appName}-oauth`,
 		})
@@ -1036,7 +1172,7 @@ async function run() {
 		}
 	} else if (!skipResourceIds) {
 		databaseId = await resolveValue({
-			label: 'D1 database id (prod)',
+			label: 'D1 database id',
 			flag: 'database-id',
 		})
 		kvNamespaceId = await resolveValue({
@@ -1102,6 +1238,7 @@ async function run() {
 		} else {
 			removeSelf()
 		}
+		await maybeInitializeGitAndCommit({ guided, canPrompt, dryRun })
 		showNextSteps()
 
 		if (jsonOutput) {
