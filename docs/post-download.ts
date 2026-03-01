@@ -352,39 +352,6 @@ function updateDeployWorkflow({
 	return changed
 }
 
-function updatePreviewWorkflow({
-	workerName,
-	dryRun,
-}: {
-	workerName: string
-	dryRun: boolean
-}) {
-	const workflowPath = join(process.cwd(), '.github/workflows/preview.yml')
-	if (!existsSync(workflowPath)) {
-		return false
-	}
-	const original = readFileSync(workflowPath, 'utf8')
-	const next = original.replace(
-		/\bAPP_NAME="[^"]*"/g,
-		`APP_NAME="${workerName}"`,
-	)
-	const changed = next !== original
-
-	if (dryRun) {
-		logDryRun(
-			changed
-				? 'Would update preview workflow Worker name prefix.'
-				: 'preview workflow already matches the provided Worker name.',
-		)
-		return changed
-	}
-
-	if (changed) {
-		writeFileSync(workflowPath, next)
-	}
-	return changed
-}
-
 function updateMockWorkers({
 	workerName,
 	databaseName,
@@ -946,10 +913,12 @@ async function run() {
 		label,
 		flag,
 		defaultValue,
+		showDefault = true,
 	}: {
 		label: string
 		flag: string
 		defaultValue?: string
+		showDefault?: boolean
 	}) {
 		const valueFromArgs = getArgValue(args, flag)
 		if (valueFromArgs.length > 0) {
@@ -959,6 +928,10 @@ async function run() {
 			return defaultValue
 		}
 		if (canPrompt) {
+			if (defaultValue && !showDefault) {
+				const value = await prompt(`${label} (press Enter to use generated value)`)
+				return value.length > 0 ? value : defaultValue
+			}
 			return await promptRequired(label, defaultValue)
 		}
 		missingFlags.push(`--${flag}`)
@@ -994,6 +967,7 @@ async function run() {
 		label: 'COOKIE_SECRET for .env',
 		flag: 'cookie-secret',
 		defaultValue: cookieSecretDefault,
+		showDefault: false,
 	})
 
 	const providedDatabaseId = getArgValue(args, 'database-id')
@@ -1128,7 +1102,6 @@ async function run() {
 	try {
 		const changedBranding = updateBrandingTokens({ appName, dryRun })
 		const changedDeployWorkflow = updateDeployWorkflow({ databaseName, dryRun })
-		const changedPreviewWorkflow = updatePreviewWorkflow({ workerName, dryRun })
 		const changedWrangler = updateWrangler({
 			workerName,
 			databaseName,
@@ -1158,16 +1131,12 @@ async function run() {
 				packageName,
 				databaseName,
 				databaseId: databaseId || '(skipped)',
-				previewDatabaseName,
-				previewDatabaseId: previewDatabaseId || '(skipped)',
 				kvNamespaceId: kvNamespaceId || '(skipped)',
-				kvNamespacePreviewId: kvNamespacePreviewId || '(skipped)',
 				cookieSecret: '(hidden)',
 			},
 			changes: {
 				brandingTokens: changedBranding,
 				deployWorkflow: changedDeployWorkflow,
-				previewWorkflow: changedPreviewWorkflow,
 				wranglerJsonc: changedWrangler,
 				mockWorkers: changedMockWorkers,
 				packageJson: changedPackageJson,
@@ -1195,10 +1164,7 @@ async function run() {
 							packageName,
 							databaseName,
 							databaseId,
-							previewDatabaseName,
-							previewDatabaseId,
 							kvNamespaceId,
-							kvNamespacePreviewId,
 						},
 						changes: {
 							brandingTokens: changedBranding,
