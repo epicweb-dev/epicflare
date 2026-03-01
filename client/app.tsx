@@ -8,6 +8,12 @@ import {
 } from './session.ts'
 import { colors, spacing, typography } from './styles/tokens.ts'
 
+function buildAuthLink(path: '/login' | '/signup', redirectTo: string | null) {
+	if (!redirectTo) return path
+	const params = new URLSearchParams({ redirectTo })
+	return `${path}?${params.toString()}`
+}
+
 export function App(handle: Handle) {
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
@@ -71,6 +77,13 @@ export function App(handle: Handle) {
 		const isSessionReady = sessionStatus === 'ready'
 		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
 		const showAuthLinks = isSessionReady && !isLoggedIn
+		const oauthRedirectTo =
+			typeof window !== 'undefined' &&
+			window.location.pathname === '/oauth/authorize'
+				? `${window.location.pathname}${window.location.search}`
+				: null
+		const loginHref = buildAuthLink('/login', oauthRedirectTo)
+		const signupHref = buildAuthLink('/signup', oauthRedirectTo)
 
 		return (
 			<main
@@ -94,10 +107,10 @@ export function App(handle: Handle) {
 					</a>
 					{showAuthLinks ? (
 						<>
-							<a href="/login" css={navLinkCss}>
+							<a href={loginHref} css={navLinkCss}>
 								Login
 							</a>
-							<a href="/signup" css={navLinkCss}>
+							<a href={signupHref} css={navLinkCss}>
 								Signup
 							</a>
 						</>
