@@ -41,3 +41,22 @@ test('calculator widget buttons respond in sandboxed iframe', async ({
 	await sandboxedIframe.getByRole('button', { name: '=' }).click()
 	await expect(resultEl).toHaveText('10')
 })
+
+test('sandboxed calculator sends result back to host chat on =', async ({
+	page,
+}) => {
+	await page.goto('/dev/calculator-widget-test')
+	const sandboxedIframe = page.frameLocator('#calc-sandboxed')
+	await expect(
+		sandboxedIframe.getByRole('heading', { name: 'Calculator' }),
+	).toBeVisible()
+
+	await sandboxedIframe.getByRole('button', { name: '7' }).click()
+	await sandboxedIframe.getByRole('button', { name: '+' }).click()
+	await sandboxedIframe.getByRole('button', { name: '3' }).click()
+	await sandboxedIframe.getByRole('button', { name: '=' }).click()
+
+	await expect(
+		page.locator('[data-host-chat="calc-sandboxed"] [data-chat-message]'),
+	).toContainText('Calculator result: 7 + 3 = 10')
+})
