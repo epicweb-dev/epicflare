@@ -40,10 +40,11 @@ Avoid `page.locator('css')` unless no accessible alternative exists.
 - The base URL defaults to `http://localhost:8788` for Playwright to avoid
   colliding with the dev server. Override with `PLAYWRIGHT_BASE_URL` or
   `PLAYWRIGHT_PORT`.
-- Playwright sets `CLOUDFLARE_ENV=test` so Wrangler uses `.env.test`.
+- Playwright sets `CLOUDFLARE_ENV=test`; Wrangler still loads `.env` values for
+  local secrets.
 - Ensure the `env.test` section in `wrangler.jsonc` includes assets, KV, and
   durable objects since these are not inherited from top-level Wrangler config.
-- `.env.test` supplies a `COOKIE_SECRET` var for local sessions.
+- Ensure `.env` includes a `COOKIE_SECRET` var for local sessions.
 - Client routes live in `client/app.tsx` and `client/routes/index.tsx`.
 - API endpoints are defined in `server/routes.ts` and mapped in
   `server/router.ts`.

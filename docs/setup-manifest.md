@@ -52,7 +52,8 @@ Local development uses `.env`, which Wrangler loads automatically:
 - `RESEND_API_KEY` (optional, required to send via Resend)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
 
-Tests use `.env.test` when `CLOUDFLARE_ENV=test` (set by Playwright).
+Tests run with `CLOUDFLARE_ENV=test` (set by Playwright) and still read local
+secrets from `.env`.
 
 ## GitHub Actions secrets
 

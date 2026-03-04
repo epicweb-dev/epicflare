@@ -485,24 +485,26 @@ function updateEnv({
 	dryRun: boolean
 }) {
 	const envPath = join(process.cwd(), '.env')
-	const testPath = join(process.cwd(), '.env.test')
+	const examplePath = join(process.cwd(), '.env.example')
 
 	const hasEnv = existsSync(envPath)
-	const testContent = existsSync(testPath) ? readFileSync(testPath, 'utf8') : ''
+	const exampleContent = existsSync(examplePath)
+		? readFileSync(examplePath, 'utf8')
+		: ''
 
 	const envContent = hasEnv
 		? readFileSync(envPath, 'utf8')
-		: testContent || 'COOKIE_SECRET=\n'
+		: exampleContent || 'COOKIE_SECRET=\n'
 
 	const next = envContent.replace(
 		/^COOKIE_SECRET=.*$/m,
 		`COOKIE_SECRET=${cookieSecret}`,
 	)
-	const changed = next !== envContent || (!hasEnv && Boolean(testContent))
+	const changed = next !== envContent || (!hasEnv && Boolean(exampleContent))
 
 	if (dryRun) {
 		if (!hasEnv) {
-			logDryRun('Would create .env from .env.test.')
+			logDryRun('Would create .env from .env.example.')
 		}
 		logDryRun(
 			changed
@@ -512,8 +514,8 @@ function updateEnv({
 		return changed
 	}
 
-	if (!hasEnv && testContent) {
-		writeFileSync(envPath, testContent)
+	if (!hasEnv && exampleContent) {
+		writeFileSync(envPath, exampleContent)
 	}
 
 	writeFileSync(envPath, next.endsWith('\n') ? next : `${next}\n`)
