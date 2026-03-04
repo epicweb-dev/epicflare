@@ -49,3 +49,18 @@ We use bun for installing dependencies and running scripts. Do not use npm.
 - [Request Lifecycle](./docs/architecture/request-lifecycle.md)
 - [Authentication](./docs/architecture/authentication.md)
 - [Data Storage](./docs/architecture/data-storage.md)
+
+## Cursor Cloud specific instructions
+
+- Bun is the only package manager. See `package.json` scripts for all commands.
+- `bun run dev` starts three processes (client esbuild, Wrangler worker on
+  `:3742`, mock-Resend on `:8788`). Health check: `GET /health` returns
+  `{"ok":true}`.
+- **Port conflict**: E2E tests (`bun run test:e2e`) also use port `8788` for
+  the Playwright webServer. Stop the dev server before running E2E tests,
+  otherwise Playwright's `reuseExistingServer: true` connects to the mock
+  Resend server instead of the app.
+- Run `bun run migrate:local` after install for dev, and `bun run migrate:e2e`
+  before E2E tests (Playwright webServer command handles this automatically).
+- No external services required; Wrangler emulates D1, KV, and Durable Objects
+  locally.
