@@ -255,6 +255,59 @@ function hasGitHeadCommit() {
 	return runGit(['rev-parse', '--verify', 'HEAD'], { quiet: true }).status === 0
 }
 
+function normalizeGitRemoteToPackageRepositoryUrl(remoteUrl: string) {
+	const trimmed = remoteUrl.trim()
+	if (trimmed.length === 0) {
+		return ''
+	}
+	if (trimmed.startsWith('git+')) {
+		return trimmed
+	}
+	if (trimmed.startsWith('git@')) {
+		const match = /^git@([^:]+):(.+)$/.exec(trimmed)
+		if (match) {
+			return `git+ssh://git@${match[1]}/${match[2]}`
+		}
+	}
+	if (trimmed.startsWith('ssh://')) {
+		return `git+${trimmed}`
+	}
+	if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+		return `git+${trimmed}`
+	}
+	if (trimmed.startsWith('git://')) {
+		return `git+${trimmed}`
+	}
+	return trimmed
+}
+
+function getGitOriginRepositoryUrl() {
+	if (!isGitAvailable() || !isInsideGitWorkTree()) {
+		return ''
+	}
+	const remoteOrigin = runGit(['config', '--get', 'remote.origin.url'], {
+		quiet: true,
+	})
+	if (remoteOrigin.status !== 0) {
+		return ''
+	}
+	return normalizeGitRemoteToPackageRepositoryUrl(remoteOrigin.stdout)
+}
+
+function buildGithubRepositoryUrl({
+	githubUsername,
+	packageName,
+}: {
+	githubUsername: string
+	packageName: string
+}) {
+	const owner = githubUsername.trim().replace(/^@/, '')
+	if (owner.length === 0 || packageName.trim().length === 0) {
+		return ''
+	}
+	return `git+ssh://git@github.com/${owner}/${packageName}.git`
+}
+
 async function maybeInitializeGitAndCommit({
 	guided,
 	canPrompt,
@@ -372,15 +425,28 @@ function buildSummaryOutput(summary: {
 
 function updatePackageJson({
 	packageName,
+	repositoryUrl,
 	dryRun,
 }: {
 	packageName: string
+	repositoryUrl: string
 	dryRun: boolean
 }) {
 	const packageJsonPath = join(process.cwd(), 'package.json')
 	const original = readFileSync(packageJsonPath, 'utf8')
 	const packageJson = JSON.parse(original)
 	packageJson.name = packageName
+	const hasTemplateRepositoryUrl =
+		typeof packageJson.repository?.url === 'string' &&
+		packageJson.repository.url.includes('epicweb-dev/epicflare')
+	if (repositoryUrl.length > 0) {
+		packageJson.repository = {
+			type: 'git',
+			url: repositoryUrl,
+		}
+	} else if (hasTemplateRepositoryUrl) {
+		delete packageJson.repository
+	}
 	if (packageJson.scripts?.['post-download']) {
 		delete packageJson.scripts['post-download']
 	}
@@ -390,7 +456,7 @@ function updatePackageJson({
 	if (dryRun) {
 		logDryRun(
 			changed
-				? 'Would update package.json name and scripts.'
+				? 'Would update package.json name, scripts, and git metadata.'
 				: 'package.json already matches provided values.',
 		)
 		return changed
@@ -615,6 +681,22 @@ async function run() {
 		defaultValue: defaultAppName,
 	})
 	const packageName = toKebabCase(appName)
+	const detectedRepositoryUrl = getGitOriginRepositoryUrl()
+	const githubUsernameFromArgs = getArgValue(args, 'github-username').trim()
+	let githubUsername = githubUsernameFromArgs
+	if (
+		detectedRepositoryUrl.length === 0 &&
+		githubUsername.length === 0 &&
+		canPrompt &&
+		!useDefaults
+	) {
+		githubUsername = await prompt(
+			'GitHub username for repository metadata (optional)',
+		)
+	}
+	const repositoryUrl =
+		detectedRepositoryUrl ||
+		buildGithubRepositoryUrl({ githubUsername, packageName })
 	const cookieSecret = randomBytes(32).toString('hex')
 
 	if (!canPrompt && missingFlags.length > 0) {
@@ -622,7 +704,11 @@ async function run() {
 	}
 
 	const changedBranding = updateBrandingTokens({ appName, dryRun })
-	const changedPackageJson = updatePackageJson({ packageName, dryRun })
+	const changedPackageJson = updatePackageJson({
+		packageName,
+		repositoryUrl,
+		dryRun,
+	})
 	const changedEnv = updateEnv({ cookieSecret, dryRun })
 
 	buildSummaryOutput({
@@ -630,6 +716,8 @@ async function run() {
 		inputs: {
 			appName,
 			packageName,
+			githubUsername: githubUsername || '(none)',
+			repositoryUrl: repositoryUrl || '(none)',
 			cookieSecret: '(hidden)',
 		},
 		changes: {
@@ -657,6 +745,8 @@ async function run() {
 					inputs: {
 						appName,
 						packageName,
+						githubUsername: githubUsername || '(none)',
+						repositoryUrl: repositoryUrl || '(none)',
 						cookieSecret: '(hidden)',
 					},
 					changes: {
