@@ -75,5 +75,8 @@ Common commands:
 - `bun run test:e2e`
 - `bun run test:e2e e2e/login.spec.ts`
 
+If `.env` is missing, `test:e2e` copies `.env.example` to `.env` before running
+Playwright.
+
 These tests are executed by the `validate` gate, which also runs `lint:fix` and
 the MCP E2E suite.
