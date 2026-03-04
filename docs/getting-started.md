@@ -103,15 +103,25 @@ bun ./docs/post-download.ts --defaults
 To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
 `--json`. To run preflight checks only, add `--check`.
 
+When running in a non-TTY shell, the script fails fast if required prompt values
+are missing (for example `--app-name` without `--defaults`, and init choice when
+`--guided` is set without `--init` or `--no-init`).
+
 ### Script flags
 
 - `--guided`: interactive, state-aware flow (optional git init/first commit
   prompt).
+- `--init` / `--no-init`: force or skip git init + initial `init` commit.
 - `--check`: run preflight checks only.
 - `--defaults`: accept defaults without prompts.
 - `--dry-run`: show changes without writing or deleting the script.
 - `--json`: print a JSON summary.
-- `--app-name`
+- `--app-name`: app name used for branding token replacement.
+- `--package-name`: override package name (defaults to kebab-cased app name).
+- `--github-username`: derives repository URL as
+  `git+ssh://git@github.com/<username>/<package-name>.git`.
+- `--repository-url`: explicit repository URL override.
+- `--cookie-secret`: explicit `COOKIE_SECRET` value (otherwise generated).
 
 Cloudflare resources are managed during deploy. The setup script does not create
 Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.

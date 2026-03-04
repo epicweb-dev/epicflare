@@ -312,20 +312,32 @@ async function maybeInitializeGitAndCommit({
 	guided,
 	canPrompt,
 	dryRun,
+	shouldInitializeGit,
 }: {
 	guided: boolean
 	canPrompt: boolean
 	dryRun: boolean
+	shouldInitializeGit: boolean | null
 }) {
-	if (!guided || !canPrompt) {
+	const alreadyInGitRepo = isInsideGitWorkTree()
+	if (alreadyInGitRepo && shouldInitializeGit === null) {
 		return
 	}
 
-	const shouldInitializeGit = await promptConfirm(
-		'Initialize git and create an initial commit (`init`)?',
-		false,
-	)
-	if (!shouldInitializeGit) {
+	let shouldInitialize = shouldInitializeGit
+	if (shouldInitialize === false) {
+		return
+	}
+	if (shouldInitialize === null) {
+		if (!guided || !canPrompt) {
+			return
+		}
+		shouldInitialize = await promptConfirm(
+			'Initialize git and create an initial commit (`init`)?',
+			false,
+		)
+	}
+	if (!shouldInitialize) {
 		return
 	}
 
@@ -336,7 +348,6 @@ async function maybeInitializeGitAndCommit({
 		return
 	}
 
-	const alreadyInGitRepo = isInsideGitWorkTree()
 	if (dryRun) {
 		logDryRun(
 			alreadyInGitRepo
@@ -544,6 +555,18 @@ function parseArgs(args: Array<string>) {
 		if (!arg.startsWith('--')) {
 			continue
 		}
+		if (arg.startsWith('--no-')) {
+			const key = arg.slice(5)
+			parsed[key] = false
+			continue
+		}
+		const equalsIndex = arg.indexOf('=')
+		if (equalsIndex > 2) {
+			const key = arg.slice(2, equalsIndex)
+			const value = arg.slice(equalsIndex + 1)
+			parsed[key] = value
+			continue
+		}
 		const key = arg.slice(2)
 		const next = args[index + 1]
 		if (!next || next.startsWith('--')) {
@@ -559,6 +582,56 @@ function parseArgs(args: Array<string>) {
 function getArgValue(args: Record<string, string | boolean>, key: string) {
 	const value = args[key]
 	return typeof value === 'string' ? value : ''
+}
+
+function parseBooleanLikeValue(
+	value: string | boolean | undefined,
+	key: string,
+): boolean | null {
+	if (typeof value === 'boolean') {
+		return value
+	}
+	if (typeof value !== 'string') {
+		return null
+	}
+	const normalized = value.trim().toLowerCase()
+	if (normalized.length === 0) {
+		return null
+	}
+	if (
+		normalized === 'true' ||
+		normalized === '1' ||
+		normalized === 'yes' ||
+		normalized === 'y'
+	) {
+		return true
+	}
+	if (
+		normalized === 'false' ||
+		normalized === '0' ||
+		normalized === 'no' ||
+		normalized === 'n'
+	) {
+		return false
+	}
+	console.error(`Invalid boolean value for --${key}: ${value}`)
+	process.exit(1)
+}
+
+function getBooleanArg(
+	args: Record<string, string | boolean>,
+	key: string,
+	defaultValue = false,
+) {
+	const parsed = parseBooleanLikeValue(args[key], key)
+	return parsed ?? defaultValue
+}
+
+function getOptionalBooleanArg(
+	args: Record<string, string | boolean>,
+	key: string,
+) {
+	return parseBooleanLikeValue(args[key], key)
 }
 
 function getMissingRootFiles() {
@@ -630,11 +703,12 @@ async function run() {
 	console.log(`${paint('Tip:', 'dim')} Press Enter to accept defaults.\n`)
 
 	const args = parseArgs(process.argv.slice(2))
-	const useDefaults = args.defaults === true
-	const dryRun = args['dry-run'] === true
-	const guided = args.guided === true
-	const checkOnly = args.check === true
-	const jsonOutput = args.json === true
+	const useDefaults = getBooleanArg(args, 'defaults')
+	const dryRun = getBooleanArg(args, 'dry-run')
+	const guided = getBooleanArg(args, 'guided')
+	const checkOnly = getBooleanArg(args, 'check')
+	const jsonOutput = getBooleanArg(args, 'json')
+	const shouldInitializeGit = getOptionalBooleanArg(args, 'init')
 	const canPrompt = Boolean(process.stdin.isTTY && process.stdout.isTTY)
 	const missingFlags: Array<string> = []
 
@@ -656,10 +730,12 @@ async function run() {
 		label,
 		flag,
 		defaultValue,
+		requiredInNonInteractive,
 	}: {
 		label: string
 		flag: string
 		defaultValue?: string
+		requiredInNonInteractive?: boolean
 	}) {
 		const valueFromArgs = getArgValue(args, flag)
 		if (valueFromArgs.length > 0) {
@@ -671,20 +747,27 @@ async function run() {
 		if (canPrompt) {
 			return await promptRequired(label, defaultValue)
 		}
-		missingFlags.push(`--${flag}`)
+		if (requiredInNonInteractive) {
+			missingFlags.push(`--${flag}`)
+		}
 		return ''
 	}
 
+	const appNameFromArgs = getArgValue(args, 'app-name')
 	const appName = await resolveValue({
 		label: 'App name (base for defaults)',
 		flag: 'app-name',
 		defaultValue: defaultAppName,
+		requiredInNonInteractive: !useDefaults && appNameFromArgs.length === 0,
 	})
-	const packageName = toKebabCase(appName)
+	const packageName =
+		getArgValue(args, 'package-name').trim() || toKebabCase(appName)
+	const repositoryUrlFromArg = getArgValue(args, 'repository-url').trim()
 	const detectedRepositoryUrl = getGitOriginRepositoryUrl()
 	const githubUsernameFromArgs = getArgValue(args, 'github-username').trim()
 	let githubUsername = githubUsernameFromArgs
 	if (
+		repositoryUrlFromArg.length === 0 &&
 		detectedRepositoryUrl.length === 0 &&
 		githubUsername.length === 0 &&
 		canPrompt &&
@@ -695,9 +778,17 @@ async function run() {
 		)
 	}
 	const repositoryUrl =
-		detectedRepositoryUrl ||
-		buildGithubRepositoryUrl({ githubUsername, packageName })
-	const cookieSecret = randomBytes(32).toString('hex')
+		repositoryUrlFromArg ||
+		buildGithubRepositoryUrl({ githubUsername, packageName }) ||
+		detectedRepositoryUrl
+	const cookieSecret =
+		getArgValue(args, 'cookie-secret').trim() || randomBytes(32).toString('hex')
+
+	const requiresInitChoice =
+		guided && shouldInitializeGit === null && !isInsideGitWorkTree()
+	if (!canPrompt && requiresInitChoice) {
+		missingFlags.push('--init or --no-init')
+	}
 
 	if (!canPrompt && missingFlags.length > 0) {
 		reportNonInteractiveFailure(missingFlags)
@@ -732,7 +823,12 @@ async function run() {
 	} else {
 		removeSelf()
 	}
-	await maybeInitializeGitAndCommit({ guided, canPrompt, dryRun })
+	await maybeInitializeGitAndCommit({
+		guided,
+		canPrompt,
+		dryRun,
+		shouldInitializeGit,
+	})
 	rl.close()
 	showNextSteps()
 
