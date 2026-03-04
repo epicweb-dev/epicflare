@@ -111,7 +111,7 @@ To preview changes without writing, add `--dry-run`. To emit a JSON summary, add
 - `--defaults`: accept defaults without prompts.
 - `--dry-run`: show changes without writing or deleting the script.
 - `--json`: print a JSON summary.
-- `--app-name`, `--package-name`, `--cookie-secret`
+- `--app-name`
 
 Cloudflare resources are managed during deploy. The setup script does not create
 Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.

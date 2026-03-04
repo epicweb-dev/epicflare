@@ -581,7 +581,6 @@ async function run() {
 	ensureValidWorkingDirectory()
 
 	const defaultAppName = toKebabCase(basename(process.cwd()))
-	const cookieSecretDefault = randomBytes(32).toString('hex')
 
 	if (dryRun) {
 		logDryRun('No files will be modified.')
@@ -591,12 +590,10 @@ async function run() {
 		label,
 		flag,
 		defaultValue,
-		showDefault = true,
 	}: {
 		label: string
 		flag: string
 		defaultValue?: string
-		showDefault?: boolean
 	}) {
 		const valueFromArgs = getArgValue(args, flag)
 		if (valueFromArgs.length > 0) {
@@ -606,12 +603,6 @@ async function run() {
 			return defaultValue
 		}
 		if (canPrompt) {
-			if (defaultValue && !showDefault) {
-				const value = await prompt(
-					`${label} (press Enter to use generated value)`,
-				)
-				return value.length > 0 ? value : defaultValue
-			}
 			return await promptRequired(label, defaultValue)
 		}
 		missingFlags.push(`--${flag}`)
@@ -623,17 +614,8 @@ async function run() {
 		flag: 'app-name',
 		defaultValue: defaultAppName,
 	})
-	const packageName = await resolveValue({
-		label: 'Package name',
-		flag: 'package-name',
-		defaultValue: appName,
-	})
-	const cookieSecret = await resolveValue({
-		label: 'COOKIE_SECRET for .env',
-		flag: 'cookie-secret',
-		defaultValue: cookieSecretDefault,
-		showDefault: false,
-	})
+	const packageName = toKebabCase(appName)
+	const cookieSecret = randomBytes(32).toString('hex')
 
 	if (!canPrompt && missingFlags.length > 0) {
 		reportNonInteractiveFailure(missingFlags)
@@ -648,7 +630,6 @@ async function run() {
 		inputs: {
 			appName,
 			packageName,
-			cloudflareResources: 'managed during deploy',
 			cookieSecret: '(hidden)',
 		},
 		changes: {
@@ -658,13 +639,13 @@ async function run() {
 		},
 	})
 
-	rl.close()
 	if (dryRun) {
 		logDryRun('Skipping self-delete.')
 	} else {
 		removeSelf()
 	}
 	await maybeInitializeGitAndCommit({ guided, canPrompt, dryRun })
+	rl.close()
 	showNextSteps()
 
 	if (jsonOutput) {
@@ -676,7 +657,7 @@ async function run() {
 					inputs: {
 						appName,
 						packageName,
-						cloudflareResources: 'managed during deploy',
+						cookieSecret: '(hidden)',
 					},
 					changes: {
 						brandingTokens: changedBranding,
