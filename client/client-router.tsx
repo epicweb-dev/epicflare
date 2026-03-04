@@ -72,7 +72,11 @@ function readStoredScrollPositions() {
 		return parseStoredScrollPositions(rawPositions)
 	} catch (error: unknown) {
 		console.error(error)
-		window.sessionStorage.removeItem(scrollPositionsStorageKey)
+		try {
+			window.sessionStorage.removeItem(scrollPositionsStorageKey)
+		} catch {
+			// sessionStorage may be unavailable in some environments
+		}
 		return {}
 	}
 }
@@ -107,6 +111,9 @@ function restoreScrollPositionForHistoryEntry(historyEntryKey: string | null) {
 
 function initializeScrollRestoration() {
 	if (activeHistoryEntryKey) return
+	if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+		window.history.scrollRestoration = 'manual'
+	}
 	activeHistoryEntryKey = ensureHistoryEntryKey()
 	restoreScrollPositionForHistoryEntry(activeHistoryEntryKey)
 }
@@ -394,13 +401,15 @@ export function navigate(to: string) {
 	activeHistoryEntryKey = createHistoryEntryKey()
 	window.history.pushState(
 		{
-			...toHistoryStateObject(window.history.state),
 			key: activeHistoryEntryKey,
 		},
 		'',
 		nextPath,
 	)
 	notify()
+	requestAnimationFrame(() => {
+		window.scrollTo(0, 0)
+	})
 }
 
 export function Router(handle: Handle, setup: RouterSetup) {
