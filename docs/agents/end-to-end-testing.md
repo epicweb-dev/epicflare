@@ -66,9 +66,6 @@ handled by the static asset fetcher in `worker/index.ts`.
   reload.
 - Use the same marker pattern for form submissions (for example logout) when
   verifying router-handled form navigation.
-- For scroll-restoration regressions, trigger link clicks from `page.evaluate`
-  when needed so Playwright does not auto-scroll links into view before click,
-  which can overwrite the scroll position you intend to assert.
 
 ## Running tests
 
