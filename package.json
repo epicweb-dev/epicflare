@@ -54,6 +54,9 @@
     "wrangler": "^4.70.0"
   },
   "prettier": "@epic-web/config/prettier",
+  "overrides": {
+    "@modelcontextprotocol/sdk": "1.26.0"
+  },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.3.0",
     "@epic-web/invariant": "^1.0.0",
