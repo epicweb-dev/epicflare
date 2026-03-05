@@ -41,26 +41,26 @@
     "test:mcp": "bun run build:mcp-apps && bun test mcp/mcp-server-e2e.test.ts"
   },
   "devDependencies": {
-    "@epic-web/config": "^1.24.0",
+    "@epic-web/config": "^1.24.1",
     "@playwright/test": "^1.58.2",
-    "@types/bun": "^1.3.9",
+    "@types/bun": "^1.3.10",
     "@types/set-cookie-parser": "^2.4.10",
     "concurrently": "^9.2.1",
     "esbuild": "^0.27.3",
-    "oxlint": "^1.50.0",
+    "oxlint": "^1.51.0",
     "prettier": "^3.8.1",
     "set-cookie-parser": "^3.0.1",
     "typescript": "^5.9.3",
-    "wrangler": "^4.69.0"
+    "wrangler": "^4.70.0"
   },
   "prettier": "@epic-web/config/prettier",
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.2.4",
+    "@cloudflare/workers-oauth-provider": "^0.3.0",
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "6.1.0",
     "@modelcontextprotocol/ext-apps": "^1.1.2",
     "@modelcontextprotocol/sdk": "1.26.0",
-    "agents": "^0.6.0",
+    "agents": "^0.7.4",
     "get-port": "^7.1.0",
     "remix": "3.0.0-alpha.3",
     "zod": "^4.3.6"
