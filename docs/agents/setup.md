@@ -28,9 +28,59 @@ Quick notes for getting a local epicflare environment running.
 
 - `bun run validate` runs format check, lint fix, build, typecheck, Playwright
   tests, and MCP E2E tests.
+- `bun run format` applies formatting updates.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
+
+## Documentation maintenance
+
+- Update `docs/agents` when behavior, workflows, architecture notes, or
+  verification guidance change.
+- Treat docs updates as part of done work.
+- Keep `AGENTS.md` concise and index-like; put details in focused docs.
+- When failures repeat, promote lessons from docs into tests, lint rules, or
+  scripts.
+
+## Seed test account
+
+Use this script to ensure a known test login exists in any deployed environment:
+
+- Local D1 (default): `bun tools/seed-test-data.ts`
+- Local D1 with custom persisted state:
+  - `bun tools/seed-test-data.ts --local --persist-to .wrangler/state/e2e`
+- Remote D1:
+  - `bun tools/seed-test-data.ts --remote --config <wrangler-config-path>`
+- Default credentials:
+  - email: `kody@kcd.dev`
+  - password: `kodylovesyou`
+- Override credentials when needed:
+  - `bun tools/seed-test-data.ts --email <email> --password <password>`
+- When changing DB schema/model definitions or migrations, review
+  `tools/seed-test-data.ts` and update it so seeded data still matches the new
+  model and remains useful for local and preview verification.
+
+### Reset, re-migrate, then seed
+
+For a full local reset before seeding:
+
+1. Drop app tables:
+   - `bun ./wrangler-env.ts d1 execute APP_DB --local --command "PRAGMA foreign_keys=OFF; DROP TABLE IF EXISTS password_resets; DROP TABLE IF EXISTS mock_resend_messages; DROP TABLE IF EXISTS users; PRAGMA foreign_keys=ON;"`
+2. Re-apply migrations:
+   - `bun run migrate:local`
+3. Seed test account:
+   - `bun tools/seed-test-data.ts`
+
+For preview environments, we do a full resource reset:
+
+1. Delete preview resources:
+   - `bun tools/ci/preview-resources.ts cleanup --worker-name <preview-worker-name>`
+2. Recreate preview resources and config:
+   - `bun tools/ci/preview-resources.ts ensure --worker-name <preview-worker-name> --out-config wrangler-preview.generated.json`
+3. Re-apply remote migrations:
+   - `CLOUDFLARE_ENV=preview bun ./wrangler-env.ts d1 migrations apply APP_DB --remote --config wrangler-preview.generated.json`
+4. Seed test account:
+   - `bun tools/seed-test-data.ts --remote --config wrangler-preview.generated.json`
 
 ## PR preview deployments
 
@@ -60,6 +110,9 @@ Both the preview and production deploy workflows run a post-deploy healthcheck
 against `<deploy-url>/health` and fail the job if it does not return
 `{ ok: true, commitSha }` with `commitSha` matching the commit SHA deployed by
 that workflow.
+
+Preview deploys also run `bun tools/seed-test-data.ts` after deploy to create or
+verify the shared test account credentials listed above.
 
 If you ever need to do the same operations manually, use:
 

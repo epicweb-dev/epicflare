@@ -256,6 +256,14 @@ jobs:
             echo "version_preview_url=$PREVIEW_VERSION_URL" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: 🌱 Seed preview test data
+        shell: bash
+        env:
+          WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
+        run: |
+          set -euo pipefail
+          bun tools/seed-test-data.ts --remote --config "$WRANGLER_CONFIG" --email kody@kcd.dev --password kodylovesyou
+
       - name: 🩺 Healthcheck (preview)
         shell: bash
         env:

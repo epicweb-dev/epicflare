@@ -130,6 +130,17 @@ Cloudflare resources or rewrite `wrangler.jsonc` resource IDs.
 
 See `docs/agents/setup.md` for local dev commands and verification steps.
 
+To create a deterministic test login in a running environment:
+
+```
+bun tools/seed-test-data.ts
+```
+
+Default test credentials:
+
+- Email: `kody@kcd.dev`
+- Password: `kodylovesyou`
+
 ## Build and deploy
 
 Build the project:
