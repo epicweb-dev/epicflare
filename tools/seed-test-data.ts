@@ -14,7 +14,7 @@ type CliOptions = {
 const defaultTestEmail = 'kody@kcd.dev'
 const defaultTestPassword = 'kodylovesyou'
 
-function parseArgs(argv: Array<string>): CliOptions {
+export function parseArgs(argv: Array<string>): CliOptions {
 	const options: CliOptions = {
 		email: defaultTestEmail,
 		username: defaultTestEmail,
@@ -24,6 +24,7 @@ function parseArgs(argv: Array<string>): CliOptions {
 		config: undefined,
 		persistTo: undefined,
 	}
+	let usernameProvided = false
 
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index]
@@ -36,6 +37,7 @@ function parseArgs(argv: Array<string>): CliOptions {
 				break
 			}
 			case '--username': {
+				usernameProvided = true
 				options.username = argv[index + 1] ?? ''
 				index += 1
 				break
@@ -84,6 +86,10 @@ function parseArgs(argv: Array<string>): CliOptions {
 	}
 	if (!options.email) {
 		fail('Missing required --email <email> value.')
+	}
+	const effectiveEmail = options.email
+	if (!usernameProvided) {
+		options.username = effectiveEmail
 	}
 	if (!options.username) {
 		fail('Missing required --username <username> value.')
@@ -163,4 +169,6 @@ async function main() {
 	)
 }
 
-await main()
+if (import.meta.main) {
+	await main()
+}

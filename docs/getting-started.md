@@ -132,8 +132,9 @@ See `docs/agents/setup.md` for local dev commands and verification steps.
 
 To create a deterministic test login in a running environment:
 
-```
-bun tools/seed-test-data.ts
+```bash
+bun run migrate:local
+bun tools/seed-test-data.ts --local
 ```
 
 Default test credentials:

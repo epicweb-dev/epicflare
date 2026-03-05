@@ -106,11 +106,11 @@ export async function verifyPassword(
 		if (prefix !== passwordHashPrefix || extra.length > 0) {
 			return false
 		}
-		if (!iterationsRaw) return false
-		const iterations = Number.parseInt(iterationsRaw, 10)
+		if (!iterationsRaw || !/^\d+$/.test(iterationsRaw)) return false
+		const iterations = Number(iterationsRaw)
 		const salt = saltHex ? fromHex(saltHex) : null
 		const hash = hashHex ? fromHex(hashHex) : null
-		if (!iterations || iterations < 1 || !salt || !hash) {
+		if (!Number.isSafeInteger(iterations) || iterations < 1 || !salt || !hash) {
 			return false
 		}
 		if (iterations > maxPasswordHashIterations) {

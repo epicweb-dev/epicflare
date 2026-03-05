@@ -46,7 +46,9 @@ Quick notes for getting a local epicflare environment running.
 
 Use this script to ensure a known test login exists in any deployed environment:
 
-- Local D1 (default): `bun tools/seed-test-data.ts`
+- Local D1 (default):
+  - `bun run migrate:local`
+  - `bun tools/seed-test-data.ts --local`
 - Local D1 with custom persisted state:
   - `bun tools/seed-test-data.ts --local --persist-to .wrangler/state/e2e`
 - Remote D1:
