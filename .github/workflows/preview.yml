@@ -259,6 +259,7 @@ jobs:
       - name: 🌱 Seed preview test data
         shell: bash
         env:
+          CLOUDFLARE_ENV: preview
           WRANGLER_CONFIG: ${{ steps.resources.outputs.wrangler_config }}
         run: |
           set -euo pipefail
