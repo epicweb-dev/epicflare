@@ -35,15 +35,19 @@ function createInitialSnapshot(): ChatClientSnapshot {
 	}
 }
 
-function buildThreadPreviewFromMessages(messages: ChatClientSnapshot['messages']) {
+function buildThreadPreviewFromMessages(
+	messages: ChatClientSnapshot['messages'],
+) {
 	const lastMessage = messages.at(-1)
 	if (!lastMessage) return null
 	const text = lastMessage.parts
 		.filter(
 			(
 				part,
-			): part is Extract<(typeof lastMessage.parts)[number], { type: 'text'; text: string }> =>
-				part.type === 'text' && typeof part.text === 'string',
+			): part is Extract<
+				(typeof lastMessage.parts)[number],
+				{ type: 'text'; text: string }
+			> => part.type === 'text' && typeof part.text === 'string',
 		)
 		.map((part) => part.text)
 		.join('\n')
@@ -186,13 +190,18 @@ export function ChatRoute(handle: Handle) {
 		chatSnapshot = createInitialSnapshot()
 	}
 
-	function updateLocalThreadSummary(threadId: string, snapshot: ChatClientSnapshot) {
+	function updateLocalThreadSummary(
+		threadId: string,
+		snapshot: ChatClientSnapshot,
+	) {
 		threads = threads.map((thread) =>
 			thread.id === threadId
 				? {
 						...thread,
 						messageCount: snapshot.messages.length,
-						lastMessagePreview: buildThreadPreviewFromMessages(snapshot.messages),
+						lastMessagePreview: buildThreadPreviewFromMessages(
+							snapshot.messages,
+						),
 					}
 				: thread,
 		)
