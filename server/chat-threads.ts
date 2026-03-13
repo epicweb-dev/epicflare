@@ -76,6 +76,20 @@ export function createChatThreadsStore(db: D1Database) {
 			})
 			return record ? toThreadSummary(record) : null
 		},
+		async renameForUser(userId: number, threadId: string, title: string) {
+			const record = await database.findOne(chatThreadsTable, {
+				where: { id: threadId, user_id: userId, deleted_at: null },
+			})
+			if (!record) return null
+
+			const updated = await database.update(
+				chatThreadsTable,
+				threadId,
+				{ title: normalizeThreadTitle(title) },
+				{ touch: true },
+			)
+			return toThreadSummary(updated)
+		},
 		async markDeletedForUser(userId: number, threadId: string) {
 			const record = await database.findOne(chatThreadsTable, {
 				where: { id: threadId, user_id: userId, deleted_at: null },

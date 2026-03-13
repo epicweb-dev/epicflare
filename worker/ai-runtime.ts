@@ -32,18 +32,42 @@ type AIEnabledEnv = Env & {
 	AI: Ai
 }
 
+type WorkersAiCredentialsEnv = Env & {
+	CLOUDFLARE_ACCOUNT_ID?: string
+	CLOUDFLARE_API_TOKEN?: string
+	WRANGLER_IS_LOCAL_DEV?: string
+}
+
 function resolveAiMode(env: Env): AiMode {
 	if (env.AI_MODE) return env.AI_MODE
 	return 'mock'
 }
 
-function createRemoteAiRuntime(env: AIEnabledEnv): AiRuntime {
+function createWorkersAiProvider(env: WorkersAiCredentialsEnv) {
+	const gateway = env.AI_GATEWAY_ID ? { gateway: { id: env.AI_GATEWAY_ID } } : {}
+	const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
+	const apiKey = env.CLOUDFLARE_API_TOKEN?.trim()
+	const shouldUseCredentials =
+		env.WRANGLER_IS_LOCAL_DEV === 'true' && accountId && apiKey
+
+	if (shouldUseCredentials) {
+		return createWorkersAI({
+			accountId,
+			apiKey,
+			...gateway,
+		})
+	}
+
+	return createWorkersAI({
+		binding: (env as AIEnabledEnv).AI,
+		...gateway,
+	})
+}
+
+function createRemoteAiRuntime(env: WorkersAiCredentialsEnv): AiRuntime {
 	return {
 		async streamChatReply(input) {
-			const workersai = createWorkersAI({
-				binding: env.AI,
-				...(env.AI_GATEWAY_ID ? { gateway: { id: env.AI_GATEWAY_ID } } : {}),
-			})
+			const workersai = createWorkersAiProvider(env)
 
 			const result = streamText({
 				model: workersai(env.AI_MODEL ?? defaultModel),

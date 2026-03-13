@@ -262,6 +262,14 @@ function hasEnvValue(value: string | undefined) {
 	return typeof value === 'string' && value.trim().length > 0
 }
 
+function resolveAiMode() {
+	return process.env.AI_MODE?.trim() === 'remote' ? 'remote' : 'mock'
+}
+
+function isChildRunning(child: ChildProcess | null) {
+	return Boolean(child && !child.killed && child.exitCode === null)
+}
+
 async function isMockReady(baseUrl: string) {
 	try {
 		const response = await fetch(`${baseUrl}/__mocks/meta`)
@@ -287,62 +295,84 @@ async function waitForMockReady(baseUrl: string, child: ChildProcess) {
 }
 
 async function ensureMockServers() {
+	const desiredAiMode = resolveAiMode()
+	const canReuseResendMock = isChildRunning(mockResendProcess)
+	const canReuseAiMock = isChildRunning(mockAiProcess)
+	const hasMatchingCachedMode = mockEnvOverrides.AI_MODE === desiredAiMode
+	const canReuseCachedResendEnv =
+		canReuseResendMock &&
+		hasEnvValue(mockEnvOverrides.RESEND_API_BASE_URL) &&
+		hasEnvValue(mockEnvOverrides.RESEND_API_KEY)
+
 	if (
-		mockResendProcess &&
-		!mockResendProcess.killed &&
-		mockResendProcess.exitCode === null &&
-		(process.env.AI_MODE === 'remote' ||
-			(mockAiProcess &&
-				!mockAiProcess.killed &&
-				mockAiProcess.exitCode === null))
+		canReuseResendMock &&
+		hasMatchingCachedMode &&
+		(desiredAiMode === 'remote' || canReuseAiMock)
 	) {
 		return mockEnvOverrides
 	}
-	const desiredPort = Number.parseInt(
-		process.env.MOCK_API_PORT ?? String(defaultMockPort),
-		10,
-	)
-	const portRange = Array.from(
-		{ length: 10 },
-		(_, index) => desiredPort + index,
-	)
-	const mockPort = await getPort({ port: portRange })
-	const baseUrl = `http://127.0.0.1:${mockPort}`
-	const apiToken = `mock-resend-${randomUUID()}`
-	const child = runBunScript(
-		'dev:mock-resend',
-		[
-			'--port',
-			String(mockPort),
-			'--ip',
-			'127.0.0.1',
-			'--var',
-			`MOCK_API_TOKEN:${apiToken}`,
-		],
-		{},
-	)
-	mockResendProcess = child
-	child.once('exit', () => {
-		mockResendProcess = null
-	})
-	mockEnvOverrides = {
-		RESEND_API_BASE_URL: baseUrl,
-		RESEND_API_KEY: apiToken,
-		AI_MODE: process.env.AI_MODE?.trim() === 'remote' ? 'remote' : 'mock',
-	}
-	if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
-		mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
-	}
-	const didStart = await waitForMockReady(baseUrl, child)
-	if (!didStart) {
-		console.warn(
-			`Mock API worker did not become ready within ${mockReadyTimeoutMs}ms.`,
+	let mockPort: number
+	if (canReuseCachedResendEnv) {
+		const resendBaseUrl = new URL(mockEnvOverrides.RESEND_API_BASE_URL)
+		mockPort = Number.parseInt(resendBaseUrl.port, 10)
+		mockEnvOverrides = {
+			...mockEnvOverrides,
+			AI_MODE: desiredAiMode,
+		}
+	} else {
+		const desiredPort = Number.parseInt(
+			process.env.MOCK_API_PORT ?? String(defaultMockPort),
+			10,
 		)
+		const portRange = Array.from(
+			{ length: 10 },
+			(_, index) => desiredPort + index,
+		)
+		mockPort = await getPort({ port: portRange })
+		const baseUrl = `http://127.0.0.1:${mockPort}`
+		const apiToken = `mock-resend-${randomUUID()}`
+		const child = runBunScript(
+			'dev:mock-resend',
+			[
+				'--port',
+				String(mockPort),
+				'--ip',
+				'127.0.0.1',
+				'--var',
+				`MOCK_API_TOKEN:${apiToken}`,
+			],
+			{},
+		)
+		mockResendProcess = child
+		child.once('exit', () => {
+			mockResendProcess = null
+		})
+		mockEnvOverrides = {
+			RESEND_API_BASE_URL: baseUrl,
+			RESEND_API_KEY: apiToken,
+			AI_MODE: desiredAiMode,
+		}
+		if (!hasEnvValue(process.env.RESEND_FROM_EMAIL)) {
+			mockEnvOverrides.RESEND_FROM_EMAIL = 'reset@epicflare.dev'
+		}
+		const didStart = await waitForMockReady(baseUrl, child)
+		if (!didStart) {
+			console.warn(
+				`Mock API worker did not become ready within ${mockReadyTimeoutMs}ms.`,
+			)
+		}
+		console.log(dim(`Mock API worker running at ${baseUrl}`))
+		console.log(dim(`Resend mock base URL ${baseUrl}`))
 	}
-	console.log(dim(`Mock API worker running at ${baseUrl}`))
-	console.log(dim(`Resend mock base URL ${baseUrl}`))
 
-	if (mockEnvOverrides.AI_MODE === 'mock') {
+	if (desiredAiMode === 'mock') {
+		if (canReuseAiMock && hasEnvValue(mockEnvOverrides.AI_MOCK_BASE_URL)) {
+			mockEnvOverrides = {
+				...mockEnvOverrides,
+				AI_MODE: desiredAiMode,
+			}
+			return mockEnvOverrides
+		}
 		const aiPort = await getPort({
 			port: Array.from({ length: 10 }, (_, index) => mockPort + 10 + index),
 		})
@@ -374,6 +404,10 @@ async function ensureMockServers() {
 		}
 		console.log(dim(`AI mock base URL ${aiBaseUrl}`))
 	} else {
+		if (canReuseAiMock) {
+			await stopChild(mockAiProcess!)
+			mockAiProcess = null
+		}
 		mockEnvOverrides.AI_MOCK_BASE_URL = ''
 		mockEnvOverrides.AI_MOCK_API_KEY = ''
 	}

@@ -6,6 +6,7 @@ import { chat } from './handlers/chat.ts'
 import {
 	createChatThreadsHandler,
 	createDeleteChatThreadHandler,
+	createUpdateChatThreadHandler,
 } from './handlers/chat-threads.ts'
 import { createHealthHandler } from './handlers/health.ts'
 import { home } from './handlers/home.ts'
@@ -34,6 +35,7 @@ export function createAppRouter(appEnv: AppEnv) {
 	router.map(routes.chatThread, chat)
 	router.map(routes.chatThreads, createChatThreadsHandler(appEnv))
 	router.map(routes.chatThreadsCreate, createChatThreadsHandler(appEnv))
+	router.map(routes.chatThreadsUpdate, createUpdateChatThreadHandler(appEnv))
 	router.map(routes.chatThreadsDelete, createDeleteChatThreadHandler(appEnv))
 	router.map(routes.health, createHealthHandler(appEnv))
 	router.map(routes.login, login)

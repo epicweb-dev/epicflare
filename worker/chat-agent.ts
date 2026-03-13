@@ -134,10 +134,18 @@ export class ChatAgent extends AIChatAgent<Env> {
 	}) {
 		const { appUserId } = this.getRuntimeContext()
 		const threadId = this.name
-		const title = buildThreadTitle(this.messages)
+		const threadStore = this.getThreadStore()
+		const currentThread = await threadStore.getForUser(appUserId, threadId)
+		const autoTitle = buildThreadTitle(this.messages)
+		const title =
+			currentThread &&
+			(currentThread.title.trim() === 'New chat' ||
+				currentThread.title.trim() === autoTitle)
+				? autoTitle
+				: undefined
 		const userText = getLatestUserMessageText(this.messages)
 		const messageCount = this.messages.length + (input.messageCountOffset ?? 0)
-		return this.getThreadStore().syncMetadataForUser({
+		return threadStore.syncMetadataForUser({
 			userId: appUserId,
 			threadId,
 			title,

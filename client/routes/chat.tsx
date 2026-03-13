@@ -1,6 +1,7 @@
 import { type Handle } from 'remix/component'
 import { ChatClient, type ChatClientSnapshot } from '#client/chat-client.ts'
 import { navigate, routerEvents } from '#client/client-router.tsx'
+import { EditableText } from '#client/editable-text.tsx'
 import {
 	colors,
 	radius,
@@ -9,7 +10,10 @@ import {
 	transitions,
 	typography,
 } from '#client/styles/tokens.ts'
-import { type ChatThreadSummary } from '#shared/chat.ts'
+import {
+	type ChatThreadSummary,
+	type ChatThreadUpdateResponse,
+} from '#shared/chat.ts'
 
 type ThreadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -24,6 +28,9 @@ function getSelectedThreadIdFromLocation() {
 function buildThreadHref(threadId: string) {
 	return `/chat/${threadId}`
 }
+
+const MESSAGES_SCROLL_CONTAINER_ID = 'chat-messages-scroll-container'
+const MESSAGES_SCROLL_THRESHOLD_PX = 96
 
 function truncatePreview(text: string) {
 	const normalized = text.trim()
@@ -110,6 +117,23 @@ async function deleteThread(threadId: string) {
 	}
 }
 
+async function updateThreadTitle(threadId: string, title: string) {
+	const response = await fetch('/chat-threads/update', {
+		method: 'POST',
+		credentials: 'include',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ threadId, title }),
+	})
+	const payload = (await response.json().catch(() => null)) as
+		| (ChatThreadUpdateResponse & { error?: string })
+		| { ok?: false; error?: string }
+		| null
+	if (!response.ok || !payload?.ok || !('thread' in payload) || !payload.thread) {
+		throw new Error(payload?.error || 'Unable to update thread title.')
+	}
+	return payload.thread
+}
+
 function renderMessageParts(
 	parts: Array<{
 		type: string
@@ -169,15 +193,60 @@ function renderMessageParts(
 	})
 }
 
+function renderPaperAirplaneIcon() {
+	return (
+		<svg
+			aria-hidden="true"
+			viewBox="0 0 24 24"
+			css={{ width: '1.125rem', height: '1.125rem' }}
+		>
+			<path
+				d="M3 11.5 20.5 4l-4.8 16-4.6-5-5.1-3.5Zm8.1 2.2 3 3.2 2.8-9.2-10 4.3 4.2 1.7Z"
+				fill="currentColor"
+			/>
+		</svg>
+	)
+}
+
+const SEND_BUTTON_SIZE_REM = 2.5
+const SEND_BUTTON_INSET_REM = 0.375
+const INPUT_MIN_HEIGHT_REM =
+	SEND_BUTTON_SIZE_REM + SEND_BUTTON_INSET_REM * 2
+const INPUT_MIN_HEIGHT_PX = INPUT_MIN_HEIGHT_REM * 16
+const INPUT_MIN_HEIGHT = `${INPUT_MIN_HEIGHT_REM}rem`
+const INPUT_RIGHT_PADDING = `${SEND_BUTTON_SIZE_REM + SEND_BUTTON_INSET_REM * 2}rem`
+const SEND_BUTTON_SIZE = `${SEND_BUTTON_SIZE_REM}rem`
+const SEND_BUTTON_INSET = `${SEND_BUTTON_INSET_REM}rem`
+/**
+ * The outer border should follow the button's contour plus its inset from the edge.
+ * radius = button radius + inset
+ */
+const SEND_BUTTON_RADIUS = `${SEND_BUTTON_SIZE_REM / 2 + SEND_BUTTON_INSET_REM}rem`
+
+function resizeMessageInput(target: EventTarget | null) {
+	if (!(target instanceof HTMLTextAreaElement)) return
+	target.style.height = INPUT_MIN_HEIGHT
+	const height = Math.max(target.scrollHeight, INPUT_MIN_HEIGHT_PX)
+	target.style.height = `${height}px`
+}
+
+function isScrolledNearBottom(element: HTMLElement) {
+	return (
+		element.scrollHeight - element.scrollTop - element.clientHeight <=
+		MESSAGES_SCROLL_THRESHOLD_PX
+	)
+}
+
 export function ChatRoute(handle: Handle) {
 	let threads: Array<ChatThreadSummary> = []
-	let threadStatus: ThreadStatus = 'idle'
+	let threadStatus: ThreadStatus = 'loading'
 	let threadError: string | null = null
 	let activeThreadId: string | null = null
 	let chatSnapshot = createInitialSnapshot()
 	let activeClient: ChatClient | null = null
 	let actionError: string | null = null
 	let syncInFlight = false
+	let shouldAutoScrollMessages = true
 
 	function update() {
 		handle.update()
@@ -194,6 +263,12 @@ export function ChatRoute(handle: Handle) {
 
 	function resetChatSnapshot() {
 		chatSnapshot = createInitialSnapshot()
+	}
+
+	function replaceThreadSummary(nextThread: ChatThreadSummary) {
+		threads = threads.map((thread) =>
+			thread.id === nextThread.id ? nextThread : thread,
+		)
 	}
 
 	function updateLocalThreadSummary(
@@ -213,10 +288,39 @@ export function ChatRoute(handle: Handle) {
 		)
 	}
 
+	function scheduleScrollToBottom(force = false) {
+		void handle.queueTask(async () => {
+			const container = document.getElementById(MESSAGES_SCROLL_CONTAINER_ID)
+			if (!(container instanceof HTMLDivElement)) return
+			if (
+				!force &&
+				!shouldAutoScrollMessages &&
+				!isScrolledNearBottom(container)
+			) {
+				return
+			}
+			container.scrollTop = container.scrollHeight
+			shouldAutoScrollMessages = true
+		})
+	}
+
+	function handleMessagesScroll(event: Event) {
+		if (!(event.currentTarget instanceof HTMLDivElement)) return
+		shouldAutoScrollMessages = isScrolledNearBottom(event.currentTarget)
+	}
+
+	function handleComposerKeyDown(event: KeyboardEvent) {
+		if (!(event.currentTarget instanceof HTMLTextAreaElement)) return
+		if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+		event.preventDefault()
+		event.currentTarget.form?.requestSubmit()
+	}
+
 	async function connectThread(threadId: string) {
 		if (activeThreadId === threadId && activeClient) return
 
 		activeClient?.close()
+		shouldAutoScrollMessages = true
 		activeClient = new ChatClient({
 			threadId,
 			onSnapshot(snapshot) {
@@ -224,6 +328,7 @@ export function ChatRoute(handle: Handle) {
 				chatSnapshot = snapshot
 				updateLocalThreadSummary(threadId, snapshot)
 				update()
+				scheduleScrollToBottom()
 			},
 		})
 		activeThreadId = threadId
@@ -278,7 +383,6 @@ export function ChatRoute(handle: Handle) {
 	}
 
 	async function refreshThreads(signal?: AbortSignal) {
-		setThreadState('loading')
 		try {
 			threads = await fetchThreads(signal)
 			setThreadState('ready')
@@ -292,11 +396,6 @@ export function ChatRoute(handle: Handle) {
 		}
 	}
 
-	handle.queueTask(async (signal) => {
-		if (threadStatus !== 'idle') return
-		await refreshThreads(signal)
-	})
-
 	handle.on(routerEvents, {
 		navigate: () => {
 			void handle.queueTask(async () => {
@@ -305,15 +404,21 @@ export function ChatRoute(handle: Handle) {
 		},
 	})
 
+	async function createAndSelectThread() {
+		const thread = await createThread()
+		threads = [thread, ...threads]
+		update()
+		navigate(buildThreadHref(thread.id))
+		await connectThread(thread.id)
+		return thread
+	}
+
 	async function handleCreateThread() {
 		actionError = null
 		update()
 		try {
-			const thread = await createThread()
-			threads = [thread, ...threads]
-			update()
-			navigate(buildThreadHref(thread.id))
-			await connectThread(thread.id)
+			await createAndSelectThread()
+			await activeClient?.waitUntilConnected()
 		} catch (error) {
 			actionError =
 				error instanceof Error ? error.message : 'Unable to create thread.'
@@ -348,23 +453,50 @@ export function ChatRoute(handle: Handle) {
 		}
 	}
 
+	async function handleRenameThread(threadId: string, title: string) {
+		actionError = null
+		update()
+		try {
+			const updatedThread = await updateThreadTitle(threadId, title)
+			replaceThreadSummary(updatedThread)
+			update()
+			return true
+		} catch (error) {
+			actionError =
+				error instanceof Error ? error.message : 'Unable to update thread title.'
+			update()
+			return false
+		}
+	}
+
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		actionError = null
 		if (!(event.currentTarget instanceof HTMLFormElement)) return
-		const formData = new FormData(event.currentTarget)
+		const form = event.currentTarget
+		const formData = new FormData(form)
 		const text = String(formData.get('message') ?? '').trim()
 		if (!text) return
 
-		if (!activeClient) {
-			actionError = 'Select or create a thread first.'
-			update()
-			return
-		}
-
 		try {
-			activeClient.sendMessage(text)
-			event.currentTarget.reset()
+			let client = activeClient
+
+			if (!client) {
+				await createAndSelectThread()
+				client = activeClient
+			}
+
+			if (!client) {
+				throw new Error('Unable to start a chat thread.')
+			}
+
+			await client.waitUntilConnected()
+			client.sendMessage(text)
+			form.reset()
+			const messageInput = form.elements.namedItem('message')
+			resizeMessageInput(
+				messageInput instanceof HTMLTextAreaElement ? messageInput : null,
+			)
 		} catch (error) {
 			actionError =
 				error instanceof Error ? error.message : 'Unable to send message.'
@@ -373,10 +505,16 @@ export function ChatRoute(handle: Handle) {
 	}
 
 	return () => {
+		if (threadStatus === 'loading') {
+			handle.queueTask(refreshThreads)
+		}
+
 		const activeThread =
 			activeThreadId && threads.find((thread) => thread.id === activeThreadId)
 				? (threads.find((thread) => thread.id === activeThreadId) ?? null)
 				: null
+		const showEmptyStateComposer =
+			!activeThread && threads.length === 0 && threadStatus !== 'error'
 
 		return (
 			<section
@@ -446,12 +584,6 @@ export function ChatRoute(handle: Handle) {
 						</h2>
 						{threadStatus === 'error' ? (
 							<p css={{ margin: 0, color: colors.error }}>{threadError}</p>
-						) : null}
-						{threadStatus === 'ready' && threads.length === 0 ? (
-							<p css={{ margin: 0, color: colors.textMuted }}>
-								No conversations yet. Create a thread to start asking questions,
-								trigger tools, or try the local mock command `help`.
-							</p>
 						) : null}
 						{threads.map((thread) => {
 							const isActive = thread.id === activeThreadId
@@ -535,7 +667,8 @@ export function ChatRoute(handle: Handle) {
 
 					<div
 						css={{
-							display: 'grid',
+							display: 'flex',
+							flexDirection: 'column',
 							gap: spacing.md,
 							padding: spacing.xl,
 							borderRadius: radius.lg,
@@ -543,22 +676,35 @@ export function ChatRoute(handle: Handle) {
 							backgroundColor: colors.surface,
 							boxShadow: shadows.sm,
 							minHeight: 'calc(100vh - 10rem)',
-							alignContent: activeThread ? 'start' : 'center',
+							overflow: 'hidden',
 						}}
 					>
 						{activeThread ? (
 							<>
 								<div
 									css={{
+										flexShrink: 0,
 										display: 'flex',
 										justifyContent: 'space-between',
 										alignItems: 'center',
 										gap: spacing.md,
 									}}
 								>
-									<div css={{ display: 'grid', gap: spacing.xs }}>
-										<h3 css={{ margin: 0, color: colors.text }}>
-											{activeThread.title}
+									<div css={{ display: 'grid', gap: spacing.xs, minWidth: 0 }}>
+										<h3 css={{ margin: 0, color: colors.text, minWidth: 0 }}>
+											<EditableText
+												id={`thread-title-${activeThread.id}`}
+												ariaLabel="Chat title"
+												value={activeThread.title}
+												onSave={(value) =>
+													handleRenameThread(activeThread.id, value)
+												}
+												buttonCss={{
+													whiteSpace: 'nowrap',
+													overflow: 'hidden',
+													textOverflow: 'ellipsis',
+												}}
+											/>
 										</h3>
 										<p css={{ margin: 0, color: colors.textMuted }}>
 											{chatSnapshot.connected ? 'Connected' : 'Connecting…'}
@@ -567,7 +713,12 @@ export function ChatRoute(handle: Handle) {
 								</div>
 
 								<div
+									id={MESSAGES_SCROLL_CONTAINER_ID}
+									on={{ scroll: handleMessagesScroll }}
 									css={{
+										flex: 1,
+										overflowY: 'auto',
+										minHeight: 0,
 										display: 'grid',
 										gap: spacing.md,
 										alignContent: 'start',
@@ -658,84 +809,155 @@ export function ChatRoute(handle: Handle) {
 										>
 											Message
 										</span>
+										<div
+											css={{
+												position: 'relative',
+											}}
+										>
+											<textarea
+												name="message"
+												rows={1}
+												on={{
+													input: (event) =>
+														resizeMessageInput(event.currentTarget),
+													keydown: handleComposerKeyDown,
+												}}
+												placeholder='Ask a question or send "help" when using the local mock.'
+												css={{
+													display: 'block',
+													width: '100%',
+													height: INPUT_MIN_HEIGHT,
+													minHeight: INPUT_MIN_HEIGHT,
+													padding: '0.75rem',
+													paddingRight: INPUT_RIGHT_PADDING,
+													borderRadius: SEND_BUTTON_RADIUS,
+													border: `1px solid ${colors.border}`,
+													fontFamily: typography.fontFamily,
+													fontSize: typography.fontSize.base,
+													lineHeight: 1.4,
+													overflow: 'hidden',
+													resize: 'none',
+												}}
+											/>
+											<button
+												type="submit"
+												disabled={chatSnapshot.isStreaming}
+												aria-label={
+													chatSnapshot.isStreaming
+														? 'Streaming'
+														: 'Send message'
+												}
+												title={
+													chatSnapshot.isStreaming
+														? 'Streaming'
+														: 'Send message'
+												}
+												css={{
+													display: 'inline-flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													position: 'absolute',
+													right: SEND_BUTTON_INSET,
+													bottom: SEND_BUTTON_INSET,
+													width: SEND_BUTTON_SIZE,
+													height: SEND_BUTTON_SIZE,
+													padding: 0,
+													borderRadius: radius.full,
+													border: 'none',
+													backgroundColor: colors.primary,
+													color: colors.onPrimary,
+													cursor: chatSnapshot.isStreaming
+														? 'not-allowed'
+														: 'pointer',
+													opacity: chatSnapshot.isStreaming ? 0.7 : 1,
+												}}
+											>
+												{renderPaperAirplaneIcon()}
+											</button>
+										</div>
+									</label>
+								</form>
+							</>
+						) : showEmptyStateComposer ? (
+							<div
+								css={{
+									flex: 1,
+									minHeight: 0,
+									display: 'flex',
+									flexDirection: 'column',
+									justifyContent: 'flex-end',
+									maxWidth: '56rem',
+									margin: '0 auto',
+									width: '100%',
+									paddingBottom: spacing.sm,
+								}}
+							>
+								<form
+									on={{ submit: handleSubmit }}
+									css={{
+										display: 'grid',
+										gap: spacing.sm,
+										width: '100%',
+									}}
+								>
+									<div
+										css={{
+											position: 'relative',
+										}}
+									>
 										<textarea
 											name="message"
-											rows={4}
+											rows={1}
+											aria-label="Message"
+											on={{
+												input: (event) =>
+													resizeMessageInput(event.currentTarget),
+												keydown: handleComposerKeyDown,
+											}}
 											placeholder='Ask a question or send "help" when using the local mock.'
 											css={{
-												padding: spacing.sm,
-												borderRadius: radius.md,
+												display: 'block',
+												width: '100%',
+												height: INPUT_MIN_HEIGHT,
+												minHeight: INPUT_MIN_HEIGHT,
+												padding: '0.75rem',
+												paddingRight: INPUT_RIGHT_PADDING,
+												borderRadius: SEND_BUTTON_RADIUS,
 												border: `1px solid ${colors.border}`,
 												fontFamily: typography.fontFamily,
 												fontSize: typography.fontSize.base,
+												lineHeight: 1.4,
+												overflow: 'hidden',
+												resize: 'none',
 											}}
 										/>
-									</label>
-									<button
-										type="submit"
-										disabled={chatSnapshot.isStreaming}
-										css={{
-											justifySelf: 'start',
-											padding: `${spacing.sm} ${spacing.lg}`,
-											borderRadius: radius.full,
-											border: 'none',
-											backgroundColor: colors.primary,
-											color: colors.onPrimary,
-											fontWeight: typography.fontWeight.semibold,
-											cursor: chatSnapshot.isStreaming
-												? 'not-allowed'
-												: 'pointer',
-											opacity: chatSnapshot.isStreaming ? 0.7 : 1,
-										}}
-									>
-										{chatSnapshot.isStreaming ? 'Streaming…' : 'Send'}
-									</button>
+										<button
+											type="submit"
+											aria-label="Send message"
+											title="Send message"
+											css={{
+												display: 'inline-flex',
+												alignItems: 'center',
+												justifyContent: 'center',
+												position: 'absolute',
+												right: SEND_BUTTON_INSET,
+												bottom: SEND_BUTTON_INSET,
+												width: SEND_BUTTON_SIZE,
+												height: SEND_BUTTON_SIZE,
+												padding: 0,
+												borderRadius: radius.full,
+												border: 'none',
+												backgroundColor: colors.primary,
+												color: colors.onPrimary,
+												cursor: 'pointer',
+											}}
+										>
+											{renderPaperAirplaneIcon()}
+										</button>
+									</div>
 								</form>
-							</>
-						) : (
-							<div
-								css={{
-									display: 'grid',
-									gap: spacing.md,
-									alignContent: 'center',
-									justifyItems: 'start',
-									minHeight: '22rem',
-									maxWidth: '40rem',
-									margin: '0 auto',
-								}}
-							>
-								<h3 css={{ margin: 0, color: colors.text }}>
-									Start a conversation
-								</h3>
-								<p
-									css={{
-										margin: 0,
-										color: colors.textMuted,
-										maxWidth: '36rem',
-									}}
-								>
-									Create a thread to chat with the assistant, use the attached
-									MCP tools, and iterate on work without leaving the app. In
-									local mock mode, send `help` to see deterministic tool
-									triggers you can test.
-								</p>
-								<button
-									type="button"
-									on={{ click: handleCreateThread }}
-									css={{
-										padding: `${spacing.sm} ${spacing.md}`,
-										borderRadius: radius.full,
-										border: 'none',
-										backgroundColor: colors.primary,
-										color: colors.onPrimary,
-										fontWeight: typography.fontWeight.semibold,
-										cursor: 'pointer',
-									}}
-								>
-									Create your first thread
-								</button>
 							</div>
-						)}
+						) : null}
 					</div>
 				</div>
 			</section>

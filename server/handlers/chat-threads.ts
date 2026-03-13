@@ -95,3 +95,68 @@ export function createDeleteChatThreadHandler(appEnv: AppEnv) {
 		typeof routes.chatThreadsDelete.pattern
 	>
 }
+
+export function createUpdateChatThreadHandler(appEnv: AppEnv) {
+	const store = createChatThreadsStore(appEnv.APP_DB)
+
+	return {
+		middleware: [],
+		async action({ request }) {
+			const user = await readAuthenticatedAppUser(request, appEnv as Env)
+			if (!user) {
+				return jsonResponse(
+					{ ok: false, error: 'Unauthorized' },
+					{ status: 401 },
+				)
+			}
+
+			let body: unknown
+			try {
+				body = await request.json()
+			} catch {
+				return jsonResponse(
+					{ ok: false, error: 'Invalid JSON payload.' },
+					{ status: 400 },
+				)
+			}
+
+			const threadId =
+				body &&
+				typeof body === 'object' &&
+				typeof (body as { threadId?: unknown }).threadId === 'string'
+					? (body as { threadId: string }).threadId.trim()
+					: ''
+			const title =
+				body &&
+				typeof body === 'object' &&
+				typeof (body as { title?: unknown }).title === 'string'
+					? (body as { title: string }).title.trim()
+					: ''
+			if (!threadId) {
+				return jsonResponse(
+					{ ok: false, error: 'Thread ID is required.' },
+					{ status: 400 },
+				)
+			}
+			if (!title) {
+				return jsonResponse(
+					{ ok: false, error: 'Title is required.' },
+					{ status: 400 },
+				)
+			}
+
+			const thread = await store.renameForUser(user.userId, threadId, title)
+			if (!thread) {
+				return jsonResponse(
+					{ ok: false, error: 'Thread not found.' },
+					{ status: 404 },
+				)
+			}
+
+			return jsonResponse({ ok: true, thread })
+		},
+	} satisfies BuildAction<
+		typeof routes.chatThreadsUpdate.method,
+		typeof routes.chatThreadsUpdate.pattern
+	>
+}
