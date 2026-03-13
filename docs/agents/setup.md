@@ -56,7 +56,8 @@ Use this script to ensure a known test login exists in any deployed environment:
   - `bun tools/seed-test-data.ts --local --persist-to .wrangler/state/e2e`
 - Remote D1:
   - `bun tools/seed-test-data.ts --remote --config <wrangler-config-path>`
-  - Add `--env <name>` when the config uses environment-scoped bindings and the environment is not already set via `CLOUDFLARE_ENV`.
+  - Add `--env <name>` when the config uses environment-scoped bindings and the
+    environment is not already set via `CLOUDFLARE_ENV`.
 - Default credentials:
   - email: `kody@kcd.dev`
   - password: `kodylovesyou`
