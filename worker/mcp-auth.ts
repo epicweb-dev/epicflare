@@ -2,6 +2,7 @@ import {
 	type OAuthHelpers,
 	type TokenSummary,
 } from '@cloudflare/workers-oauth-provider'
+import { createMcpCallerContext, type McpServerProps } from '#mcp/context.ts'
 import { oauthScopes } from './oauth-handlers.ts'
 
 export const mcpResourcePath = '/mcp'
@@ -12,9 +13,8 @@ type OAuthEnv = Env & {
 	OAUTH_PROVIDER?: OAuthHelpers
 }
 
-type OAuthContextProps = {
-	baseUrl: string
-	user?: TokenSummary['grant']['props']
+type OAuthContextProps = McpServerProps & {
+	user?: TokenSummary['grant']['props'] | null
 }
 
 type OAuthExecutionContext = ExecutionContext & {
@@ -106,11 +106,10 @@ export async function handleMcpRequest({
 	}
 
 	const context = ctx as OAuthExecutionContext
-	const props: OAuthContextProps = {
-		...context.props,
+	const props: OAuthContextProps = createMcpCallerContext({
 		baseUrl: url.origin,
-		user: tokenSummary.grant.props,
-	}
+		user: tokenSummary.grant.props ?? null,
+	})
 	context.props = props
 
 	return fetchMcp(request, env, context as ExecutionContext<OAuthContextProps>)

@@ -9,6 +9,10 @@
 			"new_sqlite_classes": ["MCP"],
 			"tag": "v1",
 		},
+		{
+			"new_sqlite_classes": ["ChatAgent"],
+			"tag": "v2",
+		},
 	],
 
 	"observability": {
@@ -16,6 +20,10 @@
 	},
 	"env": {
 		"production": {
+			"ai": {
+				"binding": "AI",
+				"remote": true,
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -26,6 +34,10 @@
 					{
 						"class_name": "MCP",
 						"name": "MCP_OBJECT",
+					},
+					{
+						"class_name": "ChatAgent",
+						"name": "ChatAgent",
 					},
 				],
 			},
@@ -44,8 +56,16 @@
 					"preview_id": "becbb91b27364709a7e8a9c7533c9ff5",
 				},
 			],
+			"vars": {
+				"AI_MODE": "remote",
+				"AI_MODEL": "@cf/zai-org/glm-4.7-flash",
+			},
 		},
 		"preview": {
+			"ai": {
+				"binding": "AI",
+				"remote": true,
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -56,6 +76,10 @@
 					{
 						"class_name": "MCP",
 						"name": "MCP_OBJECT",
+					},
+					{
+						"class_name": "ChatAgent",
+						"name": "ChatAgent",
 					},
 				],
 			},
@@ -74,8 +98,16 @@
 					"preview_id": "becbb91b27364709a7e8a9c7533c9ff5",
 				},
 			],
+			"vars": {
+				"AI_MODE": "remote",
+				"AI_MODEL": "@cf/zai-org/glm-4.7-flash",
+			},
 		},
 		"test": {
+			"ai": {
+				"binding": "AI",
+				"remote": true,
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -86,6 +118,10 @@
 					{
 						"class_name": "MCP",
 						"name": "MCP_OBJECT",
+					},
+					{
+						"class_name": "ChatAgent",
+						"name": "ChatAgent",
 					},
 				],
 			},
@@ -104,6 +140,10 @@
 					"preview_id": "becbb91b27364709a7e8a9c7533c9ff5",
 				},
 			],
+			"vars": {
+				"AI_MODE": "remote",
+				"AI_MODEL": "@cf/zai-org/glm-4.7-flash",
+			},
 		},
 	},
 }
