@@ -68,6 +68,9 @@ export function App(handle: Handle) {
 	}
 
 	return () => {
+		const isChatLayout =
+			typeof window !== 'undefined' &&
+			window.location.pathname.startsWith('/chat')
 		const sessionEmail = session?.email ?? ''
 		const isSessionReady = sessionStatus === 'ready'
 		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
@@ -83,10 +86,15 @@ export function App(handle: Handle) {
 		return (
 			<main
 				css={{
-					maxWidth: '52rem',
-					margin: '0 auto',
-					padding: spacing['2xl'],
+					maxWidth: isChatLayout ? 'none' : '52rem',
+					width: '100%',
+					margin: isChatLayout ? 0 : '0 auto',
+					padding: isChatLayout
+						? `${spacing.lg} ${spacing.xl}`
+						: spacing['2xl'],
+					minHeight: isChatLayout ? '100vh' : undefined,
 					fontFamily: typography.fontFamily,
+					boxSizing: 'border-box',
 				}}
 			>
 				<nav
@@ -94,7 +102,7 @@ export function App(handle: Handle) {
 						display: 'flex',
 						gap: spacing.md,
 						flexWrap: 'wrap',
-						marginBottom: spacing.xl,
+						marginBottom: isChatLayout ? spacing.lg : spacing.xl,
 					}}
 				>
 					<a href="/" css={navLinkCss}>

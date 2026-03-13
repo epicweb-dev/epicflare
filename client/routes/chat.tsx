@@ -25,6 +25,12 @@ function buildThreadHref(threadId: string) {
 	return `/chat/${threadId}`
 }
 
+function truncatePreview(text: string) {
+	const normalized = text.trim()
+	if (!normalized) return ''
+	return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized
+}
+
 function createInitialSnapshot(): ChatClientSnapshot {
 	return {
 		messages: [],
@@ -52,7 +58,7 @@ function buildThreadPreviewFromMessages(
 		.map((part) => part.text)
 		.join('\n')
 		.trim()
-	return text ? text.slice(0, 160) : null
+	return text ? truncatePreview(text) : null
 }
 
 async function fetchThreads(signal?: AbortSignal) {
@@ -377,53 +383,9 @@ export function ChatRoute(handle: Handle) {
 				css={{
 					display: 'grid',
 					gap: spacing.lg,
+					minHeight: 'calc(100vh - 7rem)',
 				}}
 			>
-				<header
-					css={{
-						display: 'flex',
-						justifyContent: 'space-between',
-						alignItems: 'center',
-						gap: spacing.md,
-					}}
-				>
-					<div css={{ display: 'grid', gap: spacing.xs }}>
-						<h2
-							css={{
-								fontSize: typography.fontSize.xl,
-								fontWeight: typography.fontWeight.semibold,
-								margin: 0,
-								color: colors.text,
-							}}
-						>
-							Chat
-						</h2>
-						<p css={{ margin: 0, color: colors.textMuted }}>
-							Start a thread to chat with the assistant and use the attached MCP
-							tools.
-						</p>
-					</div>
-					<button
-						type="button"
-						on={{ click: handleCreateThread }}
-						css={{
-							padding: `${spacing.sm} ${spacing.md}`,
-							borderRadius: radius.full,
-							border: 'none',
-							backgroundColor: colors.primary,
-							color: colors.onPrimary,
-							fontWeight: typography.fontWeight.semibold,
-							cursor: 'pointer',
-							transition: `background-color ${transitions.normal}`,
-							'&:hover': {
-								backgroundColor: colors.primaryHover,
-							},
-						}}
-					>
-						New thread
-					</button>
-				</header>
-
 				{actionError ? (
 					<p css={{ margin: 0, color: colors.error }}>{actionError}</p>
 				) : null}
@@ -434,20 +396,54 @@ export function ChatRoute(handle: Handle) {
 						gap: spacing.lg,
 						gridTemplateColumns: '18rem minmax(0, 1fr)',
 						alignItems: 'start',
+						minHeight: 'calc(100vh - 10rem)',
 					}}
 				>
 					<aside
 						css={{
 							display: 'grid',
-							gap: spacing.sm,
+							gap: spacing.md,
 							padding: spacing.md,
 							borderRadius: radius.lg,
 							border: `1px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.sm,
+							alignContent: 'start',
+							position: 'sticky',
+							top: spacing.lg,
+							minHeight: 'calc(100vh - 10rem)',
 						}}
 					>
-						<h3 css={{ margin: 0, color: colors.text }}>Threads</h3>
+						<button
+							type="button"
+							on={{ click: handleCreateThread }}
+							css={{
+								width: '100%',
+								padding: `${spacing.sm} ${spacing.md}`,
+								borderRadius: radius.full,
+								border: 'none',
+								backgroundColor: colors.primary,
+								color: colors.onPrimary,
+								fontWeight: typography.fontWeight.semibold,
+								cursor: 'pointer',
+								transition: `background-color ${transitions.normal}`,
+								'&:hover': {
+									backgroundColor: colors.primaryHover,
+								},
+							}}
+						>
+							New thread
+						</button>
+						<h2
+							css={{
+								margin: 0,
+								color: colors.text,
+								fontSize: typography.fontSize.lg,
+								fontWeight: typography.fontWeight.semibold,
+							}}
+						>
+							Chats
+						</h2>
 						{threadStatus === 'error' ? (
 							<p css={{ margin: 0, color: colors.error }}>{threadError}</p>
 						) : null}
@@ -473,6 +469,7 @@ export function ChatRoute(handle: Handle) {
 										backgroundColor: isActive
 											? colors.primarySoftest
 											: colors.surface,
+										transition: `background-color ${transitions.normal}, border-color ${transitions.normal}`,
 									}}
 								>
 									<a
@@ -481,6 +478,7 @@ export function ChatRoute(handle: Handle) {
 											color: colors.text,
 											textDecoration: 'none',
 											fontWeight: typography.fontWeight.semibold,
+											fontSize: typography.fontSize.sm,
 										}}
 									>
 										{thread.title}
@@ -491,6 +489,8 @@ export function ChatRoute(handle: Handle) {
 												margin: 0,
 												color: colors.textMuted,
 												fontSize: typography.fontSize.sm,
+												whiteSpace: 'pre-wrap',
+												wordBreak: 'break-word',
 											}}
 										>
 											{thread.lastMessagePreview}
@@ -537,12 +537,13 @@ export function ChatRoute(handle: Handle) {
 						css={{
 							display: 'grid',
 							gap: spacing.md,
-							padding: spacing.lg,
+							padding: spacing.xl,
 							borderRadius: radius.lg,
 							border: `1px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.sm,
-							minHeight: '30rem',
+							minHeight: 'calc(100vh - 10rem)',
+							alignContent: activeThread ? 'start' : 'center',
 						}}
 					>
 						{activeThread ? (
@@ -570,6 +571,9 @@ export function ChatRoute(handle: Handle) {
 										display: 'grid',
 										gap: spacing.md,
 										alignContent: 'start',
+										maxWidth: '56rem',
+										width: '100%',
+										margin: '0 auto',
 									}}
 								>
 									{chatSnapshot.messages.map((message) => (
@@ -640,6 +644,9 @@ export function ChatRoute(handle: Handle) {
 									css={{
 										display: 'grid',
 										gap: spacing.sm,
+										maxWidth: '56rem',
+										width: '100%',
+										margin: '0 auto',
 									}}
 								>
 									<label css={{ display: 'grid', gap: spacing.xs }}>
@@ -693,6 +700,8 @@ export function ChatRoute(handle: Handle) {
 									alignContent: 'center',
 									justifyItems: 'start',
 									minHeight: '22rem',
+									maxWidth: '40rem',
+									margin: '0 auto',
 								}}
 							>
 								<h3 css={{ margin: 0, color: colors.text }}>
