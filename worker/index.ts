@@ -1,6 +1,9 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider'
+import { ChatAgent } from '#worker/chat-agent.ts'
 import { MCP } from '#mcp/index.ts'
+import { chatAgentBasePath } from '#shared/chat-routes.ts'
 import { handleRequest } from '#server/handler.ts'
+import { handleChatAgentRequest } from './chat-agent-routing.ts'
 import {
 	apiHandler,
 	handleAuthorizeRequest,
@@ -17,7 +20,7 @@ import {
 } from './mcp-auth.ts'
 import { withCors } from './utils.ts'
 
-export { MCP }
+export { ChatAgent, MCP }
 
 const appHandler = withCors({
 	getCorsHeaders(request) {
@@ -64,6 +67,10 @@ const appHandler = withCors({
 					binding: 'MCP_OBJECT',
 				}).fetch,
 			})
+		}
+
+		if (url.pathname.startsWith(`${chatAgentBasePath}/`)) {
+			return handleChatAgentRequest(request, env)
 		}
 
 		// Sandboxed widget iframes have an opaque origin, so JS/CSS loads become CORS fetches.

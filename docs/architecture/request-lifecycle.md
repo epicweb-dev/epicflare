@@ -24,9 +24,12 @@ Requests are handled in this order:
    - `/.well-known/oauth-protected-resource` (and the `/mcp` variant)
 4. MCP endpoint:
    - `/mcp` (requires OAuth bearer token)
-5. Static assets:
+5. Internal chat agent endpoint:
+   - `/chat-agent/:threadId...` (requires the app session cookie and routes to
+     the per-thread chat Agent instance)
+6. Static assets:
    - Served from `ASSETS` for `GET` and `HEAD` when available
-6. App server routes:
+7. App server routes:
    - Everything else is handled by `server/handler.ts`
 
 ## App server flow

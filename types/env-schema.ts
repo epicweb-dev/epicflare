@@ -1,10 +1,13 @@
 import {
 	createSchema,
+	enum_,
 	fail,
 	object,
+	optional,
 	string,
 	type InferOutput,
 } from 'remix/data-schema'
+import { aiModeValues } from '#shared/chat.ts'
 
 const d1DatabaseSchema = createSchema<unknown, D1Database>((value, context) => {
 	if (value) {
@@ -69,6 +72,11 @@ export const EnvSchema = object({
 	RESEND_API_BASE_URL: optionalUrlStringSchema,
 	RESEND_API_KEY: optionalNonEmptyStringSchema,
 	RESEND_FROM_EMAIL: optionalNonEmptyStringSchema,
+	AI_MODE: optional(enum_(aiModeValues)),
+	AI_MODEL: optionalNonEmptyStringSchema,
+	AI_GATEWAY_ID: optionalNonEmptyStringSchema,
+	AI_MOCK_BASE_URL: optionalUrlStringSchema,
+	AI_MOCK_API_KEY: optionalNonEmptyStringSchema,
 })
 
 export type AppEnv = InferOutput<typeof EnvSchema>

@@ -25,6 +25,11 @@ export function withCors<Props>({
 		// Call the original handler
 		const response = await handler(request, env, ctx)
 
+		// WebSocket upgrade responses must be returned as-is or the upgrade breaks.
+		if (response.status === 101) {
+			return response
+		}
+
 		// Add CORS headers to ALL responses, including early returns
 		const newHeaders = mergeHeaders(response.headers, corsHeaders)
 

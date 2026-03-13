@@ -18,6 +18,7 @@
     "dev:mcp-apps": "esbuild client/mcp-apps/calculator-widget.ts --bundle --format=esm --target=es2022 --outdir=public/mcp-apps --platform=browser --watch",
     "dev:worker": "bun ./wrangler-env.ts dev --local",
     "dev:mock-resend": "bun ./wrangler-env.ts dev --local --config mock-servers/resend/wrangler.jsonc",
+    "dev:mock-ai": "bun ./wrangler-env.ts dev --local --config mock-servers/ai/wrangler.jsonc",
     "deploy": "bun run build && bun ./wrangler-env.ts deploy",
     "build:mcp-apps": "esbuild client/mcp-apps/calculator-widget.ts --bundle --format=esm --target=es2022 --outdir=public/mcp-apps --platform=browser",
     "build:client:web": "esbuild client/entry.tsx --bundle --format=esm --target=es2022 --outdir=public --entry-names=client-entry --chunk-names=assets/[name] --asset-names=assets/[name] --jsx=automatic --jsx-import-source=remix/component",
@@ -58,6 +59,7 @@
     "@modelcontextprotocol/sdk": "1.26.0"
   },
   "dependencies": {
+    "@cloudflare/ai-chat": "^0.1.8",
     "@cloudflare/workers-oauth-provider": "^0.3.0",
     "@epic-web/invariant": "^1.0.0",
     "@mcp-ui/server": "6.1.0",
@@ -66,6 +68,7 @@
     "agents": "^0.7.6",
     "get-port": "^7.1.0",
     "remix": "3.0.0-alpha.3",
+    "workers-ai-provider": "^3.1.2",
     "zod": "^4.3.6"
   }
 }
