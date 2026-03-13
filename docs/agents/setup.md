@@ -53,6 +53,7 @@ Use this script to ensure a known test login exists in any deployed environment:
   - `bun tools/seed-test-data.ts --local --persist-to .wrangler/state/e2e`
 - Remote D1:
   - `bun tools/seed-test-data.ts --remote --config <wrangler-config-path>`
+  - Add `--env <name>` when the config uses environment-scoped bindings and the environment is not already set via `CLOUDFLARE_ENV`.
 - Default credentials:
   - email: `kody@kcd.dev`
   - password: `kodylovesyou`
@@ -82,7 +83,7 @@ For preview environments, we do a full resource reset:
 3. Re-apply remote migrations:
    - `CLOUDFLARE_ENV=preview bun ./wrangler-env.ts d1 migrations apply APP_DB --remote --config wrangler-preview.generated.json`
 4. Seed test account:
-   - `bun tools/seed-test-data.ts --remote --config wrangler-preview.generated.json`
+   - `CLOUDFLARE_ENV=preview bun tools/seed-test-data.ts --remote --config wrangler-preview.generated.json`
 
 ## PR preview deployments
 
