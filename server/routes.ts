@@ -6,6 +6,7 @@ export const routes = route({
 	chatThread: '/chat/:threadId',
 	chatThreads: '/chat-threads',
 	chatThreadsCreate: post('/chat-threads'),
+	chatThreadsUpdate: post('/chat-threads/update'),
 	chatThreadsDelete: post('/chat-threads/delete'),
 	health: '/health',
 	login: '/login',

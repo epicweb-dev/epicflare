@@ -39,6 +39,11 @@ export class ChatClient {
 	private threadId: string
 	private socket: AgentClient | null = null
 	private activeRequestId: string | null = null
+	private connectionWaiters = new Set<{
+		resolve: () => void
+		reject: (error: Error) => void
+		timeoutId: number
+	}>()
 	private snapshot: ChatClientSnapshot = {
 		messages: [],
 		streamingText: '',
@@ -65,6 +70,22 @@ export class ChatClient {
 		this.emitSnapshot()
 	}
 
+	private resolveConnectionWaiters() {
+		for (const waiter of this.connectionWaiters) {
+			window.clearTimeout(waiter.timeoutId)
+			waiter.resolve()
+		}
+		this.connectionWaiters.clear()
+	}
+
+	private rejectConnectionWaiters(message: string) {
+		for (const waiter of this.connectionWaiters) {
+			window.clearTimeout(waiter.timeoutId)
+			waiter.reject(new Error(message))
+		}
+		this.connectionWaiters.clear()
+	}
+
 	private async reloadMessages() {
 		const response = await fetch(
 			buildChatAgentFetchUrl(this.threadId, '/get-messages').toString(),
@@ -87,6 +108,23 @@ export class ChatClient {
 		this.connect()
 	}
 
+	async waitUntilConnected(timeoutMs = 5_000) {
+		if (this.snapshot.connected && this.socket?.readyState === WebSocket.OPEN) return
+
+		await new Promise<void>((resolve, reject) => {
+			const timeoutId = window.setTimeout(() => {
+				this.connectionWaiters.delete(waiter)
+				reject(new Error('Chat connection timed out. Please try again.'))
+			}, timeoutMs)
+			const waiter = {
+				resolve,
+				reject,
+				timeoutId,
+			}
+			this.connectionWaiters.add(waiter)
+		})
+	}
+
 	private connect() {
 		if (this.socket) this.socket.close()
 		const socket = new AgentClient({
@@ -99,20 +137,30 @@ export class ChatClient {
 
 		socket.addEventListener('open', () => {
 			this.updateSnapshot({ connected: true, error: null })
+			this.resolveConnectionWaiters()
 			socket.send(
 				JSON.stringify({ type: MessageType.CF_AGENT_STREAM_RESUME_REQUEST }),
 			)
 		})
 
 		socket.addEventListener('close', () => {
+			const wasConnected = this.snapshot.connected
 			if (this.socket === socket) this.socket = null
 			this.updateSnapshot({ connected: false })
+			if (!wasConnected) {
+				this.rejectConnectionWaiters(
+					'Chat connection closed before it was ready.',
+				)
+			}
 		})
 
 		socket.addEventListener('error', () => {
 			this.updateSnapshot({
 				error: 'Chat connection failed. Please refresh and try again.',
 			})
+			this.rejectConnectionWaiters(
+				'Chat connection failed. Please refresh and try again.',
+			)
 		})
 
 		socket.addEventListener('message', (event) => {
@@ -253,6 +301,7 @@ export class ChatClient {
 	}
 
 	close() {
+		this.rejectConnectionWaiters('Chat connection closed.')
 		this.socket?.close()
 		this.socket = null
 	}

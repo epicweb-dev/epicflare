@@ -65,3 +65,8 @@ export type ChatThreadCreateResponse = {
 	ok: true
 	thread: ChatThreadSummary
 }
+
+export type ChatThreadUpdateResponse = {
+	ok: true
+	thread: ChatThreadSummary
+}

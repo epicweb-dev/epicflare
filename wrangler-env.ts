@@ -21,6 +21,10 @@ if (!hasEnvFlag) {
 	commandArgs.push('--env', envName)
 }
 
+if (isDevCommand) {
+	commandArgs.push('--var', 'WRANGLER_IS_LOCAL_DEV:true')
+}
+
 let resolvedPort = process.env.PORT
 
 if (isDevCommand && hasPortFlag) {
