@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { beforeAll, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import { RequestContext } from 'remix/fetch-router'
 import {
 	createAuthCookie,
@@ -37,11 +37,8 @@ async function withMockedNow<T>(now: number, callback: () => Promise<T>) {
 	}
 }
 
-beforeAll(() => {
-	setAuthSessionSecret(testCookieSecret)
-})
-
 test('auth page redirects remembered sessions with a refreshed cookie', async () => {
+	setAuthSessionSecret(testCookieSecret)
 	const now = Date.UTC(2026, 1, 1)
 	const cookie = await createAuthCookie(
 		rememberedSession,
