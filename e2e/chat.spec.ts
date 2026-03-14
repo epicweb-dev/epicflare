@@ -8,7 +8,9 @@ test('redirects to login when unauthenticated', async ({ page }) => {
 test('loads chat page when authenticated', async ({ page, login }) => {
 	await login()
 	await page.goto('/chat')
-	await expect(page.getByRole('heading', { name: 'Chat' })).toBeVisible()
+	await expect(
+		page.getByRole('heading', { name: 'Chats', exact: true }),
+	).toBeVisible()
 	await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible()
 	await expect(
 		page.getByRole('button', { name: 'Create your first thread' }),
