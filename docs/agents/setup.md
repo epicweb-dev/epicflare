@@ -21,9 +21,9 @@ Quick notes for getting a local epicflare environment running.
 - Add new mock API servers by following `docs/agents/mock-api-servers.md`.
 - To opt into live remote inference locally, set `AI_MODE=remote` before
   starting `bun run dev`.
-- Local remote inference does not require `wrangler dev --remote`; the normal dev
-  server keeps local Durable Objects/D1 while routing Workers AI calls through
-  Cloudflare using the configured account credentials.
+- Local remote inference does not require `wrangler dev --remote`; the normal
+  dev server keeps local Durable Objects/D1 while routing Workers AI calls
+  through Cloudflare using the configured account credentials.
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
   - `bun run dev:worker`

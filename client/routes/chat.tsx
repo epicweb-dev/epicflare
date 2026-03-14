@@ -128,7 +128,12 @@ async function updateThreadTitle(threadId: string, title: string) {
 		| (ChatThreadUpdateResponse & { error?: string })
 		| { ok?: false; error?: string }
 		| null
-	if (!response.ok || !payload?.ok || !('thread' in payload) || !payload.thread) {
+	if (
+		!response.ok ||
+		!payload?.ok ||
+		!('thread' in payload) ||
+		!payload.thread
+	) {
 		throw new Error(payload?.error || 'Unable to update thread title.')
 	}
 	return payload.thread
@@ -210,8 +215,7 @@ function renderPaperAirplaneIcon() {
 
 const SEND_BUTTON_SIZE_REM = 2.5
 const SEND_BUTTON_INSET_REM = 0.375
-const INPUT_MIN_HEIGHT_REM =
-	SEND_BUTTON_SIZE_REM + SEND_BUTTON_INSET_REM * 2
+const INPUT_MIN_HEIGHT_REM = SEND_BUTTON_SIZE_REM + SEND_BUTTON_INSET_REM * 2
 const INPUT_MIN_HEIGHT_PX = INPUT_MIN_HEIGHT_REM * 16
 const INPUT_MIN_HEIGHT = `${INPUT_MIN_HEIGHT_REM}rem`
 const INPUT_RIGHT_PADDING = `${SEND_BUTTON_SIZE_REM + SEND_BUTTON_INSET_REM * 2}rem`
@@ -463,7 +467,9 @@ export function ChatRoute(handle: Handle) {
 			return true
 		} catch (error) {
 			actionError =
-				error instanceof Error ? error.message : 'Unable to update thread title.'
+				error instanceof Error
+					? error.message
+					: 'Unable to update thread title.'
 			update()
 			return false
 		}

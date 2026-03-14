@@ -28,6 +28,11 @@ test('creates and deletes chat threads when authenticated', async ({
 	await page.getByRole('button', { name: 'Send message' }).click()
 	await expect(page).toHaveURL(/\/chat\/.+/)
 	await expect(page.getByRole('heading', { name: 'New chat' })).toBeVisible()
+	await expect(
+		page
+			.getByRole('complementary')
+			.getByText('This is a mock completion', { exact: false }),
+	).toBeVisible()
 	await expect(page.getByText('Hello there')).toBeVisible()
 
 	await page.getByRole('button', { name: 'Delete' }).click()
