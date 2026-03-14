@@ -1,6 +1,6 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { enum_, object, parseSafe, string } from 'remix/data-schema'
-import { createAuthCookie } from '#server/auth-session.ts'
+import { createAuthCookie, isSecureRequest } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
@@ -162,7 +162,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 						email: normalizedEmail,
 						rememberMe: false,
 					},
-					url.protocol === 'https:',
+					isSecureRequest(request),
 				)
 				void logAuditEvent({
 					category: 'auth',
@@ -216,7 +216,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 					email: normalizedEmail,
 					rememberMe,
 				},
-				url.protocol === 'https:',
+				isSecureRequest(request),
 			)
 			void logAuditEvent({
 				category: 'auth',

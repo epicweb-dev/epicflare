@@ -167,10 +167,6 @@ export async function destroyAuthCookie(secure: boolean) {
 	})
 }
 
-export async function readAuthSession(request: Request) {
-	return (await readAuthSessionResult(request)).session
-}
-
 export async function readAuthSessionResult(
 	request: Request,
 	now = Date.now(),
