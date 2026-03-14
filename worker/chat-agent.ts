@@ -136,16 +136,18 @@ export class ChatAgent extends AIChatAgent<Env> {
 		const threadId = this.name
 		const threadStore = this.getThreadStore()
 		const currentThread = await threadStore.getForUser(appUserId, threadId)
+		if (!currentThread) {
+			throw new Error('Thread not found.')
+		}
 		const autoTitle = buildThreadTitle(this.messages)
 		const title =
-			currentThread &&
-			(currentThread.title.trim() === 'New chat' ||
-				currentThread.title.trim() === autoTitle)
+			currentThread.title.trim() === 'New chat' ||
+			currentThread.title.trim() === autoTitle
 				? autoTitle
 				: undefined
 		const userText = getLatestUserMessageText(this.messages)
 		const messageCount = this.messages.length + (input.messageCountOffset ?? 0)
-		return threadStore.syncMetadataForUser({
+		const updatedThread = await threadStore.syncMetadataForUser({
 			userId: appUserId,
 			threadId,
 			title,
@@ -155,12 +157,20 @@ export class ChatAgent extends AIChatAgent<Env> {
 			}),
 			messageCount,
 		})
+		if (!updatedThread) {
+			throw new Error('Thread not found.')
+		}
+		return updatedThread
 	}
 
 	private async initializeRuntimeContextFromRequest(request: Request) {
 		const user = await readAuthenticatedAppUser(request, this.env)
 		if (!user) {
 			throw new Error('Unauthorized chat agent connection.')
+		}
+		const thread = await this.getThreadStore().getForUser(user.userId, this.name)
+		if (!thread) {
+			throw new Error('Thread not found.')
 		}
 		const baseUrl = new URL(request.url).origin
 		this.runtimeContext = {
@@ -186,7 +196,17 @@ export class ChatAgent extends AIChatAgent<Env> {
 	}
 
 	async onRequest(request: Request): Promise<Response> {
-		await this.initializeRuntimeContextFromRequest(request)
+		try {
+			await this.initializeRuntimeContextFromRequest(request)
+		} catch (error) {
+			if (error instanceof Error && error.message === 'Thread not found.') {
+				return new Response('Thread not found.', { status: 404 })
+			}
+			if (error instanceof Error && error.message.includes('Unauthorized')) {
+				return new Response('Unauthorized', { status: 401 })
+			}
+			return createErrorResponse('Failed to initialize chat agent.')
+		}
 		return new Response('Not implemented', { status: 404 })
 	}
 
