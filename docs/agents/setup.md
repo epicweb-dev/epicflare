@@ -16,8 +16,14 @@ Quick notes for getting a local epicflare environment running.
 - Copy `.env.example` to `.env` before starting any work, then update secrets as
   needed.
 - `bun run dev` (starts mock API servers automatically and sets
-  `RESEND_API_BASE_URL` to the local mock Worker).
+  `RESEND_API_BASE_URL`, `AI_MODE=mock`, and `AI_MOCK_BASE_URL` to local mock
+  Workers).
 - Add new mock API servers by following `docs/agents/mock-api-servers.md`.
+- To opt into live remote inference locally, set `AI_MODE=remote` before
+  starting `bun run dev`.
+- Local remote inference does not require `wrangler dev --remote`; the normal
+  dev server keeps local Durable Objects/D1 while routing Workers AI calls
+  through Cloudflare using the configured account credentials.
 - If you only need the client bundle or worker, use:
   - `bun run dev:client`
   - `bun run dev:worker`
@@ -53,6 +59,8 @@ Use this script to ensure a known test login exists in any deployed environment:
   - `bun tools/seed-test-data.ts --local --persist-to .wrangler/state/e2e`
 - Remote D1:
   - `bun tools/seed-test-data.ts --remote --config <wrangler-config-path>`
+  - Add `--env <name>` when the config uses environment-scoped bindings and the
+    environment is not already set via `CLOUDFLARE_ENV`.
 - Default credentials:
   - email: `kody@kcd.dev`
   - password: `kodylovesyou`
@@ -82,7 +90,7 @@ For preview environments, we do a full resource reset:
 3. Re-apply remote migrations:
    - `CLOUDFLARE_ENV=preview bun ./wrangler-env.ts d1 migrations apply APP_DB --remote --config wrangler-preview.generated.json`
 4. Seed test account:
-   - `bun tools/seed-test-data.ts --remote --config wrangler-preview.generated.json`
+   - `CLOUDFLARE_ENV=preview bun tools/seed-test-data.ts --remote --config wrangler-preview.generated.json`
 
 ## PR preview deployments
 

@@ -1,6 +1,5 @@
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server'
 import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod'
 import { calculatorUiResourceUri } from '#mcp/apps/calculator-ui-entry-point.ts'
 import { type MCP } from '#mcp/index.ts'
 
@@ -32,14 +31,6 @@ export async function registerOpenCalculatorUiTool(agent: MCP) {
 		{
 			title: openCalculatorUiTool.title,
 			description: openCalculatorUiTool.description,
-			outputSchema: {
-				widget: z
-					.literal('calculator')
-					.describe('Identifier for the calculator widget.'),
-				resourceUri: z
-					.literal(calculatorUiResourceUri)
-					.describe('MCP App resource URI associated with this widget.'),
-			},
 			annotations: openCalculatorUiTool.annotations,
 			_meta: {
 				ui: {

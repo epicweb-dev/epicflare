@@ -70,30 +70,6 @@ export async function registerDoMathTool(agent: MCP) {
 						'Decimal places used ONLY for the markdown output (0-15, default: 6). Does not change the computed numeric result.',
 					),
 			},
-			outputSchema: {
-				left: z
-					.number()
-					.finite()
-					.describe('Left operand used in the evaluated expression.'),
-				operator: z
-					.enum(mathOperators)
-					.describe('Operator used in the evaluated expression.'),
-				right: z
-					.number()
-					.finite()
-					.describe('Right operand used in the evaluated expression.'),
-				expression: z.string().describe('Expression string, e.g. "8 + 4".'),
-				result: z
-					.number()
-					.finite()
-					.describe('Exact numeric result (not rounded).'),
-				precisionUsed: z
-					.number()
-					.int()
-					.min(0)
-					.max(15)
-					.describe('Precision used ONLY for markdown formatting.'),
-			},
 			annotations: doMathTool.annotations,
 		},
 		async ({

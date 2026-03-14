@@ -1,3 +1,4 @@
+import { basename } from 'node:path'
 import { fail, runWrangler } from './ci/resource-utils.ts'
 import { createPasswordHash } from '#shared/password-hash.ts'
 
@@ -7,6 +8,7 @@ type CliOptions = {
 	password: string
 	local: boolean
 	remote: boolean
+	env?: string
 	config?: string
 	persistTo?: string
 }
@@ -21,6 +23,7 @@ export function parseArgs(argv: Array<string>): CliOptions {
 		password: defaultTestPassword,
 		local: false,
 		remote: false,
+		env: undefined,
 		config: undefined,
 		persistTo: undefined,
 	}
@@ -55,6 +58,11 @@ export function parseArgs(argv: Array<string>): CliOptions {
 				options.remote = true
 				break
 			}
+			case '--env': {
+				options.env = argv[index + 1] ?? ''
+				index += 1
+				break
+			}
 			case '--config': {
 				options.config = argv[index + 1] ?? ''
 				index += 1
@@ -70,7 +78,7 @@ export function parseArgs(argv: Array<string>): CliOptions {
 					fail(
 						[
 							`Unknown flag: ${arg}`,
-							'Usage: bun tools/seed-test-data.ts [--local|--remote] [--config <path>] [--persist-to <path>] [--email <email>] [--username <username>] [--password <password>]',
+							'Usage: bun tools/seed-test-data.ts [--local|--remote] [--env <name>] [--config <path>] [--persist-to <path>] [--email <email>] [--username <username>] [--password <password>]',
 						].join('\n'),
 					)
 				}
@@ -100,14 +108,35 @@ export function parseArgs(argv: Array<string>): CliOptions {
 	if (options.remote && options.persistTo) {
 		fail('--persist-to is only valid with --local.')
 	}
+	if (options.env !== undefined && options.env.length === 0) {
+		fail('Missing value for --env <name>.')
+	}
 	if (options.config !== undefined && options.config.length === 0) {
 		fail('Missing value for --config <path>.')
 	}
 	if (options.persistTo !== undefined && options.persistTo.length === 0) {
 		fail('Missing value for --persist-to <path>.')
 	}
+	options.env = resolveWranglerEnv(options)
 
 	return options
+}
+
+export function resolveWranglerEnv({
+	env,
+	config,
+}: {
+	env?: string
+	config?: string
+}) {
+	if (env && env.length > 0) return env
+
+	const configBaseName = basename(config ?? '').toLowerCase()
+	if (configBaseName.includes('preview')) return 'preview'
+	if (configBaseName.includes('test')) return 'test'
+	if (configBaseName.includes('production')) return 'production'
+
+	return process.env.CLOUDFLARE_ENV ?? 'production'
 }
 
 function quoteSql(value: string) {
@@ -143,6 +172,9 @@ function executeSeedSql(sql: string, options: CliOptions) {
 	}
 	if (options.remote) {
 		args.push('--remote')
+	}
+	if (options.env) {
+		args.push('--env', options.env)
 	}
 	if (options.config) {
 		args.push('--config', options.config)
