@@ -509,10 +509,9 @@ export function ChatRoute(handle: Handle) {
 			handle.queueTask(refreshThreads)
 		}
 
-		const activeThread =
-			activeThreadId && threads.find((thread) => thread.id === activeThreadId)
-				? (threads.find((thread) => thread.id === activeThreadId) ?? null)
-				: null
+		const activeThread = activeThreadId
+			? (threads.find((thread) => thread.id === activeThreadId) ?? null)
+			: null
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
 
