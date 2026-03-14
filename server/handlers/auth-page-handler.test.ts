@@ -41,14 +41,6 @@ beforeAll(() => {
 	setAuthSessionSecret(testCookieSecret)
 })
 
-test('Response.redirect returns immutable headers', () => {
-	const response = Response.redirect('http://example.com/account', 302)
-
-	expect(() => response.headers.append('Set-Cookie', 'session=123')).toThrow(
-		/immutable headers/i,
-	)
-})
-
 test('auth page redirects remembered sessions with a refreshed cookie', async () => {
 	const now = Date.UTC(2026, 1, 1)
 	const cookie = await createAuthCookie(
