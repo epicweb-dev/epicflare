@@ -199,6 +199,7 @@ test('auth handler creates a user and cookie for signup', async () => {
 	expect(testDb.users.has('new@b.com')).toBe(true)
 	const setCookie = response.headers.get('Set-Cookie') ?? ''
 	expect(setCookie).toContain('epicflare_session=')
+	expect(setCookie).toContain('Max-Age=604800')
 })
 
 test('auth handler returns ok with a session cookie for login', async () => {
@@ -219,6 +220,33 @@ test('auth handler returns ok with a session cookie for login', async () => {
 	expect(payload).toEqual({ ok: true, mode: 'login' })
 	const setCookie = response.headers.get('Set-Cookie') ?? ''
 	expect(setCookie).toContain('epicflare_session=')
+	expect(setCookie).toContain('Max-Age=604800')
+})
+
+test('auth handler sets a 30-day cookie when remember me is enabled', async () => {
+	const testDb = createTestDb()
+	const handler = createAuthHandler({
+		COOKIE_SECRET: testCookieSecret,
+		APP_DB: testDb.db,
+	})
+	await testDb.addUser('remember@b.com', 'secret')
+	const authRequest = createAuthRequest(
+		{
+			email: 'remember@b.com',
+			password: 'secret',
+			mode: 'login',
+			rememberMe: true,
+		},
+		'http://example.com/auth',
+		handler,
+	)
+	const response = await authRequest.run()
+	expect(response.status).toBe(200)
+	const payload = await response.json()
+	expect(payload).toEqual({ ok: true, mode: 'login' })
+	const setCookie = response.headers.get('Set-Cookie') ?? ''
+	expect(setCookie).toContain('epicflare_session=')
+	expect(setCookie).toContain('Max-Age=2592000')
 })
 
 test('auth handler sets Secure cookie over https', async () => {

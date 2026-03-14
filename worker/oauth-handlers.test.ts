@@ -181,7 +181,7 @@ test('authorize allows approval with an existing session', async () => {
 	})
 	setAuthSessionSecret(cookieSecret)
 	const cookie = await createAuthCookie(
-		{ id: 'session-id', email: 'user@example.com' },
+		{ id: 'session-id', email: 'user@example.com', rememberMe: false },
 		false,
 	)
 

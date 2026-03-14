@@ -1,6 +1,6 @@
 import { type BuildAction } from 'remix/fetch-router'
 import { enum_, object, parseSafe, string } from 'remix/data-schema'
-import { createAuthCookie } from '#server/auth-session.ts'
+import { createAuthCookie, isSecureRequest } from '#server/auth-session.ts'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash, verifyPassword } from '#server/password-hash.ts'
@@ -54,7 +54,21 @@ export function createAuthHandler(appEnv: AppEnv) {
 			const normalizedEmail = normalizeEmail(parsedBody.value.email)
 			const normalizedPassword = parsedBody.value.password
 			const normalizedMode: AuthMode = parsedBody.value.mode
+			const rememberMeValue =
+				typeof body === 'object' && body !== null
+					? (body as Record<string, unknown>).rememberMe
+					: undefined
 			const requestIp = getRequestIp(request) ?? undefined
+			if (
+				rememberMeValue !== undefined &&
+				typeof rememberMeValue !== 'boolean'
+			) {
+				return Response.json(
+					{ error: 'Invalid request body.' },
+					{ status: 400 },
+				)
+			}
+			const rememberMe = normalizedMode === 'login' && rememberMeValue === true
 
 			if (!normalizedEmail || !normalizedPassword) {
 				void logAuditEvent({
@@ -143,8 +157,12 @@ export function createAuthHandler(appEnv: AppEnv) {
 				}
 
 				const cookie = await createAuthCookie(
-					{ id: String(record.id), email: normalizedEmail },
-					url.protocol === 'https:',
+					{
+						id: String(record.id),
+						email: normalizedEmail,
+						rememberMe: false,
+					},
+					isSecureRequest(request),
 				)
 				void logAuditEvent({
 					category: 'auth',
@@ -196,8 +214,9 @@ export function createAuthHandler(appEnv: AppEnv) {
 				{
 					id: String(userRecord.id),
 					email: normalizedEmail,
+					rememberMe,
 				},
-				url.protocol === 'https:',
+				isSecureRequest(request),
 			)
 			void logAuditEvent({
 				category: 'auth',

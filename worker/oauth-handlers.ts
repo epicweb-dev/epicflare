@@ -3,7 +3,10 @@ import {
 	type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
-import { readAuthSession, setAuthSessionSecret } from '#server/auth-session.ts'
+import {
+	readAuthSessionResult,
+	setAuthSessionSecret,
+} from '#server/auth-session.ts'
 import { getEnv } from '#server/env.ts'
 import { toHex } from '#server/hex.ts'
 import { verifyPassword } from '#server/password-hash.ts'
@@ -139,11 +142,17 @@ async function resolveSessionEmail(request: Request, env: Env) {
 	try {
 		const appEnv = getEnv(env)
 		setAuthSessionSecret(appEnv.COOKIE_SECRET)
-		const session = await readAuthSession(request)
+		const { session, setCookie } = await readAuthSessionResult(request)
 		const email = session?.email?.trim()
-		return email ? email.toLowerCase() : null
+		return {
+			email: email ? email.toLowerCase() : null,
+			setCookie,
+		}
 	} catch {
-		return null
+		return {
+			email: null,
+			setCookie: null,
+		}
 	}
 }
 
@@ -217,7 +226,10 @@ export async function handleAuthorizeRequest(
 	const email = String(formData.get('email') ?? '').trim()
 	const password = String(formData.get('password') ?? '')
 	const normalizedEmail = email.toLowerCase()
-	const sessionEmail = await resolveSessionEmail(request, env)
+	const { email: sessionEmail, setCookie } = await resolveSessionEmail(
+		request,
+		env,
+	)
 	const hasFormCredentials = Boolean(email && password)
 	const hasSession = Boolean(sessionEmail)
 
@@ -290,9 +302,30 @@ export async function handleAuthorizeRequest(
 			ip: requestIp,
 			clientId: authRequest.clientId,
 		})
-		return wantsJson(request)
-			? jsonResponse({ ok: true, redirectTo })
-			: Response.redirect(redirectTo, 302)
+		if (wantsJson(request)) {
+			return jsonResponse(
+				{ ok: true, redirectTo },
+				setCookie
+					? {
+							headers: {
+								'Set-Cookie': setCookie,
+							},
+						}
+					: undefined,
+			)
+		}
+
+		if (setCookie) {
+			return new Response(null, {
+				status: 302,
+				headers: {
+					Location: redirectTo,
+					'Set-Cookie': setCookie,
+				},
+			})
+		}
+
+		return Response.redirect(redirectTo, 302)
 	}
 
 	return respondAuthorizeError(request, resolvedScopes.error)

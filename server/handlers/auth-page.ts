@@ -1,4 +1,4 @@
-import { readAuthSession } from '#server/auth-session.ts'
+import { readAuthSessionResult } from '#server/auth-session.ts'
 import { Layout } from '#server/layout.ts'
 import { render } from '#server/render.ts'
 
@@ -13,14 +13,25 @@ export function createAuthPageHandler() {
 	return {
 		middleware: [],
 		async action({ request }: { request: Request }) {
-			const session = await readAuthSession(request)
+			const { session, setCookie } = await readAuthSessionResult(request)
 			if (session) {
 				const url = new URL(request.url)
 				const redirectTo = normalizeRedirectTo(
 					url.searchParams.get('redirectTo'),
 				)
 				const redirectTarget = redirectTo ?? '/account'
-				return Response.redirect(new URL(redirectTarget, request.url), 302)
+				const redirectUrl = new URL(redirectTarget, request.url)
+				if (setCookie) {
+					return new Response(null, {
+						status: 302,
+						headers: {
+							Location: redirectUrl.toString(),
+							'Set-Cookie': setCookie,
+						},
+					})
+				}
+
+				return Response.redirect(redirectUrl, 302)
 			}
 
 			return render(Layout({}))
