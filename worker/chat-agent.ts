@@ -168,9 +168,12 @@ export class ChatAgent extends AIChatAgent<Env> {
 		if (!user) {
 			throw new Error('Unauthorized chat agent connection.')
 		}
-		const thread = await this.getThreadStore().getForUser(user.userId, this.name)
+		const thread = await this.getThreadStore().getForUser(
+			user.userId,
+			this.name,
+		)
 		if (!thread) {
-			throw new Error('Thread not found.')
+			throw new Error('Thread not found for authenticated user.')
 		}
 		const baseUrl = new URL(request.url).origin
 		this.runtimeContext = {
@@ -199,7 +202,11 @@ export class ChatAgent extends AIChatAgent<Env> {
 		try {
 			await this.initializeRuntimeContextFromRequest(request)
 		} catch (error) {
-			if (error instanceof Error && error.message === 'Thread not found.') {
+			if (
+				error instanceof Error &&
+				(error.message === 'Thread not found.' ||
+					error.message === 'Thread not found for authenticated user.')
+			) {
 				return new Response('Thread not found.', { status: 404 })
 			}
 			if (error instanceof Error && error.message.includes('Unauthorized')) {

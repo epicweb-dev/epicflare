@@ -29,11 +29,11 @@ export function createAppRouter(appEnv: AppEnv) {
 			return render(Layout({}))
 		},
 	})
+	const chatThreadsHandler = createChatThreadsHandler(appEnv)
 
 	router.map(routes.home, home)
 	router.map(routes.chat, chat)
 	router.map(routes.chatThread, chat)
-	const chatThreadsHandler = createChatThreadsHandler(appEnv)
 	router.map(routes.chatThreads, chatThreadsHandler)
 	router.map(routes.chatThreadsCreate, chatThreadsHandler)
 	router.map(routes.chatThreadsUpdate, createUpdateChatThreadHandler(appEnv))
