@@ -295,6 +295,7 @@ async function waitForMockReady(baseUrl: string, child: ChildProcess) {
 }
 
 async function ensureMockServers() {
+	const previousMockEnvOverrides = { ...mockEnvOverrides }
 	const desiredAiMode = resolveAiMode()
 	const canReuseResendMock = isChildRunning(mockResendProcess)
 	const canReuseAiMock = isChildRunning(mockAiProcess)
@@ -303,13 +304,22 @@ async function ensureMockServers() {
 		canReuseResendMock &&
 		hasEnvValue(mockEnvOverrides.RESEND_API_BASE_URL) &&
 		hasEnvValue(mockEnvOverrides.RESEND_API_KEY)
+	const canReuseCachedAiEnv =
+		canReuseAiMock &&
+		hasEnvValue(previousMockEnvOverrides.AI_MOCK_BASE_URL) &&
+		hasEnvValue(previousMockEnvOverrides.AI_MOCK_API_KEY)
 
 	if (
 		canReuseResendMock &&
 		hasMatchingCachedMode &&
-		(desiredAiMode === 'remote' || canReuseAiMock)
+		(desiredAiMode === 'remote' || canReuseCachedAiEnv)
 	) {
 		return mockEnvOverrides
+	}
+
+	if (!canReuseResendMock && mockAiProcess && !mockAiProcess.killed) {
+		await stopChild(mockAiProcess)
+		mockAiProcess = null
 	}
 	let mockPort: number
 	if (canReuseCachedResendEnv) {
@@ -345,7 +355,9 @@ async function ensureMockServers() {
 		)
 		mockResendProcess = child
 		child.once('exit', () => {
-			mockResendProcess = null
+			if (mockResendProcess === child) {
+				mockResendProcess = null
+			}
 		})
 		mockEnvOverrides = {
 			RESEND_API_BASE_URL: baseUrl,
@@ -366,11 +378,11 @@ async function ensureMockServers() {
 	}
 
 	if (desiredAiMode === 'mock') {
-		if (canReuseAiMock && hasEnvValue(mockEnvOverrides.AI_MOCK_BASE_URL)) {
-			mockEnvOverrides = {
-				...mockEnvOverrides,
-				AI_MODE: desiredAiMode,
-			}
+		if (canReuseCachedAiEnv) {
+			mockEnvOverrides.AI_MOCK_BASE_URL =
+				previousMockEnvOverrides.AI_MOCK_BASE_URL ?? ''
+			mockEnvOverrides.AI_MOCK_API_KEY =
+				previousMockEnvOverrides.AI_MOCK_API_KEY ?? ''
 			return mockEnvOverrides
 		}
 		const aiPort = await getPort({
@@ -392,7 +404,9 @@ async function ensureMockServers() {
 		)
 		mockAiProcess = aiChild
 		aiChild.once('exit', () => {
-			mockAiProcess = null
+			if (mockAiProcess === aiChild) {
+				mockAiProcess = null
+			}
 		})
 		mockEnvOverrides.AI_MOCK_BASE_URL = aiBaseUrl
 		mockEnvOverrides.AI_MOCK_API_KEY = aiApiToken
@@ -404,8 +418,8 @@ async function ensureMockServers() {
 		}
 		console.log(dim(`AI mock base URL ${aiBaseUrl}`))
 	} else {
-		if (canReuseAiMock) {
-			await stopChild(mockAiProcess!)
+		if (mockAiProcess && !mockAiProcess.killed) {
+			await stopChild(mockAiProcess)
 			mockAiProcess = null
 		}
 		mockEnvOverrides.AI_MOCK_BASE_URL = ''
