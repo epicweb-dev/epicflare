@@ -1,5 +1,5 @@
 import { type BuildAction } from 'remix/fetch-router'
-import { readAuthSession } from '#server/auth-session.ts'
+import { readAuthSessionResult } from '#server/auth-session.ts'
 import { type routes } from '#server/routes.ts'
 
 function jsonResponse(data: unknown, init?: ResponseInit) {
@@ -16,12 +16,21 @@ function jsonResponse(data: unknown, init?: ResponseInit) {
 export const session = {
 	middleware: [],
 	async action({ request }) {
-		const session = await readAuthSession(request)
+		const { session, setCookie } = await readAuthSessionResult(request)
 		if (!session) {
 			return jsonResponse({ ok: false })
 		}
 
-		return jsonResponse({ ok: true, session: { email: session.email } })
+		return jsonResponse(
+			{ ok: true, session: { email: session.email } },
+			setCookie
+				? {
+						headers: {
+							'Set-Cookie': setCookie,
+						},
+					}
+				: undefined,
+		)
 	},
 } satisfies BuildAction<
 	typeof routes.session.method,

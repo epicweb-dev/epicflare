@@ -13,12 +13,16 @@ Session cookie behavior is implemented in `server/auth-session.ts`.
 - `httpOnly: true`
 - `sameSite: 'Lax'`
 - signed with `COOKIE_SECRET`
-- max age: 7 days
+- default max age: 7 days
+- `remember me` login max age: 30 days
+- remembered sessions are renewed with a fresh 30-day cookie after 14 days of
+  age
 
 The cookie payload stores:
 
 - `id` (user id as string)
 - `email`
+- `rememberMe` and `issuedAt` for remembered sessions
 
 `server/handler.ts` calls `setAuthSessionSecret` on each request so cookie
 signing and verification are available to handlers.
@@ -27,7 +31,8 @@ signing and verification are available to handlers.
 
 `POST /auth` is implemented by `server/handlers/auth.ts`.
 
-- Accepts JSON body with `email`, `password`, and `mode` (`login` or `signup`)
+- Accepts JSON body with `email`, `password`, `mode` (`login` or `signup`), and
+  optional `rememberMe` for logins
 - Uses D1 (`users` table) for user lookups and inserts
 - Hashes passwords with `server/password-hash.ts`
 - Returns signed session cookie via `Set-Cookie` on success

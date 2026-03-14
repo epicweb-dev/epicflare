@@ -83,6 +83,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		const formData = new FormData(event.currentTarget)
 		const email = String(formData.get('email') ?? '').trim()
 		const password = String(formData.get('password') ?? '')
+		const rememberMe = mode === 'login' && formData.get('rememberMe') === 'on'
 
 		if (!email || !password) {
 			setState('error', 'Email and password are required.')
@@ -96,7 +97,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ email, password, mode }),
+				body: JSON.stringify({ email, password, mode, rememberMe }),
 			})
 			const payload = await response.json().catch(() => null)
 
@@ -214,6 +215,43 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 							}}
 						/>
 					</label>
+					{!isSignup ? (
+						<label
+							css={{
+								display: 'flex',
+								gap: spacing.sm,
+								alignItems: 'flex-start',
+								color: colors.text,
+							}}
+						>
+							<input
+								type="checkbox"
+								name="rememberMe"
+								css={{
+									marginTop: '0.15rem',
+								}}
+							/>
+							<span css={{ display: 'grid', gap: spacing.xs }}>
+								<span
+									css={{
+										fontWeight: typography.fontWeight.medium,
+										fontSize: typography.fontSize.sm,
+									}}
+								>
+									Remember me
+								</span>
+								<span
+									css={{
+										color: colors.textMuted,
+										fontSize: typography.fontSize.sm,
+									}}
+								>
+									Stay signed in for 30 days. Active sessions renew after 14
+									days.
+								</span>
+							</span>
+						</label>
+					) : null}
 					<button
 						type="submit"
 						disabled={isSubmitting}

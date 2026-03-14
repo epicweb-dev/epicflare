@@ -28,6 +28,27 @@ test('logs in with email and password', async ({ page }) => {
 	).toBeVisible()
 })
 
+test('logs in with a remembered 30-day session', async ({ page }) => {
+	await ensureUserExists(page.request)
+	await page.context().clearCookies()
+	await page.goto('/login')
+
+	await page.getByLabel('Email').fill(testUser.email)
+	await page.getByLabel('Password').fill(testUser.password)
+	await page.getByLabel('Remember me').check()
+	await page.getByRole('button', { name: 'Sign in' }).click()
+
+	await expect(page).toHaveURL(/\/account$/)
+	const sessionCookie = (await page.context().cookies()).find(
+		(cookie) => cookie.name === 'epicflare_session',
+	)
+	expect(sessionCookie).toBeDefined()
+	const secondsUntilExpiry =
+		(sessionCookie?.expires ?? 0) - Math.floor(Date.now() / 1000)
+	expect(secondsUntilExpiry).toBeGreaterThan(60 * 60 * 24 * 28)
+	expect(secondsUntilExpiry).toBeLessThanOrEqual(60 * 60 * 24 * 31)
+})
+
 test('signs up with email and password', async ({ page }) => {
 	const signupUser = {
 		email: `new-user-${crypto.randomUUID()}@example.com`,

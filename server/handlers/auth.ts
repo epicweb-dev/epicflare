@@ -54,7 +54,21 @@ export function createAuthHandler(appEnv: AppEnv) {
 			const normalizedEmail = normalizeEmail(parsedBody.value.email)
 			const normalizedPassword = parsedBody.value.password
 			const normalizedMode: AuthMode = parsedBody.value.mode
+			const rememberMeValue =
+				typeof body === 'object' && body !== null
+					? (body as Record<string, unknown>).rememberMe
+					: undefined
 			const requestIp = getRequestIp(request) ?? undefined
+			if (
+				rememberMeValue !== undefined &&
+				typeof rememberMeValue !== 'boolean'
+			) {
+				return Response.json(
+					{ error: 'Invalid request body.' },
+					{ status: 400 },
+				)
+			}
+			const rememberMe = normalizedMode === 'login' && rememberMeValue === true
 
 			if (!normalizedEmail || !normalizedPassword) {
 				void logAuditEvent({
@@ -143,7 +157,11 @@ export function createAuthHandler(appEnv: AppEnv) {
 				}
 
 				const cookie = await createAuthCookie(
-					{ id: String(record.id), email: normalizedEmail },
+					{
+						id: String(record.id),
+						email: normalizedEmail,
+						rememberMe: false,
+					},
 					url.protocol === 'https:',
 				)
 				void logAuditEvent({
@@ -196,6 +214,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 				{
 					id: String(userRecord.id),
 					email: normalizedEmail,
+					rememberMe,
 				},
 				url.protocol === 'https:',
 			)
