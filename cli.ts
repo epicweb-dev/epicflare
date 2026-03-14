@@ -323,7 +323,7 @@ async function ensureMockServers() {
 	}
 	let mockPort: number
 	if (canReuseCachedResendEnv) {
-		const resendBaseUrl = new URL(mockEnvOverrides.RESEND_API_BASE_URL)
+		const resendBaseUrl = new URL(mockEnvOverrides.RESEND_API_BASE_URL ?? '')
 		mockPort = Number.parseInt(resendBaseUrl.port, 10)
 		mockEnvOverrides = {
 			...mockEnvOverrides,

@@ -109,7 +109,8 @@ export class ChatClient {
 	}
 
 	async waitUntilConnected(timeoutMs = 5_000) {
-		if (this.snapshot.connected && this.socket?.readyState === WebSocket.OPEN) return
+		if (this.snapshot.connected && this.socket?.readyState === WebSocket.OPEN)
+			return
 
 		await new Promise<void>((resolve, reject) => {
 			const timeoutId = window.setTimeout(() => {

@@ -7,7 +7,7 @@ import {
 } from 'ai'
 import { createWorkersAI } from 'workers-ai-provider'
 import { type AiMode } from '#shared/chat.ts'
-import { type MockAiResponse } from '#shared/mock-ai.ts'
+import { buildMockAiScenario, type MockAiResponse } from '#shared/mock-ai.ts'
 
 const defaultModel = '@cf/zai-org/glm-4.7-flash'
 
@@ -44,7 +44,9 @@ function resolveAiMode(env: Env): AiMode {
 }
 
 function createWorkersAiProvider(env: WorkersAiCredentialsEnv) {
-	const gateway = env.AI_GATEWAY_ID ? { gateway: { id: env.AI_GATEWAY_ID } } : {}
+	const gateway = env.AI_GATEWAY_ID
+		? { gateway: { id: env.AI_GATEWAY_ID } }
+		: {}
 	const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
 	const apiKey = env.CLOUDFLARE_API_TOKEN?.trim()
 	const shouldUseCredentials =
@@ -88,14 +90,33 @@ function createRemoteAiRuntime(env: WorkersAiCredentialsEnv): AiRuntime {
 
 function createMockAiRuntime(env: Env): AiRuntime {
 	const baseUrl = env.AI_MOCK_BASE_URL?.trim()
-	if (!baseUrl) {
-		throw new Error(
-			'AI_MOCK_BASE_URL is required when AI_MODE is "mock". Start the mock AI worker or set AI_MODE=remote.',
-		)
-	}
 
 	return {
 		async streamChatReply(input) {
+			if (!baseUrl) {
+				const userMessages = input.messages.filter(
+					(message) => message.role === 'user',
+				)
+				const latestUserMessage = userMessages.at(-1)
+				const lastUserMessage =
+					latestUserMessage?.parts
+						.filter(
+							(
+								part,
+							): part is Extract<
+								(typeof latestUserMessage.parts)[number],
+								{ type: 'text' }
+							> => part.type === 'text',
+						)
+						.map((part) => part.text)
+						.join('\n')
+						.trim() ?? ''
+				return buildMockAiScenario({
+					lastUserMessage,
+					toolNames: input.toolNames,
+				}).response
+			}
+
 			const url = new URL('/chat', baseUrl)
 			const response = await fetch(url.toString(), {
 				method: 'POST',
