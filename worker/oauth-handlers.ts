@@ -315,12 +315,17 @@ export async function handleAuthorizeRequest(
 			)
 		}
 
-		const response = Response.redirect(redirectTo, 302)
 		if (setCookie) {
-			response.headers.set('Set-Cookie', setCookie)
+			return new Response(null, {
+				status: 302,
+				headers: {
+					Location: redirectTo,
+					'Set-Cookie': setCookie,
+				},
+			})
 		}
 
-		return response
+		return Response.redirect(redirectTo, 302)
 	}
 
 	return respondAuthorizeError(request, resolvedScopes.error)

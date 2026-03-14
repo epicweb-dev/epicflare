@@ -20,15 +20,18 @@ export function createAuthPageHandler() {
 					url.searchParams.get('redirectTo'),
 				)
 				const redirectTarget = redirectTo ?? '/account'
-				const response = Response.redirect(
-					new URL(redirectTarget, request.url),
-					302,
-				)
+				const redirectUrl = new URL(redirectTarget, request.url)
 				if (setCookie) {
-					response.headers.set('Set-Cookie', setCookie)
+					return new Response(null, {
+						status: 302,
+						headers: {
+							Location: redirectUrl.toString(),
+							'Set-Cookie': setCookie,
+						},
+					})
 				}
 
-				return response
+				return Response.redirect(redirectUrl, 302)
 			}
 
 			return render(Layout({}))
