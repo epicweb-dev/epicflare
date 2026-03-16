@@ -72,6 +72,24 @@ type MockToolCallResult = {
 	assistantText: string
 }
 
+const defaultMessageHistoryLimit = 40
+const maxMessageHistoryLimit = 100
+
+function normalizeMessageHistoryLimit(limit: number | undefined) {
+	return Math.max(
+		1,
+		Math.min(limit ?? defaultMessageHistoryLimit, maxMessageHistoryLimit),
+	)
+}
+
+function normalizeMessageHistoryIndex(
+	index: number | null | undefined,
+	totalCount: number,
+) {
+	if (typeof index !== 'number' || !Number.isFinite(index)) return totalCount
+	return Math.max(0, Math.min(Math.trunc(index), totalCount))
+}
+
 function formatNumberForMockTool(value: number, precision: number) {
 	if (Number.isInteger(value)) return String(value)
 	const rounded = value.toFixed(precision)
@@ -90,7 +108,11 @@ function createKnownMockToolResult(
 		const isValidOperator = (value: unknown): value is '+' | '-' | '*' | '/' =>
 			value === '+' || value === '-' || value === '*' || value === '/'
 
-		if (typeof left !== 'number' || typeof right !== 'number' || !isValidOperator(operator)) {
+		if (
+			typeof left !== 'number' ||
+			typeof right !== 'number' ||
+			!isValidOperator(operator)
+		) {
 			return {
 				assistantText:
 					'Unable to execute `do_math` because the provided mock input was invalid.',
@@ -207,6 +229,35 @@ export class ChatAgent extends AIChatAgent<Env> {
 
 	private getThreadStore() {
 		return createChatThreadsStore(this.env.APP_DB)
+	}
+
+	getMessagePage(input?: {
+		before?: number | null
+		limit?: number
+		start?: number | null
+	}) {
+		const totalCount = this.messages.length
+		const limit = normalizeMessageHistoryLimit(input?.limit)
+		const startIndex =
+			input?.start !== undefined && input.start !== null
+				? normalizeMessageHistoryIndex(input.start, totalCount)
+				: Math.max(
+						normalizeMessageHistoryIndex(input?.before, totalCount) - limit,
+						0,
+					)
+		const endIndex =
+			input?.start !== undefined && input.start !== null
+				? totalCount
+				: normalizeMessageHistoryIndex(input?.before, totalCount)
+		const messages = this.messages.slice(startIndex, endIndex)
+
+		return {
+			messages,
+			hasMore: startIndex > 0,
+			nextBefore: startIndex > 0 ? String(startIndex) : null,
+			startIndex,
+			totalCount,
+		}
 	}
 
 	private async syncThreadMetadata(input: {

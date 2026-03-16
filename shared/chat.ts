@@ -59,6 +59,14 @@ export type ChatThreadSummary = {
 export type ChatThreadListResponse = {
 	ok: true
 	threads: Array<ChatThreadSummary>
+	hasMore: boolean
+	nextCursor: string | null
+	totalCount: number
+}
+
+export type ChatThreadLookupResponse = {
+	ok: true
+	thread: ChatThreadSummary
 }
 
 export type ChatThreadCreateResponse = {

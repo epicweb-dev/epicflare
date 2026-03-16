@@ -1,4 +1,4 @@
-import { routeAgentRequest } from 'agents'
+import { getAgentByName, routeAgentRequest } from 'agents'
 import { readAuthenticatedAppUser } from '#server/authenticated-user.ts'
 import { createChatThreadsStore } from '#server/chat-threads.ts'
 import { chatAgentBasePath } from '#shared/chat-routes.ts'
@@ -19,6 +19,19 @@ function getThreadIdFromPath(pathname: string) {
 	const pathAfterBase = pathname.slice(chatAgentBasePath.length + 1)
 	const [threadId] = pathAfterBase.split('/')
 	return threadId?.trim() || null
+}
+
+function getSubPathFromPath(pathname: string) {
+	if (!pathname.startsWith(`${chatAgentBasePath}/`)) return ''
+	const pathAfterBase = pathname.slice(chatAgentBasePath.length + 1)
+	const [, ...subPathSegments] = pathAfterBase.split('/')
+	return subPathSegments.length > 0 ? `/${subPathSegments.join('/')}` : ''
+}
+
+function parseOptionalInteger(value: string | null) {
+	if (!value) return undefined
+	const parsedValue = Number.parseInt(value, 10)
+	return Number.isFinite(parsedValue) ? parsedValue : undefined
 }
 
 export async function handleChatAgentRequest(request: Request, env: Env) {
@@ -46,6 +59,30 @@ export async function handleChatAgentRequest(request: Request, env: Env) {
 			{ ok: false, error: 'Thread not found.' },
 			{ status: 404 },
 		)
+	}
+
+	const subPath = getSubPathFromPath(url.pathname)
+	if (request.method === 'GET' && subPath === '/get-messages') {
+		const chatAgent = await getAgentByName(env.ChatAgent, threadId)
+		const page = (await chatAgent.getMessagePage({
+			before: parseOptionalInteger(url.searchParams.get('before')),
+			limit: parseOptionalInteger(url.searchParams.get('limit')),
+			start: parseOptionalInteger(url.searchParams.get('start')),
+		})) as {
+			hasMore: boolean
+			messages: Array<unknown>
+			nextBefore: string | null
+			startIndex: number
+			totalCount: number
+		}
+		return createJsonResponse({
+			ok: true,
+			messages: page.messages,
+			hasMore: page.hasMore,
+			nextBefore: page.nextBefore,
+			startIndex: page.startIndex,
+			totalCount: page.totalCount,
+		})
 	}
 
 	return (

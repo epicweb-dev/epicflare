@@ -3,6 +3,17 @@ import { ChatClient, type ChatClientSnapshot } from '#client/chat-client.ts'
 import { navigate, routerEvents } from '#client/client-router.tsx'
 import { createDoubleCheck } from '#client/double-check.ts'
 import { EditableText } from '#client/editable-text.tsx'
+import {
+	createInfiniteList,
+	type InfiniteListSnapshot,
+} from '#client/infinite-list.ts'
+import {
+	captureScrollAnchor,
+	getScrollFades,
+	isScrolledNearEdge,
+	restoreScrollAnchorAfterPrepend,
+	scrollToEdge,
+} from '#client/scroll-container.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
 import {
 	colors,
@@ -13,6 +24,8 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 import {
+	type ChatThreadLookupResponse,
+	type ChatThreadListResponse,
 	type ChatThreadSummary,
 	type ChatThreadUpdateResponse,
 } from '#shared/chat.ts'
@@ -34,7 +47,9 @@ function buildThreadHref(threadId: string) {
 const MESSAGES_SCROLL_CONTAINER_ID = 'chat-messages-scroll-container'
 const THREAD_LIST_SCROLL_CONTAINER_ID = 'chat-thread-list-scroll-container'
 const MESSAGES_SCROLL_THRESHOLD_PX = 96
+const THREAD_LIST_SCROLL_THRESHOLD_PX = 96
 const MESSAGE_SCROLL_FADE_HEIGHT = '2.5rem'
+const THREADS_PAGE_LIMIT = 40
 
 function truncatePreview(text: string) {
 	const normalized = text.trim()
@@ -45,8 +60,12 @@ function truncatePreview(text: string) {
 function createInitialSnapshot(): ChatClientSnapshot {
 	return {
 		messages: [],
+		totalMessageCount: 0,
 		streamingText: '',
 		isStreaming: false,
+		hasOlderMessages: false,
+		isLoadingMessages: false,
+		isLoadingOlderMessages: false,
 		error: null,
 		connected: false,
 	}
@@ -73,10 +92,15 @@ function buildThreadPreviewFromMessages(
 }
 
 async function fetchThreads(input?: {
+	cursor?: string | null
 	signal?: AbortSignal
 	search?: string
 }) {
 	const url = new URL('/chat-threads', window.location.href)
+	if (input?.cursor) {
+		url.searchParams.set('cursor', input.cursor)
+	}
+	url.searchParams.set('limit', String(THREADS_PAGE_LIMIT))
 	const search = input?.search?.trim()
 	if (search) {
 		url.searchParams.set('q', search)
@@ -86,15 +110,53 @@ async function fetchThreads(input?: {
 		headers: { Accept: 'application/json' },
 		signal: input?.signal,
 	})
-	const payload = (await response.json().catch(() => null)) as {
-		ok?: boolean
-		threads?: Array<ChatThreadSummary>
-		error?: string
-	} | null
-	if (!response.ok || !payload?.ok || !Array.isArray(payload.threads)) {
+	const payload = (await response.json().catch(() => null)) as
+		| (ChatThreadListResponse & {
+				error?: string
+		  })
+		| { ok?: false; error?: string }
+		| null
+	if (
+		!response.ok ||
+		!payload?.ok ||
+		!('threads' in payload) ||
+		!Array.isArray(payload.threads) ||
+		typeof payload.totalCount !== 'number' ||
+		typeof payload.hasMore !== 'boolean'
+	) {
 		throw new Error(payload?.error || 'Unable to load threads.')
 	}
-	return payload.threads
+	return {
+		items: payload.threads,
+		hasMore: payload.hasMore,
+		nextCursor: payload.nextCursor,
+		totalCount: payload.totalCount,
+	}
+}
+
+async function fetchThreadById(threadId: string, signal?: AbortSignal) {
+	const url = new URL('/chat-threads', window.location.href)
+	url.searchParams.set('threadId', threadId)
+	const response = await fetch(url.toString(), {
+		credentials: 'include',
+		headers: { Accept: 'application/json' },
+		signal,
+	})
+	const payload = (await response.json().catch(() => null)) as
+		| (ChatThreadLookupResponse & {
+				error?: string
+		  })
+		| { ok?: false; error?: string }
+		| null
+	if (
+		!response.ok ||
+		!payload?.ok ||
+		!('thread' in payload) ||
+		!payload.thread
+	) {
+		throw new Error(payload?.error || 'Unable to load the selected thread.')
+	}
+	return payload.thread
 }
 
 async function createThread() {
@@ -274,17 +336,18 @@ function resizeMessageInput(target: EventTarget | null) {
 	target.style.height = `${height}px`
 }
 
-function isScrolledNearBottom(element: HTMLElement) {
-	return (
-		element.scrollHeight - element.scrollTop - element.clientHeight <=
-		MESSAGES_SCROLL_THRESHOLD_PX
-	)
-}
-
 export function ChatRoute(handle: Handle) {
-	let threads: Array<ChatThreadSummary> = []
+	let threadListSnapshot: InfiniteListSnapshot<ChatThreadSummary> = {
+		items: [],
+		hasMore: false,
+		totalCount: 0,
+		error: null,
+		isLoadingInitial: false,
+		isLoadingMore: false,
+	}
 	let threadStatus: ThreadStatus = 'loading'
 	let threadError: string | null = null
+	let threadListCursor: string | null = null
 	let activeThreadId: string | null = null
 	let threadSearch = ''
 	let chatSnapshot = createInitialSnapshot()
@@ -301,6 +364,22 @@ export function ChatRoute(handle: Handle) {
 		string,
 		ReturnType<typeof createDoubleCheck>
 	>()
+	const threadList = createInfiniteList<ChatThreadSummary>({
+		mergeDirection: 'append',
+		getKey: (thread) => thread.id,
+		onSnapshot(snapshot) {
+			threadListSnapshot = snapshot
+			threadError = snapshot.error
+			if (snapshot.isLoadingInitial) {
+				threadStatus = 'loading'
+			} else if (snapshot.error) {
+				threadStatus = 'error'
+			} else {
+				threadStatus = 'ready'
+			}
+			update()
+		},
+	})
 
 	function update() {
 		handle.update()
@@ -319,27 +398,40 @@ export function ChatRoute(handle: Handle) {
 		chatSnapshot = createInitialSnapshot()
 	}
 
-	function replaceThreadSummary(nextThread: ChatThreadSummary) {
-		threads = threads.map((thread) =>
-			thread.id === nextThread.id ? nextThread : thread,
-		)
+	function getThreads() {
+		return threadListSnapshot.items
+	}
+
+	function updateThreadListFromSnapshot(
+		updater: (threads: Array<ChatThreadSummary>) => Array<ChatThreadSummary>,
+	) {
+		threadList.updateItems(updater)
 	}
 
 	function updateLocalThreadSummary(
 		threadId: string,
 		snapshot: ChatClientSnapshot,
 	) {
-		threads = threads.map((thread) =>
-			thread.id === threadId
-				? {
-						...thread,
-						messageCount: snapshot.messages.length,
-						lastMessagePreview: buildThreadPreviewFromMessages(
-							snapshot.messages,
-						),
-					}
-				: thread,
-		)
+		updateThreadListFromSnapshot((threads) => {
+			const threadIndex = threads.findIndex((thread) => thread.id === threadId)
+			if (threadIndex === -1) return threads
+			const existingThread = threads[threadIndex]
+			if (!existingThread) return threads
+			const nextThread: ChatThreadSummary = {
+				...existingThread,
+				messageCount: snapshot.totalMessageCount,
+				lastMessagePreview: buildThreadPreviewFromMessages(snapshot.messages),
+			}
+			if (threadSearch.trim()) {
+				return threads.map((thread) =>
+					thread.id === threadId ? nextThread : thread,
+				)
+			}
+			const remainingThreads = threads.filter(
+				(thread) => thread.id !== threadId,
+			)
+			return [nextThread, ...remainingThreads]
+		})
 	}
 
 	function syncDisconnectedIndicator() {
@@ -371,21 +463,8 @@ export function ChatRoute(handle: Handle) {
 				const element = document.getElementById(MESSAGES_SCROLL_CONTAINER_ID)
 				return element instanceof HTMLDivElement ? element : null
 			})()
-		if (!container) {
-			setMessageScrollFades(false, false)
-			return
-		}
-
-		const canScroll = container.scrollHeight > container.clientHeight + 1
-		if (!canScroll) {
-			setMessageScrollFades(false, false)
-			return
-		}
-
-		const topVisible = container.scrollTop > 1
-		const bottomVisible =
-			container.scrollTop + container.clientHeight < container.scrollHeight - 1
-		setMessageScrollFades(topVisible, bottomVisible)
+		const fades = getScrollFades(container)
+		setMessageScrollFades(fades.top, fades.bottom)
 	}
 
 	function scheduleMessageScrollFadeSync() {
@@ -417,21 +496,8 @@ export function ChatRoute(handle: Handle) {
 				const element = document.getElementById(THREAD_LIST_SCROLL_CONTAINER_ID)
 				return element instanceof HTMLDivElement ? element : null
 			})()
-		if (!container) {
-			setThreadListScrollFades(false, false)
-			return
-		}
-
-		const canScroll = container.scrollHeight > container.clientHeight + 1
-		if (!canScroll) {
-			setThreadListScrollFades(false, false)
-			return
-		}
-
-		const topVisible = container.scrollTop > 1
-		const bottomVisible =
-			container.scrollTop + container.clientHeight < container.scrollHeight - 1
-		setThreadListScrollFades(topVisible, bottomVisible)
+		const fades = getScrollFades(container)
+		setThreadListScrollFades(fades.top, fades.bottom)
 	}
 
 	function scheduleThreadListScrollFadeSync() {
@@ -450,12 +516,15 @@ export function ChatRoute(handle: Handle) {
 			if (
 				!force &&
 				!shouldAutoScrollMessages &&
-				!isScrolledNearBottom(container)
+				!isScrolledNearEdge(container, {
+					edge: 'bottom',
+					thresholdPx: MESSAGES_SCROLL_THRESHOLD_PX,
+				})
 			) {
 				syncMessageScrollFades(container)
 				return
 			}
-			container.scrollTop = container.scrollHeight
+			scrollToEdge(container, 'bottom')
 			shouldAutoScrollMessages = true
 			syncMessageScrollFades(container)
 		})
@@ -463,13 +532,50 @@ export function ChatRoute(handle: Handle) {
 
 	function handleMessagesScroll(event: Event) {
 		if (!(event.currentTarget instanceof HTMLDivElement)) return
-		shouldAutoScrollMessages = isScrolledNearBottom(event.currentTarget)
+		shouldAutoScrollMessages = isScrolledNearEdge(event.currentTarget, {
+			edge: 'bottom',
+			thresholdPx: MESSAGES_SCROLL_THRESHOLD_PX,
+		})
 		syncMessageScrollFades(event.currentTarget)
+		if (
+			chatSnapshot.hasOlderMessages &&
+			!chatSnapshot.isLoadingOlderMessages &&
+			isScrolledNearEdge(event.currentTarget, {
+				edge: 'top',
+				thresholdPx: MESSAGES_SCROLL_THRESHOLD_PX,
+			})
+		) {
+			const scrollAnchor = captureScrollAnchor(event.currentTarget)
+			void handle.queueTask(async (signal) => {
+				const didLoad = await activeClient?.loadOlderMessages(signal)
+				if (!didLoad) return
+				void handle.queueTask(async () => {
+					const container = document.getElementById(
+						MESSAGES_SCROLL_CONTAINER_ID,
+					)
+					if (!(container instanceof HTMLDivElement)) return
+					restoreScrollAnchorAfterPrepend(container, scrollAnchor)
+					syncMessageScrollFades(container)
+				})
+			})
+		}
 	}
 
 	function handleThreadListScroll(event: Event) {
 		if (!(event.currentTarget instanceof HTMLDivElement)) return
 		syncThreadListScrollFades(event.currentTarget)
+		if (
+			threadListSnapshot.hasMore &&
+			!threadListSnapshot.isLoadingMore &&
+			isScrolledNearEdge(event.currentTarget, {
+				edge: 'bottom',
+				thresholdPx: THREAD_LIST_SCROLL_THRESHOLD_PX,
+			})
+		) {
+			void handle.queueTask(async (signal) => {
+				await loadMoreThreads(signal)
+			})
+		}
 	}
 
 	function handleThreadSearchInput(event: Event) {
@@ -532,6 +638,7 @@ export function ChatRoute(handle: Handle) {
 		syncInFlight = true
 		try {
 			const locationThreadId = getSelectedThreadIdFromLocation()
+			const threads = getThreads()
 			if (threads.length === 0) {
 				activeClient?.close()
 				activeClient = null
@@ -546,12 +653,27 @@ export function ChatRoute(handle: Handle) {
 				return
 			}
 
+			if (
+				locationThreadId &&
+				!threads.some((thread) => thread.id === locationThreadId)
+			) {
+				try {
+					const selectedThread = await fetchThreadById(locationThreadId)
+					updateThreadListFromSnapshot((currentThreads) => [
+						selectedThread,
+						...currentThreads,
+					])
+				} catch {
+					// Ignore missing selections and fall back to the first loaded thread.
+				}
+			}
+
 			const selectedThread =
 				locationThreadId &&
-				threads.find((thread) => thread.id === locationThreadId)
+				getThreads().find((thread) => thread.id === locationThreadId)
 					? locationThreadId
 					: null
-			const resolvedThreadId = selectedThread ?? threads[0]?.id ?? null
+			const resolvedThreadId = selectedThread ?? getThreads()[0]?.id ?? null
 			if (!resolvedThreadId) return
 
 			if (locationThreadId !== resolvedThreadId) {
@@ -565,9 +687,36 @@ export function ChatRoute(handle: Handle) {
 		}
 	}
 
+	async function loadMoreThreads(signal?: AbortSignal) {
+		if (!threadListCursor) return false
+		return threadList.loadMore(async ({ signal }) => {
+			const page = await fetchThreads({
+				cursor: threadListCursor,
+				search: threadSearch,
+				signal,
+			})
+			threadListCursor = page.nextCursor
+			return {
+				items: page.items,
+				hasMore: page.hasMore,
+				totalCount: page.totalCount,
+			}
+		}, signal)
+	}
+
 	async function refreshThreads(signal?: AbortSignal) {
 		try {
-			threads = await fetchThreads({ signal, search: threadSearch })
+			threadListCursor = null
+			const didLoad = await threadList.loadInitial(async ({ signal }) => {
+				const page = await fetchThreads({ search: threadSearch, signal })
+				threadListCursor = page.nextCursor
+				return {
+					items: page.items,
+					hasMore: page.hasMore,
+					totalCount: page.totalCount,
+				}
+			}, signal)
+			if (!didLoad) return
 			setThreadState('ready')
 			scheduleThreadListScrollFadeSync()
 			await syncActiveThreadFromLocation()
@@ -590,9 +739,8 @@ export function ChatRoute(handle: Handle) {
 
 	async function createAndSelectThread() {
 		const thread = await createThread()
-		threads = [thread, ...threads]
-		update()
 		navigate(buildThreadHref(thread.id))
+		await refreshThreads()
 		await connectThread(thread.id)
 		return thread
 	}
@@ -616,7 +764,6 @@ export function ChatRoute(handle: Handle) {
 		try {
 			await deleteThread(threadId)
 			deleteThreadChecks.delete(threadId)
-			threads = threads.filter((thread) => thread.id !== threadId)
 			if (activeThreadId === threadId) {
 				activeClient?.close()
 				activeClient = null
@@ -624,9 +771,9 @@ export function ChatRoute(handle: Handle) {
 				resetChatSnapshot()
 				disconnectedIndicator.reset()
 			}
-			update()
+			await refreshThreads()
 			scheduleThreadListScrollFadeSync()
-			const nextThread = threads[0]
+			const nextThread = getThreads()[0]
 			if (nextThread) {
 				navigate(buildThreadHref(nextThread.id))
 				await connectThread(nextThread.id)
@@ -645,7 +792,11 @@ export function ChatRoute(handle: Handle) {
 		update()
 		try {
 			const updatedThread = await updateThreadTitle(threadId, title)
-			replaceThreadSummary(updatedThread)
+			updateThreadListFromSnapshot((threads) =>
+				threads.map((thread) =>
+					thread.id === updatedThread.id ? updatedThread : thread,
+				),
+			)
 			update()
 			return true
 		} catch (error) {
@@ -698,6 +849,7 @@ export function ChatRoute(handle: Handle) {
 			handle.queueTask(refreshThreads)
 		}
 
+		const threads = getThreads()
 		const activeThread = activeThreadId
 			? (threads.find((thread) => thread.id === activeThreadId) ?? null)
 			: null
@@ -709,9 +861,7 @@ export function ChatRoute(handle: Handle) {
 				css={{
 					display: 'grid',
 					gap: spacing.lg,
-					minHeight: showEmptyStateComposer
-						? 'calc(100vh - 7rem)'
-						: undefined,
+					minHeight: showEmptyStateComposer ? 'calc(100vh - 7rem)' : undefined,
 				}}
 			>
 				{actionError ? (
@@ -811,6 +961,17 @@ export function ChatRoute(handle: Handle) {
 									alignContent: 'start',
 								}}
 							>
+								{threadListSnapshot.isLoadingInitial ? (
+									<p
+										css={{
+											margin: 0,
+											color: colors.textMuted,
+											fontSize: typography.fontSize.sm,
+										}}
+									>
+										Loading chats...
+									</p>
+								) : null}
 								{threads.map((thread) => {
 									let deleteThreadCheck = deleteThreadChecks.get(thread.id)
 									if (!deleteThreadCheck) {
@@ -832,7 +993,9 @@ export function ChatRoute(handle: Handle) {
 										>
 											<button
 												type="button"
-												on={{ click: () => navigate(buildThreadHref(thread.id)) }}
+												on={{
+													click: () => navigate(buildThreadHref(thread.id)),
+												}}
 												css={{
 													display: 'grid',
 													gap: spacing.xs,
@@ -976,6 +1139,17 @@ export function ChatRoute(handle: Handle) {
 										No chats match your search.
 									</p>
 								) : null}
+								{threadListSnapshot.isLoadingMore ? (
+									<p
+										css={{
+											margin: 0,
+											color: colors.textMuted,
+											fontSize: typography.fontSize.sm,
+										}}
+									>
+										Loading more chats...
+									</p>
+								) : null}
 							</div>
 							{showThreadListScrollFadeTop ? (
 								<div
@@ -1089,112 +1263,138 @@ export function ChatRoute(handle: Handle) {
 								</div>
 
 								<div
-								css={{
-									position: 'relative',
-									flex: 1,
-									minHeight: 0,
-									maxWidth: '56rem',
-									width: '100%',
-									margin: '0 auto',
-								}}
-							>
-								<div
-									id={MESSAGES_SCROLL_CONTAINER_ID}
-									on={{ scroll: handleMessagesScroll }}
 									css={{
-										overflowY: 'auto',
-										height: '100%',
+										position: 'relative',
+										flex: 1,
 										minHeight: 0,
-										display: 'grid',
-										gap: spacing.md,
-										alignContent: 'start',
+										maxWidth: '56rem',
+										width: '100%',
+										margin: '0 auto',
 									}}
 								>
-									{chatSnapshot.messages.map((message) => (
-										<article
-											key={message.id}
-											css={{
-												display: 'grid',
-												gap: spacing.xs,
-												padding: spacing.md,
-												borderRadius: radius.md,
-												backgroundColor:
-													message.role === 'user'
-														? colors.primarySoftest
-														: colors.surface,
-												border: `1px solid ${colors.border}`,
-											}}
-										>
-											<strong css={{ color: colors.text }}>
-												{message.role === 'user' ? 'You' : 'Assistant'}
-											</strong>
-											<div css={{ display: 'grid', gap: spacing.sm }}>
-												{renderMessageParts(
-													message.parts as Array<{
-														type: string
-														text?: string
-														state?: string
-														input?: unknown
-														output?: unknown
-														errorText?: string
-													}>,
-												)}
-											</div>
-										</article>
-									))}
-									{chatSnapshot.isStreaming || chatSnapshot.streamingText ? (
-										<article
-											css={{
-												display: 'grid',
-												gap: spacing.xs,
-												padding: spacing.md,
-												borderRadius: radius.md,
-												border: `1px solid ${colors.border}`,
-												backgroundColor: colors.surface,
-											}}
-										>
-											<strong css={{ color: colors.text }}>Assistant</strong>
+									<div
+										id={MESSAGES_SCROLL_CONTAINER_ID}
+										on={{ scroll: handleMessagesScroll }}
+										css={{
+											overflowY: 'auto',
+											height: '100%',
+											minHeight: 0,
+											display: 'grid',
+											gap: spacing.md,
+											alignContent: 'start',
+										}}
+									>
+										{chatSnapshot.isLoadingOlderMessages ? (
 											<p
 												css={{
 													margin: 0,
-													whiteSpace: 'pre-wrap',
-													color: colors.text,
+													padding: `${spacing.xs} 0`,
+													color: colors.textMuted,
+													fontSize: typography.fontSize.sm,
+													textAlign: 'center',
 												}}
 											>
-												{chatSnapshot.streamingText || 'Thinking…'}
+												Loading earlier messages...
 											</p>
-										</article>
+										) : null}
+										{chatSnapshot.isLoadingMessages ? (
+											<p
+												css={{
+													margin: 0,
+													padding: `${spacing.xs} 0`,
+													color: colors.textMuted,
+													fontSize: typography.fontSize.sm,
+													textAlign: 'center',
+												}}
+											>
+												Loading messages...
+											</p>
+										) : null}
+										{chatSnapshot.messages.map((message) => (
+											<article
+												key={message.id}
+												css={{
+													display: 'grid',
+													gap: spacing.xs,
+													padding: spacing.md,
+													borderRadius: radius.md,
+													backgroundColor:
+														message.role === 'user'
+															? colors.primarySoftest
+															: colors.surface,
+													border: `1px solid ${colors.border}`,
+												}}
+											>
+												<strong css={{ color: colors.text }}>
+													{message.role === 'user' ? 'You' : 'Assistant'}
+												</strong>
+												<div css={{ display: 'grid', gap: spacing.sm }}>
+													{renderMessageParts(
+														message.parts as Array<{
+															type: string
+															text?: string
+															state?: string
+															input?: unknown
+															output?: unknown
+															errorText?: string
+														}>,
+													)}
+												</div>
+											</article>
+										))}
+										{chatSnapshot.isStreaming || chatSnapshot.streamingText ? (
+											<article
+												css={{
+													display: 'grid',
+													gap: spacing.xs,
+													padding: spacing.md,
+													borderRadius: radius.md,
+													border: `1px solid ${colors.border}`,
+													backgroundColor: colors.surface,
+												}}
+											>
+												<strong css={{ color: colors.text }}>Assistant</strong>
+												<p
+													css={{
+														margin: 0,
+														whiteSpace: 'pre-wrap',
+														color: colors.text,
+													}}
+												>
+													{chatSnapshot.streamingText || 'Thinking…'}
+												</p>
+											</article>
+										) : null}
+									</div>
+									{showMessageScrollFadeTop ? (
+										<div
+											aria-hidden="true"
+											css={{
+												position: 'absolute',
+												top: 0,
+												left: 0,
+												right: 0,
+												height: MESSAGE_SCROLL_FADE_HEIGHT,
+												background: `linear-gradient(to bottom, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
+												pointerEvents: 'none',
+											}}
+										/>
+									) : null}
+									{showMessageScrollFadeBottom ? (
+										<div
+											aria-hidden="true"
+											css={{
+												position: 'absolute',
+												left: 0,
+												right: 0,
+												bottom: 0,
+												height: MESSAGE_SCROLL_FADE_HEIGHT,
+												background: `linear-gradient(to top, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
+												pointerEvents: 'none',
+											}}
+										/>
 									) : null}
 								</div>
-								{showMessageScrollFadeTop ? (
-									<div
-										aria-hidden="true"
-										css={{
-											position: 'absolute',
-											top: 0,
-											left: 0,
-											right: 0,
-											height: MESSAGE_SCROLL_FADE_HEIGHT,
-											background: `linear-gradient(to bottom, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
-											pointerEvents: 'none',
-										}}
-									/>
-								) : null}
-								{showMessageScrollFadeBottom ? (
-									<div
-										aria-hidden="true"
-										css={{
-											position: 'absolute',
-											left: 0,
-											right: 0,
-											bottom: 0,
-											height: MESSAGE_SCROLL_FADE_HEIGHT,
-											background: `linear-gradient(to top, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
-											pointerEvents: 'none',
-										}}
-									/>
-								) : null}
-							</div>
 
 								{chatSnapshot.error ? (
 									<p css={{ margin: 0, color: colors.error }}>

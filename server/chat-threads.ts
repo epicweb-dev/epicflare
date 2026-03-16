@@ -49,7 +49,21 @@ function escapeLikePattern(value: string) {
 	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
 }
 
-const defaultThreadListLimit = 100
+const defaultThreadListLimit = 40
+const maxThreadListLimit = 100
+
+function normalizeListLimit(limit: number | undefined) {
+	return Math.max(
+		1,
+		Math.min(limit ?? defaultThreadListLimit, maxThreadListLimit),
+	)
+}
+
+function normalizeCursor(cursor: string | null | undefined) {
+	const parsedCursor = Number.parseInt(cursor ?? '', 10)
+	if (!Number.isFinite(parsedCursor) || parsedCursor < 0) return 0
+	return parsedCursor
+}
 
 export function createChatThreadsStore(db: D1Database) {
 	const database = createDb(db)
@@ -58,63 +72,83 @@ export function createChatThreadsStore(db: D1Database) {
 		async listForUser(
 			userId: number,
 			options?: {
+				cursor?: string | null
 				limit?: number
 				search?: string
 			},
 		) {
-			const limit = Math.max(
-				1,
-				Math.min(
-					options?.limit ?? defaultThreadListLimit,
-					defaultThreadListLimit,
-				),
-			)
+			const limit = normalizeListLimit(options?.limit)
+			const cursor = normalizeCursor(options?.cursor)
 			const search = options?.search?.trim() ?? ''
 			const escapedSearch = search ? escapeLikePattern(search) : ''
-			const records = search
-				? await db
-						.prepare(
-							`
-								SELECT
-									id,
-									title,
-									last_message_preview,
-									message_count,
-									created_at,
-									updated_at,
-									deleted_at
-								FROM chat_threads
-								WHERE
-									user_id = ?
-									AND deleted_at IS NULL
-									AND (
-										lower(title) LIKE lower(?) ESCAPE '\\'
-										OR lower(last_message_preview) LIKE lower(?) ESCAPE '\\'
-									)
-								ORDER BY updated_at DESC
-								LIMIT ?
-							`,
-						)
-						.bind(userId, `%${escapedSearch}%`, `%${escapedSearch}%`, limit)
-						.all()
-						.then(
-							(result) =>
-								result.results as Array<{
-									id: string
-									title: string
-									last_message_preview: string
-									message_count: number
-									created_at: string
-									updated_at: string
-									deleted_at?: string | null
-								}>,
-						)
-				: await database.findMany(chatThreadsTable, {
-						where: { user_id: userId, deleted_at: null },
-						orderBy: ['updated_at', 'desc'],
-						limit,
-					})
-			return records.map(toThreadSummary)
+			const queryBindings = search
+				? [userId, `%${escapedSearch}%`, `%${escapedSearch}%`]
+				: [userId]
+			const baseWhere = search
+				? `
+					user_id = ?
+					AND deleted_at IS NULL
+					AND (
+						lower(title) LIKE lower(?) ESCAPE '\\'
+						OR lower(last_message_preview) LIKE lower(?) ESCAPE '\\'
+					)
+				`
+				: `
+					user_id = ?
+					AND deleted_at IS NULL
+				`
+			const totalCountRow = await db
+				.prepare(
+					`
+						SELECT COUNT(*) as count
+						FROM chat_threads
+						WHERE ${baseWhere}
+					`,
+				)
+				.bind(...queryBindings)
+				.first<{ count: number | string }>()
+			const totalCount = Number(totalCountRow?.count ?? 0)
+			const records = await db
+				.prepare(
+					`
+						SELECT
+							id,
+							title,
+							last_message_preview,
+							message_count,
+							created_at,
+							updated_at,
+							deleted_at
+						FROM chat_threads
+						WHERE ${baseWhere}
+						ORDER BY updated_at DESC
+						LIMIT ?
+						OFFSET ?
+					`,
+				)
+				.bind(...queryBindings, limit, cursor)
+				.all()
+				.then(
+					(result) =>
+						result.results as Array<{
+							id: string
+							title: string
+							last_message_preview: string
+							message_count: number
+							created_at: string
+							updated_at: string
+							deleted_at?: string | null
+						}>,
+				)
+			const threads = records.map(toThreadSummary)
+			const nextCursorValue = cursor + threads.length
+			return {
+				threads,
+				hasMore: nextCursorValue < totalCount,
+				nextCursor:
+					nextCursorValue < totalCount ? String(nextCursorValue) : null,
+				totalCount,
+			}
 		},
 		async createForUser(userId: number) {
 			const record = await database.create(

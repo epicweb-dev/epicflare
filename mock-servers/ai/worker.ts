@@ -127,7 +127,10 @@ function withTokenQueryParam(baseUrl: URL, href: string, token: string | null) {
 	return `${next.pathname}${next.search}${next.hash}`
 }
 
-async function ensureSchema(db: ReturnType<typeof createDb>, rawDb: D1Database) {
+async function ensureSchema(
+	db: ReturnType<typeof createDb>,
+	rawDb: D1Database,
+) {
 	const existing = schemaReadyByDb.get(rawDb)
 	if (existing) {
 		await existing

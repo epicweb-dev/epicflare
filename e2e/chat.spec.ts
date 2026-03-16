@@ -52,7 +52,11 @@ test('responds to mock tool commands in chat', async ({ page, login }) => {
 	await page.getByRole('button', { name: 'Send message' }).click()
 
 	await expect(page).toHaveURL(/\/chat\/.+/)
-	await expect(page.getByText('tool:do_math;left=1;right=2;operator=+')).toBeVisible()
+	await expect(
+		page.getByText('tool:do_math;left=1;right=2;operator=+'),
+	).toBeVisible()
 	await expect(page.getByText('## ✅ Result', { exact: false })).toBeVisible()
-	await expect(page.getByText('**Result**: `3`', { exact: false })).toBeVisible()
+	await expect(
+		page.getByText('**Result**: `3`', { exact: false }),
+	).toBeVisible()
 })

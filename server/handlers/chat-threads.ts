@@ -31,9 +31,28 @@ export function createChatThreadsHandler(appEnv: AppEnv) {
 
 			if (request.method === 'GET') {
 				const url = new URL(request.url)
+				const threadId = url.searchParams.get('threadId')?.trim() ?? ''
+				if (threadId) {
+					const thread = await store.getForUser(user.userId, threadId)
+					if (!thread) {
+						return jsonResponse(
+							{ ok: false, error: 'Thread not found.' },
+							{ status: 404 },
+						)
+					}
+					return jsonResponse({ ok: true, thread })
+				}
+
+				const cursor = url.searchParams.get('cursor')
+				const limitParam = url.searchParams.get('limit')?.trim() ?? ''
+				const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined
 				const search = url.searchParams.get('q')?.trim() ?? ''
-				const threads = await store.listForUser(user.userId, { search })
-				return jsonResponse({ ok: true, threads })
+				const page = await store.listForUser(user.userId, {
+					cursor,
+					limit,
+					search,
+				})
+				return jsonResponse({ ok: true, ...page })
 			}
 
 			const thread = await store.createForUser(user.userId)
