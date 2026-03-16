@@ -36,6 +36,7 @@ test('creates and deletes chat threads when authenticated', async ({
 	await expect(page.getByText('Hello there')).toBeVisible()
 
 	await page.getByRole('button', { name: 'Delete' }).click()
+	await page.getByRole('button', { name: /confirm delete chat/i }).click()
 	await expect(page).toHaveURL(/\/chat$/)
 	await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible()
 	await expect(page.getByRole('heading', { name: 'New chat' })).toHaveCount(0)
