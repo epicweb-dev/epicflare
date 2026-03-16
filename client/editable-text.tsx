@@ -102,7 +102,13 @@ export function EditableText(handle: Handle) {
 
 		if (isEditing) {
 			return (
-				<form on={{ submit: submitEditing }}>
+				<form
+					on={{ submit: submitEditing }}
+					css={{
+						display: 'block',
+						width: '100%',
+					}}
+				>
 					<input
 						required
 						maxLength={120}
@@ -119,11 +125,14 @@ export function EditableText(handle: Handle) {
 						}}
 						css={{
 							display: 'block',
-							width: '100%',
+							width: 'auto',
+							maxWidth: '100%',
+							minWidth: '1ch',
 							padding: 0,
 							border: 'none',
 							background: 'none',
 							outline: 'none',
+							fieldSizing: 'content',
 							...inheritTextStyles,
 							...props.inputCss,
 						}}

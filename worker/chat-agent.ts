@@ -68,6 +68,87 @@ function createErrorResponse(message: string) {
 	})
 }
 
+type MockToolCallResult = {
+	assistantText: string
+}
+
+function formatNumberForMockTool(value: number, precision: number) {
+	if (Number.isInteger(value)) return String(value)
+	const rounded = value.toFixed(precision)
+	return rounded.includes('.') ? rounded.replace(/\.?0+$/, '') : rounded
+}
+
+function createKnownMockToolResult(
+	result: Extract<AiRuntimeResult, { kind: 'tool-call' }>,
+): MockToolCallResult | null {
+	if (result.toolName === 'do_math') {
+		const left = result.input.left
+		const right = result.input.right
+		const operator = result.input.operator
+		const precision = result.input.precision
+
+		const isValidOperator = (value: unknown): value is '+' | '-' | '*' | '/' =>
+			value === '+' || value === '-' || value === '*' || value === '/'
+
+		if (typeof left !== 'number' || typeof right !== 'number' || !isValidOperator(operator)) {
+			return {
+				assistantText:
+					'Unable to execute `do_math` because the provided mock input was invalid.',
+			}
+		}
+
+		if (operator === '/' && right === 0) {
+			return {
+				assistantText: [
+					'## ❌ Result',
+					'',
+					'Division by zero is not allowed.',
+					'',
+					`Inputs: left=${left}, operator="${operator}", right=${right}`,
+				].join('\n'),
+			}
+		}
+
+		const operation = {
+			'+': (l: number, r: number) => l + r,
+			'-': (l: number, r: number) => l - r,
+			'*': (l: number, r: number) => l * r,
+			'/': (l: number, r: number) => l / r,
+		}[operator]
+		const numericResult = operation(left, right)
+		const precisionUsed =
+			typeof precision === 'number' &&
+			Number.isInteger(precision) &&
+			precision >= 0 &&
+			precision <= 15
+				? precision
+				: 6
+		const expression = `${left} ${operator} ${right}`
+
+		return {
+			assistantText: [
+				'## ✅ Result',
+				'',
+				`**Expression**: \`${expression}\``,
+				'',
+				`**Result**: \`${formatNumberForMockTool(numericResult, precisionUsed)}\``,
+			].join('\n'),
+		}
+	}
+
+	if (result.toolName === 'open_calculator_ui') {
+		return {
+			assistantText: [
+				'## Calculator widget ready',
+				'',
+				'The calculator UI is attached to this tool call in MCP-compatible hosts.',
+			].join('\n'),
+		}
+	}
+
+	return null
+}
+
 export class ChatAgent extends AIChatAgent<Env> {
 	waitForMcpConnections = true
 	private runtimeContext: {
@@ -220,6 +301,15 @@ export class ChatAgent extends AIChatAgent<Env> {
 	private async createMockToolCallResponse(
 		result: Extract<AiRuntimeResult, { kind: 'tool-call' }>,
 	) {
+		const knownMockToolResult = createKnownMockToolResult(result)
+		if (knownMockToolResult) {
+			await this.syncThreadMetadata({
+				assistantText: knownMockToolResult.assistantText,
+				messageCountOffset: 1,
+			})
+			return createTextResponse(knownMockToolResult.assistantText)
+		}
+
 		const tool = this.mcp
 			.listTools()
 			.find((entry) => entry.name === result.toolName)
@@ -229,11 +319,20 @@ export class ChatAgent extends AIChatAgent<Env> {
 			)
 		}
 
-		const toolResult = await this.mcp.callTool({
-			serverId: tool.serverId,
-			name: result.toolName,
-			arguments: result.input,
-		})
+		let toolResult: Awaited<ReturnType<typeof this.mcp.callTool>>
+		try {
+			toolResult = await this.mcp.callTool({
+				serverId: tool.serverId,
+				name: result.toolName,
+				arguments: result.input,
+			})
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unknown mock tool error.'
+			return createErrorResponse(
+				`Mock tool "${result.toolName}" failed to execute: ${message}`,
+			)
+		}
 		const output =
 			'structuredContent' in toolResult && toolResult.structuredContent
 				? toolResult.structuredContent

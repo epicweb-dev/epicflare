@@ -40,3 +40,18 @@ test('creates and deletes chat threads when authenticated', async ({
 	await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible()
 	await expect(page.getByRole('heading', { name: 'New chat' })).toHaveCount(0)
 })
+
+test('responds to mock tool commands in chat', async ({ page, login }) => {
+	await login()
+	await page.goto('/chat')
+
+	await page
+		.getByRole('textbox', { name: 'Message' })
+		.fill('tool:do_math;left=1;right=2;operator=+')
+	await page.getByRole('button', { name: 'Send message' }).click()
+
+	await expect(page).toHaveURL(/\/chat\/.+/)
+	await expect(page.getByText('tool:do_math;left=1;right=2;operator=+')).toBeVisible()
+	await expect(page.getByText('## ✅ Result', { exact: false })).toBeVisible()
+	await expect(page.getByText('**Result**: `3`', { exact: false })).toBeVisible()
+})

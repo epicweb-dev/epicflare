@@ -45,15 +45,64 @@ function buildInitialTitle() {
 	return 'New chat'
 }
 
+const defaultThreadListLimit = 100
+
 export function createChatThreadsStore(db: D1Database) {
 	const database = createDb(db)
 
 	return {
-		async listForUser(userId: number) {
-			const records = await database.findMany(chatThreadsTable, {
-				where: { user_id: userId, deleted_at: null },
-				orderBy: ['updated_at', 'desc'],
-			})
+		async listForUser(
+			userId: number,
+			options?: {
+				limit?: number
+				search?: string
+			},
+		) {
+			const limit = Math.max(
+				1,
+				Math.min(options?.limit ?? defaultThreadListLimit, defaultThreadListLimit),
+			)
+			const search = options?.search?.trim() ?? ''
+			const records = search
+				? await db
+						.prepare(
+							`
+								SELECT
+									id,
+									title,
+									last_message_preview,
+									message_count,
+									created_at,
+									updated_at,
+									deleted_at
+								FROM chat_threads
+								WHERE
+									user_id = ?
+									AND deleted_at IS NULL
+									AND (
+										lower(title) LIKE lower(?)
+										OR lower(last_message_preview) LIKE lower(?)
+									)
+								ORDER BY updated_at DESC
+								LIMIT ?
+							`,
+						)
+						.bind(userId, `%${search}%`, `%${search}%`, limit)
+						.all()
+						.then((result) => result.results as Array<{
+							id: string
+							title: string
+							last_message_preview: string
+							message_count: number
+							created_at: string
+							updated_at: string
+							deleted_at?: string | null
+						}>)
+				: await database.findMany(chatThreadsTable, {
+						where: { user_id: userId, deleted_at: null },
+						orderBy: ['updated_at', 'desc'],
+						limit,
+					})
 			return records.map(toThreadSummary)
 		},
 		async createForUser(userId: number) {

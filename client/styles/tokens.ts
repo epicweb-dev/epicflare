@@ -16,8 +16,11 @@ export const colors = {
 	text: 'var(--color-text)',
 	textMuted: 'var(--color-text-muted)',
 	border: 'var(--color-border)',
-	error: '#dc2626',
-	errorHover: '#b91c1c',
+	danger: 'var(--color-danger)',
+	dangerHover: 'var(--color-danger-hover)',
+	onDanger: 'var(--color-on-danger)',
+	error: 'var(--color-danger)',
+	errorHover: 'var(--color-danger-hover)',
 } as const
 
 // Typography tokens

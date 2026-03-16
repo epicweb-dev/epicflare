@@ -1,7 +1,9 @@
 import { type Handle } from 'remix/component'
 import { ChatClient, type ChatClientSnapshot } from '#client/chat-client.ts'
 import { navigate, routerEvents } from '#client/client-router.tsx'
+import { createDoubleCheck } from '#client/double-check.ts'
 import { EditableText } from '#client/editable-text.tsx'
+import { createSpinDelay } from '#client/spin-delay.ts'
 import {
 	colors,
 	radius,
@@ -30,7 +32,9 @@ function buildThreadHref(threadId: string) {
 }
 
 const MESSAGES_SCROLL_CONTAINER_ID = 'chat-messages-scroll-container'
+const THREAD_LIST_SCROLL_CONTAINER_ID = 'chat-thread-list-scroll-container'
 const MESSAGES_SCROLL_THRESHOLD_PX = 96
+const MESSAGE_SCROLL_FADE_HEIGHT = '2.5rem'
 
 function truncatePreview(text: string) {
 	const normalized = text.trim()
@@ -68,11 +72,19 @@ function buildThreadPreviewFromMessages(
 	return text ? truncatePreview(text) : null
 }
 
-async function fetchThreads(signal?: AbortSignal) {
-	const response = await fetch('/chat-threads', {
+async function fetchThreads(input?: {
+	signal?: AbortSignal
+	search?: string
+}) {
+	const url = new URL('/chat-threads', window.location.href)
+	const search = input?.search?.trim()
+	if (search) {
+		url.searchParams.set('q', search)
+	}
+	const response = await fetch(url.toString(), {
 		credentials: 'include',
 		headers: { Accept: 'application/json' },
-		signal,
+		signal: input?.signal,
 	})
 	const payload = (await response.json().catch(() => null)) as {
 		ok?: boolean
@@ -206,7 +218,34 @@ function renderPaperAirplaneIcon() {
 			css={{ width: '1.125rem', height: '1.125rem' }}
 		>
 			<path
-				d="M3 11.5 20.5 4l-4.8 16-4.6-5-5.1-3.5Zm8.1 2.2 3 3.2 2.8-9.2-10 4.3 4.2 1.7Z"
+				d="M21 3 10 14"
+				fill="none"
+				stroke="currentColor"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth="1.75"
+			/>
+			<path
+				d="m21 3-7 18-4-7-7-4 18-7Z"
+				fill="none"
+				stroke="currentColor"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth="1.75"
+			/>
+		</svg>
+	)
+}
+
+function renderTrashIcon() {
+	return (
+		<svg
+			aria-hidden="true"
+			viewBox="0 0 24 24"
+			css={{ width: '1rem', height: '1rem' }}
+		>
+			<path
+				d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h2v8H7V9Zm4 0h2v8h-2V9Zm4 0h2v8h-2V9ZM6 7h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Z"
 				fill="currentColor"
 			/>
 		</svg>
@@ -221,6 +260,7 @@ const INPUT_MIN_HEIGHT = `${INPUT_MIN_HEIGHT_REM}rem`
 const INPUT_RIGHT_PADDING = `${SEND_BUTTON_SIZE_REM + SEND_BUTTON_INSET_REM * 2}rem`
 const SEND_BUTTON_SIZE = `${SEND_BUTTON_SIZE_REM}rem`
 const SEND_BUTTON_INSET = `${SEND_BUTTON_INSET_REM}rem`
+const CHAT_PANEL_HEIGHT = 'calc(100vh - 7rem)'
 /**
  * The outer border should follow the button's contour plus its inset from the edge.
  * radius = button radius + inset
@@ -246,11 +286,21 @@ export function ChatRoute(handle: Handle) {
 	let threadStatus: ThreadStatus = 'loading'
 	let threadError: string | null = null
 	let activeThreadId: string | null = null
+	let threadSearch = ''
 	let chatSnapshot = createInitialSnapshot()
 	let activeClient: ChatClient | null = null
 	let actionError: string | null = null
 	let syncInFlight = false
 	let shouldAutoScrollMessages = true
+	let showMessageScrollFadeTop = false
+	let showMessageScrollFadeBottom = false
+	let showThreadListScrollFadeTop = false
+	let showThreadListScrollFadeBottom = false
+	const disconnectedIndicator = createSpinDelay(handle, { ssr: false })
+	const deleteThreadChecks = new Map<
+		string,
+		ReturnType<typeof createDoubleCheck>
+	>()
 
 	function update() {
 		handle.update()
@@ -292,25 +342,143 @@ export function ChatRoute(handle: Handle) {
 		)
 	}
 
+	function syncDisconnectedIndicator() {
+		disconnectedIndicator.setLoading(
+			Boolean(activeThreadId) && !chatSnapshot.connected,
+		)
+	}
+
+	function setMessageScrollFades(
+		nextTopVisible: boolean,
+		nextBottomVisible: boolean,
+	) {
+		if (
+			showMessageScrollFadeTop === nextTopVisible &&
+			showMessageScrollFadeBottom === nextBottomVisible
+		) {
+			return
+		}
+
+		showMessageScrollFadeTop = nextTopVisible
+		showMessageScrollFadeBottom = nextBottomVisible
+		update()
+	}
+
+	function syncMessageScrollFades(target?: HTMLDivElement | null) {
+		const container =
+			target ??
+			(() => {
+				const element = document.getElementById(MESSAGES_SCROLL_CONTAINER_ID)
+				return element instanceof HTMLDivElement ? element : null
+			})()
+		if (!container) {
+			setMessageScrollFades(false, false)
+			return
+		}
+
+		const canScroll = container.scrollHeight > container.clientHeight + 1
+		if (!canScroll) {
+			setMessageScrollFades(false, false)
+			return
+		}
+
+		const topVisible = container.scrollTop > 1
+		const bottomVisible =
+			container.scrollTop + container.clientHeight < container.scrollHeight - 1
+		setMessageScrollFades(topVisible, bottomVisible)
+	}
+
+	function scheduleMessageScrollFadeSync() {
+		void handle.queueTask(async () => {
+			syncMessageScrollFades()
+		})
+	}
+
+	function setThreadListScrollFades(
+		nextTopVisible: boolean,
+		nextBottomVisible: boolean,
+	) {
+		if (
+			showThreadListScrollFadeTop === nextTopVisible &&
+			showThreadListScrollFadeBottom === nextBottomVisible
+		) {
+			return
+		}
+
+		showThreadListScrollFadeTop = nextTopVisible
+		showThreadListScrollFadeBottom = nextBottomVisible
+		update()
+	}
+
+	function syncThreadListScrollFades(target?: HTMLDivElement | null) {
+		const container =
+			target ??
+			(() => {
+				const element = document.getElementById(THREAD_LIST_SCROLL_CONTAINER_ID)
+				return element instanceof HTMLDivElement ? element : null
+			})()
+		if (!container) {
+			setThreadListScrollFades(false, false)
+			return
+		}
+
+		const canScroll = container.scrollHeight > container.clientHeight + 1
+		if (!canScroll) {
+			setThreadListScrollFades(false, false)
+			return
+		}
+
+		const topVisible = container.scrollTop > 1
+		const bottomVisible =
+			container.scrollTop + container.clientHeight < container.scrollHeight - 1
+		setThreadListScrollFades(topVisible, bottomVisible)
+	}
+
+	function scheduleThreadListScrollFadeSync() {
+		void handle.queueTask(async () => {
+			syncThreadListScrollFades()
+		})
+	}
+
 	function scheduleScrollToBottom(force = false) {
 		void handle.queueTask(async () => {
 			const container = document.getElementById(MESSAGES_SCROLL_CONTAINER_ID)
-			if (!(container instanceof HTMLDivElement)) return
+			if (!(container instanceof HTMLDivElement)) {
+				setMessageScrollFades(false, false)
+				return
+			}
 			if (
 				!force &&
 				!shouldAutoScrollMessages &&
 				!isScrolledNearBottom(container)
 			) {
+				syncMessageScrollFades(container)
 				return
 			}
 			container.scrollTop = container.scrollHeight
 			shouldAutoScrollMessages = true
+			syncMessageScrollFades(container)
 		})
 	}
 
 	function handleMessagesScroll(event: Event) {
 		if (!(event.currentTarget instanceof HTMLDivElement)) return
 		shouldAutoScrollMessages = isScrolledNearBottom(event.currentTarget)
+		syncMessageScrollFades(event.currentTarget)
+	}
+
+	function handleThreadListScroll(event: Event) {
+		if (!(event.currentTarget instanceof HTMLDivElement)) return
+		syncThreadListScrollFades(event.currentTarget)
+	}
+
+	function handleThreadSearchInput(event: Event) {
+		if (!(event.currentTarget instanceof HTMLInputElement)) return
+		threadSearch = event.currentTarget.value
+		update()
+		void handle.queueTask(async (signal) => {
+			await refreshThreads(signal)
+		})
 	}
 
 	function handleComposerKeyDown(event: KeyboardEvent) {
@@ -331,12 +499,17 @@ export function ChatRoute(handle: Handle) {
 				if (activeThreadId !== threadId) return
 				chatSnapshot = snapshot
 				updateLocalThreadSummary(threadId, snapshot)
+				syncDisconnectedIndicator()
 				update()
+				scheduleMessageScrollFadeSync()
+				scheduleThreadListScrollFadeSync()
 				scheduleScrollToBottom()
 			},
 		})
 		activeThreadId = threadId
 		resetChatSnapshot()
+		syncDisconnectedIndicator()
+		setMessageScrollFades(false, false)
 		update()
 
 		try {
@@ -349,6 +522,7 @@ export function ChatRoute(handle: Handle) {
 						? error.message
 						: 'Unable to connect to the selected thread.',
 			}
+			syncDisconnectedIndicator()
 			update()
 		}
 	}
@@ -363,6 +537,8 @@ export function ChatRoute(handle: Handle) {
 				activeClient = null
 				activeThreadId = null
 				resetChatSnapshot()
+				disconnectedIndicator.reset()
+				setMessageScrollFades(false, false)
 				update()
 				return
 			}
@@ -388,8 +564,9 @@ export function ChatRoute(handle: Handle) {
 
 	async function refreshThreads(signal?: AbortSignal) {
 		try {
-			threads = await fetchThreads(signal)
+			threads = await fetchThreads({ signal, search: threadSearch })
 			setThreadState('ready')
+			scheduleThreadListScrollFadeSync()
 			await syncActiveThreadFromLocation()
 		} catch (error) {
 			if (signal?.aborted) return
@@ -435,14 +612,17 @@ export function ChatRoute(handle: Handle) {
 		update()
 		try {
 			await deleteThread(threadId)
+			deleteThreadChecks.delete(threadId)
 			threads = threads.filter((thread) => thread.id !== threadId)
 			if (activeThreadId === threadId) {
 				activeClient?.close()
 				activeClient = null
 				activeThreadId = null
 				resetChatSnapshot()
+				disconnectedIndicator.reset()
 			}
 			update()
+			scheduleThreadListScrollFadeSync()
 			const nextThread = threads[0]
 			if (nextThread) {
 				navigate(buildThreadHref(nextThread.id))
@@ -526,7 +706,9 @@ export function ChatRoute(handle: Handle) {
 				css={{
 					display: 'grid',
 					gap: spacing.lg,
-					minHeight: 'calc(100vh - 7rem)',
+					minHeight: showEmptyStateComposer
+						? 'calc(100vh - 7rem)'
+						: undefined,
 				}}
 			>
 				{actionError ? (
@@ -538,23 +720,24 @@ export function ChatRoute(handle: Handle) {
 						display: 'grid',
 						gap: spacing.lg,
 						gridTemplateColumns: '18rem minmax(0, 1fr)',
-						alignItems: 'start',
-						minHeight: 'calc(100vh - 10rem)',
+						alignItems: 'stretch',
+						minHeight: CHAT_PANEL_HEIGHT,
 					}}
 				>
 					<aside
 						css={{
-							display: 'grid',
+							display: 'flex',
+							flexDirection: 'column',
 							gap: spacing.md,
 							padding: spacing.md,
 							borderRadius: radius.lg,
 							border: `1px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.sm,
-							alignContent: 'start',
 							position: 'sticky',
 							top: spacing.lg,
-							minHeight: 'calc(100vh - 10rem)',
+							height: CHAT_PANEL_HEIGHT,
+							overflow: 'hidden',
 						}}
 					>
 						<button
@@ -587,87 +770,239 @@ export function ChatRoute(handle: Handle) {
 						>
 							Chats
 						</h2>
+						<input
+							type="search"
+							value={threadSearch}
+							placeholder="Search chats"
+							aria-label="Search chats"
+							on={{ input: handleThreadSearchInput }}
+							css={{
+								width: '100%',
+								padding: `${spacing.xs} ${spacing.sm}`,
+								borderRadius: radius.md,
+								border: `1px solid ${colors.border}`,
+								backgroundColor: colors.background,
+								color: colors.text,
+								fontFamily: typography.fontFamily,
+								fontSize: typography.fontSize.sm,
+							}}
+						/>
 						{threadStatus === 'error' ? (
 							<p css={{ margin: 0, color: colors.error }}>{threadError}</p>
 						) : null}
-						{threads.map((thread) => {
-							const isActive = thread.id === activeThreadId
-							return (
-								<div
-									key={thread.id}
-									css={{
-										display: 'grid',
-										gap: spacing.xs,
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										border: `1px solid ${
-											isActive ? colors.primary : colors.border
-										}`,
-										backgroundColor: isActive
-											? colors.primarySoftest
-											: colors.surface,
-										transition: `background-color ${transitions.normal}, border-color ${transitions.normal}`,
-									}}
-								>
-									<a
-										href={buildThreadHref(thread.id)}
+						<div
+							css={{
+								flex: 1,
+								minHeight: 0,
+								position: 'relative',
+							}}
+						>
+							<div
+								id={THREAD_LIST_SCROLL_CONTAINER_ID}
+								on={{ scroll: handleThreadListScroll }}
+								css={{
+									height: '100%',
+									overflowY: 'auto',
+									display: 'grid',
+									gap: spacing.md,
+									alignContent: 'start',
+								}}
+							>
+								{threads.map((thread) => {
+									let deleteThreadCheck = deleteThreadChecks.get(thread.id)
+									if (!deleteThreadCheck) {
+										deleteThreadCheck = createDoubleCheck(handle)
+										deleteThreadChecks.set(thread.id, deleteThreadCheck)
+									}
+									const isActive = thread.id === activeThreadId
+									return (
+										<div
+											key={thread.id}
+											css={{
+												position: 'relative',
+												'&:hover [data-thread-delete-button="true"], &:focus-within [data-thread-delete-button="true"]':
+													{
+														opacity: 1,
+														pointerEvents: 'auto',
+													},
+											}}
+										>
+											<button
+												type="button"
+												on={{ click: () => navigate(buildThreadHref(thread.id)) }}
+												css={{
+													display: 'grid',
+													gap: spacing.xs,
+													width: '100%',
+													padding: spacing.sm,
+													borderRadius: radius.md,
+													border: `1px solid ${
+														isActive ? colors.primary : colors.border
+													}`,
+													backgroundColor: isActive
+														? colors.primarySoftest
+														: colors.surface,
+													color: colors.text,
+													textAlign: 'left',
+													cursor: 'pointer',
+													transition: `background-color ${transitions.normal}, border-color ${transitions.normal}`,
+												}}
+											>
+												<strong
+													css={{
+														display: 'block',
+														width: '100%',
+														fontWeight: typography.fontWeight.semibold,
+														fontSize: typography.fontSize.sm,
+														lineHeight: 1.4,
+													}}
+												>
+													{thread.title}
+												</strong>
+												{thread.lastMessagePreview ? (
+													<p
+														css={{
+															margin: 0,
+															display: 'block',
+															width: '100%',
+															color: colors.textMuted,
+															fontSize: typography.fontSize.sm,
+															whiteSpace: 'nowrap',
+															overflow: 'hidden',
+															textOverflow: 'ellipsis',
+														}}
+													>
+														{thread.lastMessagePreview}
+													</p>
+												) : null}
+												<span
+													css={{
+														display: 'block',
+														width: '100%',
+														paddingRight: `calc(${spacing.sm} + 4.5rem)`,
+														color: colors.textMuted,
+														fontSize: typography.fontSize.sm,
+													}}
+												>
+													{thread.messageCount} message
+													{thread.messageCount === 1 ? '' : 's'}
+												</span>
+											</button>
+											<button
+												type="button"
+												data-thread-delete-button="true"
+												{...deleteThreadCheck.getButtonProps({
+													on: {
+														click: () => handleDeleteThread(thread.id),
+													},
+												})}
+												aria-label={
+													deleteThreadCheck.doubleCheck
+														? `Confirm delete chat "${thread.title}"`
+														: `Delete chat "${thread.title}"`
+												}
+												title={
+													deleteThreadCheck.doubleCheck
+														? `Click again to delete "${thread.title}"`
+														: `Delete chat "${thread.title}"`
+												}
+												css={{
+													position: 'absolute',
+													right: spacing.sm,
+													bottom: spacing.sm,
+													display: 'inline-flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													minWidth: '2rem',
+													height: '2rem',
+													padding: deleteThreadCheck.doubleCheck
+														? `0 ${spacing.sm}`
+														: 0,
+													borderRadius: deleteThreadCheck.doubleCheck
+														? radius.md
+														: radius.full,
+													border: `1px solid ${
+														deleteThreadCheck.doubleCheck
+															? colors.dangerHover
+															: colors.border
+													}`,
+													backgroundColor: deleteThreadCheck.doubleCheck
+														? colors.danger
+														: colors.surface,
+													color: deleteThreadCheck.doubleCheck
+														? colors.onDanger
+														: colors.textMuted,
+													cursor: 'pointer',
+													opacity: 0,
+													pointerEvents: 'none',
+													transition: `opacity ${transitions.normal}, background-color ${transitions.normal}, border-color ${transitions.normal}, color ${transitions.normal}`,
+													'&:hover': {
+														backgroundColor: colors.danger,
+														borderColor: colors.dangerHover,
+														color: colors.onDanger,
+													},
+													'&:focus-visible': {
+														backgroundColor: colors.danger,
+														borderColor: colors.dangerHover,
+														color: colors.onDanger,
+														outline: `2px solid ${colors.danger}`,
+														outlineOffset: '2px',
+													},
+													fontSize: typography.fontSize.sm,
+													fontWeight: typography.fontWeight.semibold,
+													whiteSpace: 'nowrap',
+												}}
+											>
+												{deleteThreadCheck.doubleCheck
+													? 'Confirm'
+													: renderTrashIcon()}
+											</button>
+										</div>
+									)
+								})}
+								{threadStatus === 'ready' &&
+								threads.length === 0 &&
+								threadSearch.trim() ? (
+									<p
 										css={{
-											color: colors.text,
-											textDecoration: 'none',
-											fontWeight: typography.fontWeight.semibold,
+											margin: 0,
+											color: colors.textMuted,
 											fontSize: typography.fontSize.sm,
 										}}
 									>
-										{thread.title}
-									</a>
-									{thread.lastMessagePreview ? (
-										<p
-											css={{
-												margin: 0,
-												color: colors.textMuted,
-												fontSize: typography.fontSize.sm,
-												whiteSpace: 'pre-wrap',
-												wordBreak: 'break-word',
-											}}
-										>
-											{thread.lastMessagePreview}
-										</p>
-									) : null}
-									<div
-										css={{
-											display: 'flex',
-											justifyContent: 'space-between',
-											alignItems: 'center',
-											gap: spacing.sm,
-										}}
-									>
-										<span
-											css={{
-												color: colors.textMuted,
-												fontSize: typography.fontSize.sm,
-											}}
-										>
-											{thread.messageCount} message
-											{thread.messageCount === 1 ? '' : 's'}
-										</span>
-										<button
-											type="button"
-											on={{ click: () => handleDeleteThread(thread.id) }}
-											css={{
-												padding: `${spacing.xs} ${spacing.sm}`,
-												borderRadius: radius.full,
-												border: `1px solid ${colors.border}`,
-												backgroundColor: 'transparent',
-												color: colors.textMuted,
-												cursor: 'pointer',
-											}}
-										>
-											Delete
-										</button>
-									</div>
-								</div>
-							)
-						})}
+										No chats match your search.
+									</p>
+								) : null}
+							</div>
+							{showThreadListScrollFadeTop ? (
+								<div
+									aria-hidden="true"
+									css={{
+										position: 'absolute',
+										top: 0,
+										left: 0,
+										right: 0,
+										height: MESSAGE_SCROLL_FADE_HEIGHT,
+										background: `linear-gradient(to bottom, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
+										pointerEvents: 'none',
+									}}
+								/>
+							) : null}
+							{showThreadListScrollFadeBottom ? (
+								<div
+									aria-hidden="true"
+									css={{
+										position: 'absolute',
+										left: 0,
+										right: 0,
+										bottom: 0,
+										height: MESSAGE_SCROLL_FADE_HEIGHT,
+										background: `linear-gradient(to top, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
+										pointerEvents: 'none',
+									}}
+								/>
+							) : null}
+						</div>
 					</aside>
 
 					<div
@@ -680,7 +1015,7 @@ export function ChatRoute(handle: Handle) {
 							border: `1px solid ${colors.border}`,
 							backgroundColor: colors.surface,
 							boxShadow: shadows.sm,
-							minHeight: 'calc(100vh - 10rem)',
+							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 						}}
 					>
@@ -695,7 +1030,43 @@ export function ChatRoute(handle: Handle) {
 										gap: spacing.md,
 									}}
 								>
-									<div css={{ display: 'grid', gap: spacing.xs, minWidth: 0 }}>
+									<div
+										css={{
+											position: 'relative',
+											minWidth: 0,
+										}}
+									>
+										<span
+											aria-hidden={!disconnectedIndicator.isShowing}
+											aria-label={
+												disconnectedIndicator.isShowing
+													? 'Not connected'
+													: undefined
+											}
+											title={
+												disconnectedIndicator.isShowing
+													? 'Chat is not connected'
+													: undefined
+											}
+											css={{
+												position: 'absolute',
+												left: `calc(-1 * ${spacing.md})`,
+												top: '50%',
+												width: '0.5rem',
+												height: '0.5rem',
+												borderRadius: radius.full,
+												backgroundColor: colors.danger,
+												transform: disconnectedIndicator.isShowing
+													? 'translateY(-50%) scale(1)'
+													: 'translateY(-50%) scale(0.85)',
+												boxShadow: `0 0 0 2px ${colors.surface}`,
+												opacity: disconnectedIndicator.isShowing ? 1 : 0,
+												pointerEvents: disconnectedIndicator.isShowing
+													? 'auto'
+													: 'none',
+												transition: `opacity ${transitions.normal}, transform ${transitions.normal}`,
+											}}
+										/>
 										<h3 css={{ margin: 0, color: colors.text, minWidth: 0 }}>
 											<EditableText
 												id={`thread-title-${activeThread.id}`}
@@ -711,25 +1082,29 @@ export function ChatRoute(handle: Handle) {
 												}}
 											/>
 										</h3>
-										<p css={{ margin: 0, color: colors.textMuted }}>
-											{chatSnapshot.connected ? 'Connected' : 'Connecting…'}
-										</p>
 									</div>
 								</div>
 
 								<div
+								css={{
+									position: 'relative',
+									flex: 1,
+									minHeight: 0,
+									maxWidth: '56rem',
+									width: '100%',
+									margin: '0 auto',
+								}}
+							>
+								<div
 									id={MESSAGES_SCROLL_CONTAINER_ID}
 									on={{ scroll: handleMessagesScroll }}
 									css={{
-										flex: 1,
 										overflowY: 'auto',
+										height: '100%',
 										minHeight: 0,
 										display: 'grid',
 										gap: spacing.md,
 										alignContent: 'start',
-										maxWidth: '56rem',
-										width: '100%',
-										margin: '0 auto',
 									}}
 								>
 									{chatSnapshot.messages.map((message) => (
@@ -788,6 +1163,35 @@ export function ChatRoute(handle: Handle) {
 										</article>
 									) : null}
 								</div>
+								{showMessageScrollFadeTop ? (
+									<div
+										aria-hidden="true"
+										css={{
+											position: 'absolute',
+											top: 0,
+											left: 0,
+											right: 0,
+											height: MESSAGE_SCROLL_FADE_HEIGHT,
+											background: `linear-gradient(to bottom, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
+											pointerEvents: 'none',
+										}}
+									/>
+								) : null}
+								{showMessageScrollFadeBottom ? (
+									<div
+										aria-hidden="true"
+										css={{
+											position: 'absolute',
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: MESSAGE_SCROLL_FADE_HEIGHT,
+											background: `linear-gradient(to top, ${colors.surface}, color-mix(in srgb, ${colors.surface} 0%, transparent))`,
+											pointerEvents: 'none',
+										}}
+									/>
+								) : null}
+							</div>
 
 								{chatSnapshot.error ? (
 									<p css={{ margin: 0, color: colors.error }}>

@@ -90,7 +90,7 @@ export function App(handle: Handle) {
 					width: '100%',
 					margin: isChatLayout ? 0 : '0 auto',
 					padding: isChatLayout
-						? `${spacing.lg} ${spacing.xl}`
+						? `${spacing.lg} ${spacing.xl} ${spacing.sm}`
 						: spacing['2xl'],
 					minHeight: isChatLayout ? '100vh' : undefined,
 					fontFamily: typography.fontFamily,

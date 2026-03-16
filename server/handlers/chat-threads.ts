@@ -30,7 +30,9 @@ export function createChatThreadsHandler(appEnv: AppEnv) {
 			}
 
 			if (request.method === 'GET') {
-				const threads = await store.listForUser(user.userId)
+				const url = new URL(request.url)
+				const search = url.searchParams.get('q')?.trim() ?? ''
+				const threads = await store.listForUser(user.userId, { search })
 				return jsonResponse({ ok: true, threads })
 			}
 
