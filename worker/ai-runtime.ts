@@ -44,9 +44,13 @@ function resolveAiMode(env: Env): AiMode {
 }
 
 function createWorkersAiProvider(env: WorkersAiCredentialsEnv) {
-	const gateway = env.AI_GATEWAY_ID
-		? { gateway: { id: env.AI_GATEWAY_ID } }
-		: {}
+	const gatewayId = env.AI_GATEWAY_ID?.trim()
+	if (!gatewayId) {
+		throw new Error(
+			'AI_GATEWAY_ID is required when AI_MODE is "remote". Configure it in local env or GitHub Actions secrets.',
+		)
+	}
+	const gateway = { gateway: { id: gatewayId } }
 	const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
 	const apiKey = env.CLOUDFLARE_API_TOKEN?.trim()
 	const shouldUseCredentials =

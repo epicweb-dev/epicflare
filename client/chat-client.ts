@@ -177,7 +177,7 @@ export class ChatClient {
 
 	private async loadInitialMessages(signal?: AbortSignal) {
 		let nextStartIndex = this.loadedMessageStartIndex
-		let nextBeforeCursor = this.olderMessagesBeforeCursor
+		let nextBeforeCursor: string | null = this.olderMessagesBeforeCursor
 		const didLoad = await this.messageHistory.loadInitial(
 			async ({ signal }) => {
 				const page = await this.fetchMessagesPage({
@@ -222,7 +222,7 @@ export class ChatClient {
 	async loadOlderMessages(signal?: AbortSignal) {
 		if (!this.olderMessagesBeforeCursor) return false
 		let nextStartIndex = this.loadedMessageStartIndex
-		let nextBeforeCursor = this.olderMessagesBeforeCursor
+		let nextBeforeCursor: string | null = this.olderMessagesBeforeCursor
 		const didLoad = await this.messageHistory.loadMore(async ({ signal }) => {
 			const page = await this.fetchMessagesPage({
 				before: this.olderMessagesBeforeCursor,

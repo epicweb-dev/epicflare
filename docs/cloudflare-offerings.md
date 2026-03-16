@@ -185,6 +185,11 @@ Most provider SDKs support overriding the base URL:
 - Keep the provider API key as a Worker secret (for example `OPENAI_API_KEY`)
 - Point the SDK's base URL at the gateway URL
 
+For this starter's chat implementation, remote AI mode is expected to use a
+gateway. Set `AI_GATEWAY_ID` in local `.env` when opting into `AI_MODE=remote`,
+and configure the same value as a GitHub Actions secret so preview and
+production deploy workflows can sync it into the worker secrets.
+
 ## KV (app KV, separate from `OAUTH_KV`)
 
 This template already binds `OAUTH_KV` for OAuth/session state. Treat `OAUTH_KV`
