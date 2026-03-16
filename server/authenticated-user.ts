@@ -1,4 +1,7 @@
-import { readAuthSession, setAuthSessionSecret } from '#server/auth-session.ts'
+import {
+	readAuthSessionResult,
+	setAuthSessionSecret,
+} from '#server/auth-session.ts'
 import { getEnv } from '#server/env.ts'
 import { type McpUserContext } from '#shared/chat.ts'
 
@@ -17,7 +20,7 @@ function buildDisplayName(email: string) {
 export async function readAuthenticatedAppUser(request: Request, env: Env) {
 	const appEnv = getEnv(env)
 	setAuthSessionSecret(appEnv.COOKIE_SECRET)
-	const session = await readAuthSession(request)
+	const { session } = await readAuthSessionResult(request)
 	if (!session) return null
 
 	const userId = Number.parseInt(session.id, 10)

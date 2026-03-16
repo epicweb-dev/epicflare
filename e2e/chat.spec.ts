@@ -33,9 +33,15 @@ test('creates and deletes chat threads when authenticated', async ({
 			.getByRole('complementary')
 			.getByText('This is a mock completion', { exact: false }),
 	).toBeVisible()
-	await expect(page.getByText('Hello there')).toBeVisible()
+	await expect(
+		page.locator('#chat-messages-scroll-container').getByText('Hello there'),
+	).toBeVisible()
 
-	await page.getByRole('button', { name: 'Delete' }).click()
+	await page
+		.getByRole('complementary')
+		.getByRole('button', { name: 'Delete' })
+		.first()
+		.click({ force: true })
 	await page.getByRole('button', { name: /confirm delete chat/i }).click()
 	await expect(page).toHaveURL(/\/chat$/)
 	await expect(page.getByRole('textbox', { name: 'Message' })).toBeVisible()
@@ -53,10 +59,18 @@ test('responds to mock tool commands in chat', async ({ page, login }) => {
 
 	await expect(page).toHaveURL(/\/chat\/.+/)
 	await expect(
-		page.getByText('tool:do_math;left=1;right=2;operator=+'),
+		page
+			.locator('#chat-messages-scroll-container')
+			.getByText('tool:do_math;left=1;right=2;operator=+'),
 	).toBeVisible()
-	await expect(page.getByText('## ✅ Result', { exact: false })).toBeVisible()
 	await expect(
-		page.getByText('**Result**: `3`', { exact: false }),
+		page
+			.locator('#chat-messages-scroll-container')
+			.getByText('## ✅ Result', { exact: false }),
+	).toBeVisible()
+	await expect(
+		page
+			.locator('#chat-messages-scroll-container')
+			.getByText('**Result**: `3`', { exact: false }),
 	).toBeVisible()
 })
