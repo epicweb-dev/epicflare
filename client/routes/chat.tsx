@@ -699,14 +699,14 @@ export function ChatRoute(handle: Handle) {
 
 	async function loadMoreThreads(signal?: AbortSignal) {
 		if (!threadListCursor) return false
-		let nextCursor: string | null = threadListCursor
+		let nextCursor: string | null = null
 		const didLoad = await threadList.loadMore(async ({ signal }) => {
 			const page = await fetchThreads({
 				cursor: threadListCursor,
 				search: threadSearch,
 				signal,
 			})
-			nextCursor = page.nextCursor
+			nextCursor = page.nextCursor ?? null
 			return {
 				items: page.items,
 				hasMore: page.hasMore,
@@ -725,7 +725,7 @@ export function ChatRoute(handle: Handle) {
 			let nextCursor: string | null = null
 			const didLoad = await threadList.loadInitial(async ({ signal }) => {
 				const page = await fetchThreads({ search: threadSearch, signal })
-				nextCursor = page.nextCursor
+				nextCursor = page.nextCursor ?? null
 				return {
 					items: page.items,
 					hasMore: page.hasMore,
