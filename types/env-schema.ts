@@ -5,6 +5,7 @@ import {
 	string,
 	type InferOutput,
 } from 'remix/data-schema'
+import { aiModeValues } from '#shared/chat.ts'
 
 const d1DatabaseSchema = createSchema<unknown, D1Database>((value, context) => {
 	if (value) {
@@ -58,6 +59,21 @@ const optionalCommitShaSchema = createSchema<unknown, string | undefined>(
 	},
 )
 
+const optionalAiModeSchema = createSchema<
+	unknown,
+	(typeof aiModeValues)[number] | undefined
+>((value, context) => {
+	if (value === undefined) return { value: undefined }
+	if (typeof value !== 'string') return fail('Expected string', context.path)
+
+	const trimmed = value.trim()
+	if (!trimmed) return { value: undefined }
+	if (aiModeValues.includes(trimmed as (typeof aiModeValues)[number])) {
+		return { value: trimmed as (typeof aiModeValues)[number] }
+	}
+	return fail(`Expected one of: ${aiModeValues.join(', ')}`, context.path)
+})
+
 export const EnvSchema = object({
 	COOKIE_SECRET: string().refine(
 		(value) => value.length >= 32,
@@ -69,6 +85,11 @@ export const EnvSchema = object({
 	RESEND_API_BASE_URL: optionalUrlStringSchema,
 	RESEND_API_KEY: optionalNonEmptyStringSchema,
 	RESEND_FROM_EMAIL: optionalNonEmptyStringSchema,
+	AI_MODE: optionalAiModeSchema,
+	AI_MODEL: optionalNonEmptyStringSchema,
+	AI_GATEWAY_ID: optionalNonEmptyStringSchema,
+	AI_MOCK_BASE_URL: optionalUrlStringSchema,
+	AI_MOCK_API_KEY: optionalNonEmptyStringSchema,
 })
 
 export type AppEnv = InferOutput<typeof EnvSchema>

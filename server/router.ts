@@ -3,6 +3,11 @@ import { type AppEnv } from '#types/env-schema.ts'
 import { account } from './handlers/account.ts'
 import { createAuthHandler } from './handlers/auth.ts'
 import { chat } from './handlers/chat.ts'
+import {
+	createChatThreadsHandler,
+	createDeleteChatThreadHandler,
+	createUpdateChatThreadHandler,
+} from './handlers/chat-threads.ts'
 import { createHealthHandler } from './handlers/health.ts'
 import { home } from './handlers/home.ts'
 import { login } from './handlers/login.ts'
@@ -24,9 +29,15 @@ export function createAppRouter(appEnv: AppEnv) {
 			return render(Layout({}))
 		},
 	})
+	const chatThreadsHandler = createChatThreadsHandler(appEnv)
 
 	router.map(routes.home, home)
 	router.map(routes.chat, chat)
+	router.map(routes.chatThread, chat)
+	router.map(routes.chatThreads, chatThreadsHandler)
+	router.map(routes.chatThreadsCreate, chatThreadsHandler)
+	router.map(routes.chatThreadsUpdate, createUpdateChatThreadHandler(appEnv))
+	router.map(routes.chatThreadsDelete, createDeleteChatThreadHandler(appEnv))
 	router.map(routes.health, createHealthHandler(appEnv))
 	router.map(routes.login, login)
 	router.map(routes.signup, signup)

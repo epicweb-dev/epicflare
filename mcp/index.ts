@@ -1,13 +1,13 @@
 import { invariant } from '@epic-web/invariant'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { CfWorkerJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/cfworker-provider.js'
 import { McpAgent } from 'agents/mcp'
+import { parseMcpCallerContext, type McpServerProps } from './context.ts'
 import { registerResources } from './register-resources.ts'
 import { registerTools } from './register-tools.ts'
 
 export type State = {}
-export type Props = {
-	baseUrl: string
-}
+export type Props = McpServerProps
 
 const serverMetadata = {
 	implementation: {
@@ -27,13 +27,17 @@ How to chain tools safely
 export class MCP extends McpAgent<Env, State, Props> {
 	server = new McpServer(serverMetadata.implementation, {
 		instructions: serverMetadata.instructions,
+		jsonSchemaValidator: new CfWorkerJsonSchemaValidator(),
 	})
 	async init() {
 		await registerResources(this)
 		await registerTools(this)
 	}
+	getCallerContext() {
+		return parseMcpCallerContext(this.props)
+	}
 	requireDomain() {
-		const baseUrl = this.props?.baseUrl
+		const { baseUrl } = this.getCallerContext()
 		invariant(
 			baseUrl,
 			'This should never happen, but somehow we did not get the baseUrl from the request handler',

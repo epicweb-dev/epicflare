@@ -51,6 +51,9 @@ Local development uses `.env`, which Wrangler loads automatically:
 - `RESEND_API_BASE_URL` (optional, defaults to `https://api.resend.com`)
 - `RESEND_API_KEY` (optional, required to send via Resend)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
+- `AI_GATEWAY_ID` (required when `AI_MODE=remote`; deploy workflows sync a
+  gateway ID from GitHub Actions secrets so remote inference goes through
+  Cloudflare AI Gateway)
 
 Tests run with `CLOUDFLARE_ENV=test` (set by Playwright) and still read local
 secrets from `.env`.
@@ -63,6 +66,10 @@ Configure these secrets for GitHub Actions workflows:
   account)
 - `COOKIE_SECRET` (same format as local)
 - `APP_BASE_URL` (optional, used by the production deploy)
+- `AI_GATEWAY_ID` (required for production deploys that use remote AI
+  inference)
+- `AI_GATEWAY_ID_PREVIEW` (required for preview deploys that use remote AI
+  inference)
 - `RESEND_API_KEY` (optional, required to send via Resend in non-mock
   environments)
 - `RESEND_FROM_EMAIL` (optional, required to send via Resend)
@@ -80,6 +87,15 @@ How to get/set each secret:
 - `APP_BASE_URL` (optional)
   - Use your production app URL (for example `https://app.example.com`).
   - Add only if you want deploy-time health/version checks to use a fixed URL.
+- `AI_GATEWAY_ID`
+  - Create a Cloudflare AI Gateway in the dashboard and copy its production
+    gateway ID.
+  - Store that value as the production GitHub Actions secret.
+- `AI_GATEWAY_ID_PREVIEW`
+  - Create a separate Cloudflare AI Gateway for previews and copy its gateway
+    ID.
+  - Store that value as the preview GitHub Actions secret so preview deploys
+    sync a different worker secret than production.
 - `RESEND_API_KEY` (optional)
   - Create in Resend Dashboard (API keys), then store in GitHub Actions secrets.
 - `RESEND_FROM_EMAIL` (optional)

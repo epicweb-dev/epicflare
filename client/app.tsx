@@ -1,6 +1,6 @@
 import { type Handle } from 'remix/component'
 import { clientRoutes } from './routes/index.tsx'
-import { listenToRouterNavigation, Router } from './client-router.tsx'
+import { getPathname, listenToRouterNavigation, Router } from './client-router.tsx'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
@@ -14,6 +14,7 @@ export function App(handle: Handle) {
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionRefreshInFlight = false
 	let sessionRefreshQueued = false
+	let currentPathname = getPathname()
 
 	function queueSessionRefresh() {
 		sessionRefreshQueued = true
@@ -46,7 +47,11 @@ export function App(handle: Handle) {
 	handle.queueTask(() => {
 		queueSessionRefresh()
 	})
-	listenToRouterNavigation(handle, queueSessionRefresh)
+	listenToRouterNavigation(handle, () => {
+		currentPathname = getPathname()
+		queueSessionRefresh()
+		handle.update()
+	})
 
 	const navLinkCss = {
 		color: colors.primaryText,
@@ -68,14 +73,14 @@ export function App(handle: Handle) {
 	}
 
 	return () => {
+		const isChatLayout = currentPathname.startsWith('/chat')
 		const sessionEmail = session?.email ?? ''
 		const isSessionReady = sessionStatus === 'ready'
 		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
 		const showAuthLinks = isSessionReady && !isLoggedIn
 		const oauthRedirectTo =
-			typeof window !== 'undefined' &&
-			window.location.pathname === '/oauth/authorize'
-				? `${window.location.pathname}${window.location.search}`
+			typeof window !== 'undefined' && currentPathname === '/oauth/authorize'
+				? `${currentPathname}${window.location.search}`
 				: null
 		const loginHref = buildAuthLink('/login', oauthRedirectTo)
 		const signupHref = buildAuthLink('/signup', oauthRedirectTo)
@@ -83,10 +88,15 @@ export function App(handle: Handle) {
 		return (
 			<main
 				css={{
-					maxWidth: '52rem',
-					margin: '0 auto',
-					padding: spacing['2xl'],
+					maxWidth: isChatLayout ? 'none' : '52rem',
+					width: '100%',
+					margin: isChatLayout ? 0 : '0 auto',
+					padding: isChatLayout
+						? `${spacing.lg} ${spacing.xl} ${spacing.sm}`
+						: spacing['2xl'],
+					minHeight: isChatLayout ? '100vh' : undefined,
 					fontFamily: typography.fontFamily,
+					boxSizing: 'border-box',
 				}}
 			>
 				<nav
@@ -94,7 +104,7 @@ export function App(handle: Handle) {
 						display: 'flex',
 						gap: spacing.md,
 						flexWrap: 'wrap',
-						marginBottom: spacing.xl,
+						marginBottom: isChatLayout ? spacing.lg : spacing.xl,
 					}}
 				>
 					<a href="/" css={navLinkCss}>
