@@ -176,14 +176,16 @@ export class ChatClient {
 	}
 
 	private async loadInitialMessages(signal?: AbortSignal) {
+		let nextStartIndex = this.loadedMessageStartIndex
+		let nextBeforeCursor = this.olderMessagesBeforeCursor
 		const didLoad = await this.messageHistory.loadInitial(
 			async ({ signal }) => {
 				const page = await this.fetchMessagesPage({
 					limit: initialMessagePageLimit,
 					signal,
 				})
-				this.loadedMessageStartIndex = page.startIndex ?? 0
-				this.olderMessagesBeforeCursor = page.nextBefore ?? null
+				nextStartIndex = page.startIndex ?? 0
+				nextBeforeCursor = page.nextBefore ?? null
 				return {
 					items: page.messages ?? [],
 					hasMore: page.hasMore ?? false,
@@ -195,6 +197,8 @@ export class ChatClient {
 		if (!didLoad) {
 			throw new Error(this.historyError || 'Unable to load chat messages.')
 		}
+		this.loadedMessageStartIndex = nextStartIndex
+		this.olderMessagesBeforeCursor = nextBeforeCursor
 	}
 
 	private async reloadLoadedMessages() {
@@ -217,20 +221,27 @@ export class ChatClient {
 
 	async loadOlderMessages(signal?: AbortSignal) {
 		if (!this.olderMessagesBeforeCursor) return false
-		return this.messageHistory.loadMore(async ({ signal }) => {
+		let nextStartIndex = this.loadedMessageStartIndex
+		let nextBeforeCursor = this.olderMessagesBeforeCursor
+		const didLoad = await this.messageHistory.loadMore(async ({ signal }) => {
 			const page = await this.fetchMessagesPage({
 				before: this.olderMessagesBeforeCursor,
 				limit: olderMessagePageLimit,
 				signal,
 			})
-			this.loadedMessageStartIndex = page.startIndex ?? 0
-			this.olderMessagesBeforeCursor = page.nextBefore ?? null
+			nextStartIndex = page.startIndex ?? 0
+			nextBeforeCursor = page.nextBefore ?? null
 			return {
 				items: page.messages ?? [],
 				hasMore: page.hasMore ?? false,
 				totalCount: page.totalCount ?? 0,
 			}
 		}, signal)
+		if (didLoad) {
+			this.loadedMessageStartIndex = nextStartIndex
+			this.olderMessagesBeforeCursor = nextBeforeCursor
+		}
+		return didLoad
 	}
 
 	async waitUntilConnected(timeoutMs = 5_000) {

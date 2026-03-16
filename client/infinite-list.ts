@@ -74,6 +74,7 @@ export function createInfiniteList<T>(options: InfiniteListOptions<T>) {
 		signal?: AbortSignal,
 	) {
 		if (mode === 'initial') {
+			if (isLoadingInitial) return false
 			isLoadingInitial = true
 			error = null
 			emitSnapshot()

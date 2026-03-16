@@ -689,27 +689,33 @@ export function ChatRoute(handle: Handle) {
 
 	async function loadMoreThreads(signal?: AbortSignal) {
 		if (!threadListCursor) return false
-		return threadList.loadMore(async ({ signal }) => {
+		let nextCursor: string | null = threadListCursor
+		const didLoad = await threadList.loadMore(async ({ signal }) => {
 			const page = await fetchThreads({
 				cursor: threadListCursor,
 				search: threadSearch,
 				signal,
 			})
-			threadListCursor = page.nextCursor
+			nextCursor = page.nextCursor
 			return {
 				items: page.items,
 				hasMore: page.hasMore,
 				totalCount: page.totalCount,
 			}
 		}, signal)
+		if (didLoad) {
+			threadListCursor = nextCursor
+		}
+		return didLoad
 	}
 
 	async function refreshThreads(signal?: AbortSignal) {
 		try {
 			threadListCursor = null
+			let nextCursor: string | null = null
 			const didLoad = await threadList.loadInitial(async ({ signal }) => {
 				const page = await fetchThreads({ search: threadSearch, signal })
-				threadListCursor = page.nextCursor
+				nextCursor = page.nextCursor
 				return {
 					items: page.items,
 					hasMore: page.hasMore,
@@ -717,6 +723,7 @@ export function ChatRoute(handle: Handle) {
 				}
 			}, signal)
 			if (!didLoad) return
+			threadListCursor = nextCursor
 			setThreadState('ready')
 			scheduleThreadListScrollFadeSync()
 			await syncActiveThreadFromLocation()
