@@ -369,6 +369,16 @@ export function ChatRoute(handle: Handle) {
 		getKey: (thread) => thread.id,
 		onSnapshot(snapshot) {
 			threadListSnapshot = snapshot
+			if (deleteThreadChecks.size) {
+				const activeThreadIds = new Set(
+					snapshot.items.map((thread) => thread.id),
+				)
+				for (const threadId of deleteThreadChecks.keys()) {
+					if (!activeThreadIds.has(threadId)) {
+						deleteThreadChecks.delete(threadId)
+					}
+				}
+			}
 			threadError = snapshot.error
 			if (snapshot.isLoadingInitial) {
 				threadStatus = 'loading'
