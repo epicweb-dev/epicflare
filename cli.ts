@@ -310,7 +310,7 @@ async function ensureMockServers() {
 		hasEnvValue(previousMockEnvOverrides.AI_MOCK_API_KEY)
 
 	if (
-		canReuseResendMock &&
+		canReuseCachedResendEnv &&
 		hasMatchingCachedMode &&
 		(desiredAiMode === 'remote' || canReuseCachedAiEnv)
 	) {

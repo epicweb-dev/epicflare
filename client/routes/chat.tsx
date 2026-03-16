@@ -540,6 +540,9 @@ export function ChatRoute(handle: Handle) {
 				disconnectedIndicator.reset()
 				setMessageScrollFades(false, false)
 				update()
+				if (locationThreadId) {
+					navigate('/chat')
+				}
 				return
 			}
 
