@@ -51,8 +51,8 @@ export function createDoubleCheck(handle: Handle) {
 					return
 				}
 
-				setDoubleCheck(false)
 				buttonProps.on?.click?.(event)
+				setDoubleCheck(false)
 			}
 
 			return {

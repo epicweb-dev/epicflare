@@ -45,6 +45,10 @@ function buildInitialTitle() {
 	return 'New chat'
 }
 
+function escapeLikePattern(value: string) {
+	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
 const defaultThreadListLimit = 100
 
 export function createChatThreadsStore(db: D1Database) {
@@ -60,9 +64,13 @@ export function createChatThreadsStore(db: D1Database) {
 		) {
 			const limit = Math.max(
 				1,
-				Math.min(options?.limit ?? defaultThreadListLimit, defaultThreadListLimit),
+				Math.min(
+					options?.limit ?? defaultThreadListLimit,
+					defaultThreadListLimit,
+				),
 			)
 			const search = options?.search?.trim() ?? ''
+			const escapedSearch = search ? escapeLikePattern(search) : ''
 			const records = search
 				? await db
 						.prepare(
@@ -80,24 +88,27 @@ export function createChatThreadsStore(db: D1Database) {
 									user_id = ?
 									AND deleted_at IS NULL
 									AND (
-										lower(title) LIKE lower(?)
-										OR lower(last_message_preview) LIKE lower(?)
+										lower(title) LIKE lower(?) ESCAPE '\\'
+										OR lower(last_message_preview) LIKE lower(?) ESCAPE '\\'
 									)
 								ORDER BY updated_at DESC
 								LIMIT ?
 							`,
 						)
-						.bind(userId, `%${search}%`, `%${search}%`, limit)
+						.bind(userId, `%${escapedSearch}%`, `%${escapedSearch}%`, limit)
 						.all()
-						.then((result) => result.results as Array<{
-							id: string
-							title: string
-							last_message_preview: string
-							message_count: number
-							created_at: string
-							updated_at: string
-							deleted_at?: string | null
-						}>)
+						.then(
+							(result) =>
+								result.results as Array<{
+									id: string
+									title: string
+									last_message_preview: string
+									message_count: number
+									created_at: string
+									updated_at: string
+									deleted_at?: string | null
+								}>,
+						)
 				: await database.findMany(chatThreadsTable, {
 						where: { user_id: userId, deleted_at: null },
 						orderBy: ['updated_at', 'desc'],

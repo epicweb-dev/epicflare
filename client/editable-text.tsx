@@ -69,7 +69,14 @@ export function EditableText(handle: Handle) {
 
 			isSaving = true
 			handle.update()
-			const didSave = await props.onSave(nextValue)
+			let didSave = false
+			try {
+				didSave = await props.onSave(nextValue)
+			} catch (error) {
+				isSaving = false
+				handle.update()
+				throw error
+			}
 			isSaving = false
 			if (!didSave) {
 				handle.update()
