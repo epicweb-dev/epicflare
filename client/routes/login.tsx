@@ -1,6 +1,6 @@
 import { type Handle } from 'remix/component'
 import { buildAuthLink } from '#client/auth-links.ts'
-import { getPathname } from '#client/client-router.tsx'
+import { getPathname, listenToRouterNavigation } from '#client/client-router.tsx'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import {
 	colors,
@@ -50,12 +50,25 @@ export function LoginRoute(handle: Handle) {
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionEmail = ''
 	let activeMode = getCurrentAuthMode()
+	let routePath: string | null = null
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
 		message = nextMessage
 		handle.update()
 	}
+
+	function resetAuthState() {
+		status = 'idle'
+		message = null
+	}
+
+	listenToRouterNavigation(handle, () => {
+		if (!routePath) return
+		if (getPathname() !== routePath) {
+			resetAuthState()
+		}
+	})
 
 	handle.queueTask(async (signal) => {
 		if (sessionStatus !== 'idle') return
@@ -118,10 +131,12 @@ export function LoginRoute(handle: Handle) {
 
 	return () => {
 		const mode = getCurrentAuthMode()
+		if (!routePath) {
+			routePath = getPathname()
+		}
 		if (mode !== activeMode) {
 			activeMode = mode
-			status = 'idle'
-			message = null
+			resetAuthState()
 		}
 		const redirectTo = getCurrentRedirectTo()
 		const isSignup = mode === 'signup'
