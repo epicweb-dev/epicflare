@@ -1,4 +1,4 @@
-type RemoteAiLocalDevEnv = {
+type RemoteAiLocalDevEnv = Record<string, string | undefined> & {
 	AI_MODE?: string
 	AI_GATEWAY_ID?: string
 	CLOUDFLARE_ACCOUNT_ID?: string
