@@ -17,6 +17,7 @@ import {
 import { createSpinDelay } from '#client/spin-delay.ts'
 import {
 	colors,
+	mq,
 	radius,
 	shadows,
 	spacing,
@@ -299,6 +300,25 @@ function renderPaperAirplaneIcon() {
 	)
 }
 
+function renderBackIcon() {
+	return (
+		<svg
+			aria-hidden="true"
+			viewBox="0 0 24 24"
+			css={{ width: '1.25rem', height: '1.25rem' }}
+		>
+			<path
+				d="M15 18l-6-6 6-6"
+				fill="none"
+				stroke="currentColor"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth="2"
+			/>
+		</svg>
+	)
+}
+
 function renderTrashIcon() {
 	return (
 		<svg
@@ -355,6 +375,7 @@ export function ChatRoute(handle: Handle) {
 	let actionError: string | null = null
 	let syncInFlight = false
 	let shouldAutoScrollMessages = true
+	let mobileSidebarOpen = !getSelectedThreadIdFromLocation()
 	let showMessageScrollFadeTop = false
 	let showMessageScrollFadeBottom = false
 	let showThreadListScrollFadeTop = false
@@ -393,6 +414,16 @@ export function ChatRoute(handle: Handle) {
 
 	function update() {
 		handle.update()
+	}
+
+	function handleMobileBackToThreads() {
+		mobileSidebarOpen = true
+		update()
+	}
+
+	function handleSelectThread(threadId: string) {
+		mobileSidebarOpen = false
+		navigate(buildThreadHref(threadId))
 	}
 
 	function setThreadState(
@@ -608,6 +639,7 @@ export function ChatRoute(handle: Handle) {
 		if (activeThreadId === threadId && activeClient) return
 
 		activeClient?.close()
+		mobileSidebarOpen = false
 		shouldAutoScrollMessages = true
 		activeClient = new ChatClient({
 			threadId,
@@ -872,6 +904,7 @@ export function ChatRoute(handle: Handle) {
 			: null
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
+		const showMobileSidebar = mobileSidebarOpen && !showEmptyStateComposer
 
 		return (
 			<section
@@ -879,6 +912,12 @@ export function ChatRoute(handle: Handle) {
 					display: 'grid',
 					gap: spacing.lg,
 					minHeight: showEmptyStateComposer ? 'calc(100vh - 7rem)' : undefined,
+					[mq.tablet]: {
+						gap: spacing.sm,
+						minHeight: showEmptyStateComposer
+							? 'calc(100vh - 4rem)'
+							: undefined,
+					},
 				}}
 			>
 				{actionError ? (
@@ -892,6 +931,11 @@ export function ChatRoute(handle: Handle) {
 						gridTemplateColumns: '18rem minmax(0, 1fr)',
 						alignItems: 'stretch',
 						minHeight: CHAT_PANEL_HEIGHT,
+						[mq.tablet]: {
+							gridTemplateColumns: '1fr',
+							gap: 0,
+							minHeight: 'calc(100vh - 4rem)',
+						},
 					}}
 				>
 					<aside
@@ -908,6 +952,13 @@ export function ChatRoute(handle: Handle) {
 							top: spacing.lg,
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
+							[mq.tablet]: {
+								display: showMobileSidebar ? 'flex' : 'none',
+								position: 'static',
+								height: 'calc(100vh - 4rem)',
+								borderRadius: radius.md,
+								boxShadow: 'none',
+							},
 						}}
 					>
 						<button
@@ -1011,7 +1062,7 @@ export function ChatRoute(handle: Handle) {
 											<button
 												type="button"
 												on={{
-													click: () => navigate(buildThreadHref(thread.id)),
+													click: () => handleSelectThread(thread.id),
 												}}
 												css={{
 													display: 'grid',
@@ -1211,6 +1262,13 @@ export function ChatRoute(handle: Handle) {
 							boxShadow: shadows.sm,
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
+							[mq.tablet]: {
+								display: showMobileSidebar ? 'none' : 'flex',
+								padding: spacing.sm,
+								height: 'calc(100vh - 4rem)',
+								borderRadius: radius.md,
+								boxShadow: 'none',
+							},
 						}}
 					>
 						{activeThread ? (
@@ -1219,15 +1277,43 @@ export function ChatRoute(handle: Handle) {
 									css={{
 										flexShrink: 0,
 										display: 'flex',
-										justifyContent: 'space-between',
 										alignItems: 'center',
-										gap: spacing.md,
+										gap: spacing.sm,
 									}}
 								>
+									<button
+										type="button"
+										on={{ click: handleMobileBackToThreads }}
+										aria-label="Back to chats"
+										css={{
+											display: 'none',
+											alignItems: 'center',
+											justifyContent: 'center',
+											flexShrink: 0,
+											width: '2rem',
+											height: '2rem',
+											padding: 0,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: 'transparent',
+											color: colors.text,
+											cursor: 'pointer',
+											transition: `background-color ${transitions.normal}`,
+											'&:hover': {
+												backgroundColor: colors.primarySoftest,
+											},
+											[mq.tablet]: {
+												display: 'inline-flex',
+											},
+										}}
+									>
+										{renderBackIcon()}
+									</button>
 									<div
 										css={{
 											position: 'relative',
 											minWidth: 0,
+											flex: 1,
 										}}
 									>
 										<span
@@ -1287,6 +1373,9 @@ export function ChatRoute(handle: Handle) {
 										maxWidth: '56rem',
 										width: '100%',
 										margin: '0 auto',
+										[mq.tablet]: {
+											maxWidth: '100%',
+										},
 									}}
 								>
 									<div
@@ -1427,6 +1516,9 @@ export function ChatRoute(handle: Handle) {
 										maxWidth: '56rem',
 										width: '100%',
 										margin: '0 auto',
+										[mq.tablet]: {
+											maxWidth: '100%',
+										},
 									}}
 								>
 									<label css={{ display: 'grid', gap: spacing.xs }}>
@@ -1519,6 +1611,9 @@ export function ChatRoute(handle: Handle) {
 									margin: '0 auto',
 									width: '100%',
 									paddingBottom: spacing.sm,
+									[mq.tablet]: {
+										maxWidth: '100%',
+									},
 								}}
 							>
 								<form
