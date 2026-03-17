@@ -1,6 +1,6 @@
 import { type Handle } from 'remix/component'
 import { buildAuthLink } from '#client/auth-links.ts'
-import { navigate } from '#client/client-router.tsx'
+import { getPathname } from '#client/client-router.tsx'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import {
 	colors,
@@ -13,30 +13,6 @@ import {
 
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
-
-type LoginFormSetup = {
-	initialMode?: AuthMode
-}
-
-// #region agent log
-function emitAgentDebug(
-	hypothesisId: string,
-	location: string,
-	message: string,
-	data: Record<string, unknown>,
-) {
-	if (typeof window === 'undefined') return
-	console.info(
-		`__agent_debug__${JSON.stringify({
-			hypothesisId,
-			location,
-			message,
-			data,
-			timestamp: Date.now(),
-		})}`,
-	)
-}
-// #endregion
 
 function getSearchParams() {
 	return typeof window === 'undefined'
@@ -56,44 +32,28 @@ function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
 	return buildAuthLink(path, redirectTo)
 }
 
-export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
-	let mode: AuthMode = setup.initialMode ?? 'login'
+function getAuthModeFromPathname(pathname: string): AuthMode {
+	return pathname === '/signup' ? 'signup' : 'login'
+}
+
+function getCurrentAuthMode() {
+	return getAuthModeFromPathname(getPathname())
+}
+
+function getCurrentRedirectTo() {
+	return normalizeRedirectTo(getSearchParams().get('redirectTo'))
+}
+
+export function LoginRoute(handle: Handle) {
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionEmail = ''
-	const redirectTo = normalizeRedirectTo(getSearchParams().get('redirectTo'))
-	const redirectTarget = redirectTo ?? '/account'
-
-	// #region agent log
-	emitAgentDebug('A', 'client/routes/login.tsx:58', 'LoginRoute initialized', {
-		setupInitialMode: setup.initialMode ?? null,
-		mode,
-		pathname: typeof window === 'undefined' ? null : window.location.pathname,
-		search: typeof window === 'undefined' ? null : window.location.search,
-	})
-	// #endregion
+	let activeMode = getCurrentAuthMode()
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
 		message = nextMessage
-		handle.update()
-	}
-
-	function switchMode(nextMode: AuthMode) {
-		if (mode === nextMode) return
-		// #region agent log
-		emitAgentDebug('C', 'client/routes/login.tsx:73', 'switchMode start', {
-			fromMode: mode,
-			toMode: nextMode,
-			pathname: typeof window === 'undefined' ? null : window.location.pathname,
-			search: typeof window === 'undefined' ? null : window.location.search,
-		})
-		// #endregion
-		mode = nextMode
-		status = 'idle'
-		message = null
-		navigate(buildAuthPath(nextMode, redirectTo))
 		handle.update()
 	}
 
@@ -107,7 +67,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 
 		sessionStatus = 'ready'
 		if (sessionEmail && typeof window !== 'undefined') {
-			window.location.assign(redirectTarget)
+			window.location.assign(getCurrentRedirectTo() ?? '/account')
 			return
 		}
 		handle.update()
@@ -120,6 +80,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		const formData = new FormData(event.currentTarget)
 		const email = String(formData.get('email') ?? '').trim()
 		const password = String(formData.get('password') ?? '')
+		const mode = getCurrentAuthMode()
 		const rememberMe = mode === 'login' && formData.get('rememberMe') === 'on'
 
 		if (!email || !password) {
@@ -148,7 +109,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 			}
 
 			if (typeof window !== 'undefined') {
-				window.location.assign(redirectTarget)
+				window.location.assign(getCurrentRedirectTo() ?? '/account')
 			}
 		} catch {
 			setState('error', 'Network error. Please try again.')
@@ -156,6 +117,13 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	}
 
 	return () => {
+		const mode = getCurrentAuthMode()
+		if (mode !== activeMode) {
+			activeMode = mode
+			status = 'idle'
+			message = null
+		}
+		const redirectTo = getCurrentRedirectTo()
 		const isSignup = mode === 'signup'
 		const isSubmitting = status === 'submitting'
 		const title = isSignup ? 'Create your account' : 'Welcome back'
@@ -167,16 +135,6 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 			? 'Already have an account?'
 			: 'Need an account?'
 		const toggleAction = isSignup ? 'Sign in instead' : 'Sign up instead'
-
-		// #region agent log
-		emitAgentDebug('B', 'client/routes/login.tsx:154', 'LoginRoute render', {
-			mode,
-			setupInitialMode: setup.initialMode ?? null,
-			title,
-			pathname: typeof window === 'undefined' ? null : window.location.pathname,
-			search: typeof window === 'undefined' ? null : window.location.search,
-		})
-		// #endregion
 
 		return (
 			<section
@@ -345,12 +303,6 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 					<a
 						href={buildAuthPath(isSignup ? 'login' : 'signup', redirectTo)}
 						aria-pressed={isSignup}
-						on={{
-							click: (event) => {
-								if (event.defaultPrevented) return
-								switchMode(isSignup ? 'login' : 'signup')
-							},
-						}}
 						css={{
 							background: 'none',
 							border: 'none',

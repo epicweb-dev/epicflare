@@ -14,26 +14,6 @@ type FormSubmitDetails = {
 	formData: FormData
 }
 
-// #region agent log
-function emitAgentDebug(
-	hypothesisId: string,
-	location: string,
-	message: string,
-	data: Record<string, unknown>,
-) {
-	if (typeof window === 'undefined') return
-	console.info(
-		`__agent_debug__${JSON.stringify({
-			hypothesisId,
-			location,
-			message,
-			data,
-			timestamp: Date.now(),
-		})}`,
-	)
-}
-// #endregion
-
 export const routerEvents = new EventTarget()
 let routerInitialized = false
 
@@ -89,13 +69,6 @@ function handleDocumentClick(event: MouseEvent) {
 
 	event.preventDefault()
 	const destination = new URL(anchor.href, window.location.href)
-	// #region agent log
-	emitAgentDebug('E', 'client/client-router.tsx:90', 'Document click intercepted', {
-		currentPath: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-		anchorHref: anchor.getAttribute('href'),
-		destinationPath: `${destination.pathname}${destination.search}${destination.hash}`,
-	})
-	// #endregion
 	navigate(`${destination.pathname}${destination.search}${destination.hash}`)
 }
 
@@ -304,12 +277,6 @@ export function navigate(to: string) {
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
 
-	// #region agent log
-	emitAgentDebug('F', 'client/client-router.tsx:306', 'navigate pushState', {
-		fromPath: getCurrentPathWithSearchAndHash(),
-		toPath: nextPath,
-	})
-	// #endregion
 	window.history.pushState({}, '', nextPath)
 	notify()
 }

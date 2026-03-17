@@ -65,3 +65,51 @@ test('signs up with email and password', async ({ page }) => {
 		page.getByRole('heading', { name: `Welcome, ${signupUser.email}` }),
 	).toBeVisible()
 })
+
+test('auth navigation keeps the URL and form mode in sync', async ({
+	page,
+}) => {
+	await page.context().clearCookies()
+	await page.goto('/login')
+
+	const marker = await page.evaluate(() => {
+		const value = crypto.randomUUID()
+		;(window as Window & { __authNavMarker?: string }).__authNavMarker = value
+		return value
+	})
+
+	await page.getByRole('link', { name: 'Signup' }).click()
+	await expect(page).toHaveURL(/\/signup$/)
+	await expect(
+		page.getByRole('heading', { name: 'Create your account' }),
+	).toBeVisible()
+	await expect(
+		page.getByRole('button', { name: 'Create account' }),
+	).toBeVisible()
+	await expect(page.getByLabel('Remember me')).toHaveCount(0)
+	expect(
+		await page.evaluate(
+			() => (window as Window & { __authNavMarker?: string }).__authNavMarker,
+		),
+	).toBe(marker)
+
+	await page.getByRole('link', { name: 'Login' }).click()
+	await expect(page).toHaveURL(/\/login$/)
+	await expect(
+		page.getByRole('heading', { name: 'Welcome back' }),
+	).toBeVisible()
+	await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
+	await expect(page.getByLabel('Remember me')).toBeVisible()
+
+	await page.getByRole('link', { name: /Sign up instead/ }).click()
+	await expect(page).toHaveURL(/\/signup$/)
+	await expect(
+		page.getByRole('heading', { name: 'Create your account' }),
+	).toBeVisible()
+
+	await page.getByRole('link', { name: /Sign in instead/ }).click()
+	await expect(page).toHaveURL(/\/login$/)
+	await expect(
+		page.getByRole('heading', { name: 'Welcome back' }),
+	).toBeVisible()
+})
