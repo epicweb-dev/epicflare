@@ -66,6 +66,17 @@ export function App(handle: Handle) {
 		},
 	}
 
+	const navHomeLinkCss = {
+		...navLinkCss,
+		display: 'flex',
+		alignItems: 'center',
+		lineHeight: 0,
+		'&:hover': {
+			textDecoration: 'none',
+			opacity: 0.85,
+		},
+	}
+
 	const logOutButtonCss = {
 		padding: `${spacing.xs} ${spacing.md}`,
 		borderRadius: '999px',
@@ -106,13 +117,24 @@ export function App(handle: Handle) {
 				<nav
 					css={{
 						display: 'flex',
+						alignItems: 'center',
 						gap: spacing.md,
 						flexWrap: 'wrap',
 						marginBottom: isChatLayout ? spacing.lg : spacing.xl,
 					}}
 				>
-					<a href="/" css={navLinkCss}>
-						Home
+					<a href="/" css={navHomeLinkCss} aria-label="Home">
+						<img
+							src="/logo.png"
+							alt=""
+							width={112}
+							height={28}
+							css={{
+								display: 'block',
+								height: '1.35em',
+								width: 'auto',
+							}}
+						/>
 					</a>
 					{showAuthLinks ? (
 						<>
