@@ -6,6 +6,7 @@ import {
 	type UIMessage,
 } from 'ai'
 import { createWorkersAI } from 'workers-ai-provider'
+import { getRemoteAiLocalDevCredentialsError } from '#shared/ai-env-validation.ts'
 import { type AiMode } from '#shared/chat.ts'
 import { buildMockAiScenario, type MockAiResponse } from '#shared/mock-ai.ts'
 
@@ -51,15 +52,15 @@ function createWorkersAiProvider(env: WorkersAiCredentialsEnv) {
 		)
 	}
 	const gateway = { gateway: { id: gatewayId } }
-	const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
-	const apiKey = env.CLOUDFLARE_API_TOKEN?.trim()
-	const shouldUseCredentials =
-		env.WRANGLER_IS_LOCAL_DEV === 'true' && accountId && apiKey
-
-	if (shouldUseCredentials) {
+	const isLocalDev = env.WRANGLER_IS_LOCAL_DEV === 'true'
+	if (isLocalDev) {
+		const credentialsError = getRemoteAiLocalDevCredentialsError(env)
+		if (credentialsError) {
+			throw new Error(credentialsError)
+		}
 		return createWorkersAI({
-			accountId,
-			apiKey,
+			accountId: env.CLOUDFLARE_ACCOUNT_ID!.trim(),
+			apiKey: env.CLOUDFLARE_API_TOKEN!.trim(),
 			...gateway,
 		})
 	}

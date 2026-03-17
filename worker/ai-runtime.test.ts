@@ -64,3 +64,22 @@ test('createAiRuntime defaults to mock mode when AI_MODE is missing', async () =
 
 	expect(result.kind).toBe('text')
 })
+
+test('createAiRuntime throws a helpful error for missing local remote AI credentials', async () => {
+	const runtime = createAiRuntime({
+		AI_MODE: 'remote',
+		AI_GATEWAY_ID: 'gateway-id',
+		WRANGLER_IS_LOCAL_DEV: 'true',
+	} as Env)
+
+	await expect(
+		runtime.streamChatReply({
+			messages: [],
+			system: 'test',
+			tools: {},
+			toolNames: [],
+		}),
+	).rejects.toThrow(
+		'CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required when AI_MODE is "remote" in local dev. Add them to .env before starting `bun run dev`.',
+	)
+})

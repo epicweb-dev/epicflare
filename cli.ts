@@ -4,6 +4,7 @@ import { platform } from 'node:os'
 import readline from 'node:readline'
 import { setTimeout as delay } from 'node:timers/promises'
 import getPort, { clearLockedPorts } from 'get-port'
+import { getRemoteAiLocalDevStartupError } from '#shared/ai-env-validation.ts'
 
 const defaultWorkerPort = 3742
 const defaultMockPort = 8788
@@ -44,9 +45,16 @@ let mockResendProcess: ChildProcess | null = null
 let mockAiProcess: ChildProcess | null = null
 let mockEnvOverrides: Record<string, string> = {}
 
-void startDev()
+void startDev().catch((error) => {
+	console.error(error instanceof Error ? error.message : error)
+	process.exit(1)
+})
 
 async function startDev() {
+	const startupError = getRemoteAiLocalDevStartupError(process.env)
+	if (startupError) {
+		throw new Error(startupError)
+	}
 	await restartDev({ announce: false })
 	setupInteractiveCli({
 		getWorkerOrigin: () => workerOrigin,
