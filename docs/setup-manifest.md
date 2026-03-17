@@ -54,6 +54,10 @@ Local development uses `.env`, which Wrangler loads automatically:
 - `AI_GATEWAY_ID` (required when `AI_MODE=remote`; deploy workflows sync a
   gateway ID from GitHub Actions secrets so remote inference goes through
   Cloudflare AI Gateway)
+- `CLOUDFLARE_ACCOUNT_ID` (required for local development when `AI_MODE=remote`
+  so Wrangler can authenticate Workers AI requests against the correct account)
+- `CLOUDFLARE_API_TOKEN` (required for local development when `AI_MODE=remote`
+  so Wrangler can authenticate Workers AI requests)
 
 Tests run with `CLOUDFLARE_ENV=test` (set by Playwright) and still read local
 secrets from `.env`.
