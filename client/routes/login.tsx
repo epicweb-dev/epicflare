@@ -18,6 +18,26 @@ type LoginFormSetup = {
 	initialMode?: AuthMode
 }
 
+// #region agent log
+function emitAgentDebug(
+	hypothesisId: string,
+	location: string,
+	message: string,
+	data: Record<string, unknown>,
+) {
+	if (typeof window === 'undefined') return
+	console.info(
+		`__agent_debug__${JSON.stringify({
+			hypothesisId,
+			location,
+			message,
+			data,
+			timestamp: Date.now(),
+		})}`,
+	)
+}
+// #endregion
+
 function getSearchParams() {
 	return typeof window === 'undefined'
 		? new URLSearchParams()
@@ -45,6 +65,15 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	const redirectTo = normalizeRedirectTo(getSearchParams().get('redirectTo'))
 	const redirectTarget = redirectTo ?? '/account'
 
+	// #region agent log
+	emitAgentDebug('A', 'client/routes/login.tsx:58', 'LoginRoute initialized', {
+		setupInitialMode: setup.initialMode ?? null,
+		mode,
+		pathname: typeof window === 'undefined' ? null : window.location.pathname,
+		search: typeof window === 'undefined' ? null : window.location.search,
+	})
+	// #endregion
+
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
 		message = nextMessage
@@ -53,6 +82,14 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 
 	function switchMode(nextMode: AuthMode) {
 		if (mode === nextMode) return
+		// #region agent log
+		emitAgentDebug('C', 'client/routes/login.tsx:73', 'switchMode start', {
+			fromMode: mode,
+			toMode: nextMode,
+			pathname: typeof window === 'undefined' ? null : window.location.pathname,
+			search: typeof window === 'undefined' ? null : window.location.search,
+		})
+		// #endregion
 		mode = nextMode
 		status = 'idle'
 		message = null
@@ -130,6 +167,16 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 			? 'Already have an account?'
 			: 'Need an account?'
 		const toggleAction = isSignup ? 'Sign in instead' : 'Sign up instead'
+
+		// #region agent log
+		emitAgentDebug('B', 'client/routes/login.tsx:154', 'LoginRoute render', {
+			mode,
+			setupInitialMode: setup.initialMode ?? null,
+			title,
+			pathname: typeof window === 'undefined' ? null : window.location.pathname,
+			search: typeof window === 'undefined' ? null : window.location.search,
+		})
+		// #endregion
 
 		return (
 			<section

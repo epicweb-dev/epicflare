@@ -9,6 +9,26 @@ import {
 import { buildAuthLink } from './auth-links.ts'
 import { colors, spacing, typography } from './styles/tokens.ts'
 
+// #region agent log
+function emitAgentDebug(
+	hypothesisId: string,
+	location: string,
+	message: string,
+	data: Record<string, unknown>,
+) {
+	if (typeof window === 'undefined') return
+	console.info(
+		`__agent_debug__${JSON.stringify({
+			hypothesisId,
+			location,
+			message,
+			data,
+			timestamp: Date.now(),
+		})}`,
+	)
+}
+// #endregion
+
 export function App(handle: Handle) {
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
@@ -48,7 +68,15 @@ export function App(handle: Handle) {
 		queueSessionRefresh()
 	})
 	listenToRouterNavigation(handle, () => {
+		const previousPathname = currentPathname
 		currentPathname = getPathname()
+		// #region agent log
+		emitAgentDebug('D', 'client/app.tsx:69', 'App observed router navigation', {
+			previousPathname,
+			nextPathname: currentPathname,
+			search: typeof window === 'undefined' ? null : window.location.search,
+		})
+		// #endregion
 		queueSessionRefresh()
 		handle.update()
 	})
