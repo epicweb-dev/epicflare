@@ -58,9 +58,6 @@ function createWorkersAiProvider(env: WorkersAiCredentialsEnv) {
 		if (credentialsError) {
 			throw new Error(credentialsError)
 		}
-	}
-
-	if (isLocalDev) {
 		return createWorkersAI({
 			accountId: env.CLOUDFLARE_ACCOUNT_ID!.trim(),
 			apiKey: env.CLOUDFLARE_API_TOKEN!.trim(),
