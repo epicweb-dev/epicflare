@@ -6,6 +6,7 @@ import {
 	type UIMessage,
 } from 'ai'
 import { createWorkersAI } from 'workers-ai-provider'
+import { getRemoteAiLocalDevCredentialsError } from '#shared/ai-env-validation.ts'
 import { type AiMode } from '#shared/chat.ts'
 import { buildMockAiScenario, type MockAiResponse } from '#shared/mock-ai.ts'
 
@@ -38,11 +39,6 @@ type WorkersAiCredentialsEnv = Env & {
 	WRANGLER_IS_LOCAL_DEV?: string
 }
 
-function formatEnvVarList(keys: ReadonlyArray<string>) {
-	if (keys.length === 1) return keys[0]!
-	return `${keys.slice(0, -1).join(', ')} and ${keys.at(-1)}`
-}
-
 function resolveAiMode(env: Env): AiMode {
 	if (env.AI_MODE) return env.AI_MODE
 	return 'mock'
@@ -57,28 +53,17 @@ function createWorkersAiProvider(env: WorkersAiCredentialsEnv) {
 	}
 	const gateway = { gateway: { id: gatewayId } }
 	const isLocalDev = env.WRANGLER_IS_LOCAL_DEV === 'true'
-	const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
-	const apiKey = env.CLOUDFLARE_API_TOKEN?.trim()
-	const missingLocalCredentials = [
-		...(accountId ? [] : ['CLOUDFLARE_ACCOUNT_ID']),
-		...(apiKey ? [] : ['CLOUDFLARE_API_TOKEN']),
-	]
-
-	if (isLocalDev && missingLocalCredentials.length > 0) {
-		const missingVariables = formatEnvVarList(missingLocalCredentials)
-		throw new Error(
-			`${missingVariables} ${
-				missingLocalCredentials.length === 1 ? 'is' : 'are'
-			} required when AI_MODE is "remote" in local dev. Add ${
-				missingLocalCredentials.length === 1 ? 'it' : 'them'
-			} to .env before starting \`bun run dev\`.`,
-		)
+	if (isLocalDev) {
+		const credentialsError = getRemoteAiLocalDevCredentialsError(env)
+		if (credentialsError) {
+			throw new Error(credentialsError)
+		}
 	}
 
 	if (isLocalDev) {
 		return createWorkersAI({
-			accountId: accountId!,
-			apiKey: apiKey!,
+			accountId: env.CLOUDFLARE_ACCOUNT_ID!.trim(),
+			apiKey: env.CLOUDFLARE_API_TOKEN!.trim(),
 			...gateway,
 		})
 	}
