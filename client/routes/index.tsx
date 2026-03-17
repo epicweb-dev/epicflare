@@ -12,7 +12,7 @@ export const clientRoutes = {
 	'/chat/:threadId': <ChatRoute />,
 	'/account': <AccountRoute />,
 	'/login': <LoginRoute />,
-	'/signup': <LoginRoute setup={{ initialMode: 'signup' }} />,
+	'/signup': <LoginRoute />,
 	'/reset-password': <ResetPasswordRoute />,
 	'/oauth/authorize': <OAuthAuthorizeRoute />,
 	'/oauth/callback': <OAuthCallbackRoute />,

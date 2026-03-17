@@ -1,6 +1,6 @@
 import { type Handle } from 'remix/component'
 import { buildAuthLink } from '#client/auth-links.ts'
-import { navigate } from '#client/client-router.tsx'
+import { getPathname, listenToRouterNavigation } from '#client/client-router.tsx'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import {
 	colors,
@@ -13,10 +13,6 @@ import {
 
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
-
-type LoginFormSetup = {
-	initialMode?: AuthMode
-}
 
 function getSearchParams() {
 	return typeof window === 'undefined'
@@ -36,14 +32,25 @@ function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
 	return buildAuthLink(path, redirectTo)
 }
 
-export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
-	let mode: AuthMode = setup.initialMode ?? 'login'
+function getAuthModeFromPathname(pathname: string): AuthMode {
+	return pathname === '/signup' ? 'signup' : 'login'
+}
+
+function getCurrentAuthMode() {
+	return getAuthModeFromPathname(getPathname())
+}
+
+function getCurrentRedirectTo() {
+	return normalizeRedirectTo(getSearchParams().get('redirectTo'))
+}
+
+export function LoginRoute(handle: Handle) {
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionEmail = ''
-	const redirectTo = normalizeRedirectTo(getSearchParams().get('redirectTo'))
-	const redirectTarget = redirectTo ?? '/account'
+	let activeMode = getCurrentAuthMode()
+	let routePath: string | null = null
 
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
@@ -51,14 +58,17 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		handle.update()
 	}
 
-	function switchMode(nextMode: AuthMode) {
-		if (mode === nextMode) return
-		mode = nextMode
+	function resetAuthState() {
 		status = 'idle'
 		message = null
-		navigate(buildAuthPath(nextMode, redirectTo))
-		handle.update()
 	}
+
+	listenToRouterNavigation(handle, () => {
+		if (!routePath) return
+		if (getPathname() !== routePath) {
+			resetAuthState()
+		}
+	})
 
 	handle.queueTask(async (signal) => {
 		if (sessionStatus !== 'idle') return
@@ -70,7 +80,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 
 		sessionStatus = 'ready'
 		if (sessionEmail && typeof window !== 'undefined') {
-			window.location.assign(redirectTarget)
+			window.location.assign(getCurrentRedirectTo() ?? '/account')
 			return
 		}
 		handle.update()
@@ -83,6 +93,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 		const formData = new FormData(event.currentTarget)
 		const email = String(formData.get('email') ?? '').trim()
 		const password = String(formData.get('password') ?? '')
+		const mode = getCurrentAuthMode()
 		const rememberMe = mode === 'login' && formData.get('rememberMe') === 'on'
 
 		if (!email || !password) {
@@ -111,7 +122,7 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 			}
 
 			if (typeof window !== 'undefined') {
-				window.location.assign(redirectTarget)
+				window.location.assign(getCurrentRedirectTo() ?? '/account')
 			}
 		} catch {
 			setState('error', 'Network error. Please try again.')
@@ -119,6 +130,15 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 	}
 
 	return () => {
+		const mode = getCurrentAuthMode()
+		if (!routePath) {
+			routePath = getPathname()
+		}
+		if (mode !== activeMode) {
+			activeMode = mode
+			resetAuthState()
+		}
+		const redirectTo = getCurrentRedirectTo()
 		const isSignup = mode === 'signup'
 		const isSubmitting = status === 'submitting'
 		const title = isSignup ? 'Create your account' : 'Welcome back'
@@ -298,12 +318,6 @@ export function LoginRoute(handle: Handle, setup: LoginFormSetup = {}) {
 					<a
 						href={buildAuthPath(isSignup ? 'login' : 'signup', redirectTo)}
 						aria-pressed={isSignup}
-						on={{
-							click: (event) => {
-								if (event.defaultPrevented) return
-								switchMode(isSignup ? 'login' : 'signup')
-							},
-						}}
 						css={{
 							background: 'none',
 							border: 'none',

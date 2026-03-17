@@ -1,6 +1,10 @@
 import { type Handle } from 'remix/component'
 import { clientRoutes } from './routes/index.tsx'
-import { getPathname, listenToRouterNavigation, Router } from './client-router.tsx'
+import {
+	getPathname,
+	listenToRouterNavigation,
+	Router,
+} from './client-router.tsx'
 import {
 	fetchSessionInfo,
 	type SessionInfo,
