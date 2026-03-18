@@ -903,7 +903,9 @@ export function ChatRoute(handle: Handle) {
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
 		const hasThreadInUrl = Boolean(getSelectedThreadIdFromLocation())
-		const mobileShowChatPanel = hasThreadInUrl || showEmptyStateComposer
+		const mobileShowChatPanel =
+			hasThreadInUrl ||
+			(showEmptyStateComposer && threadStatus === 'ready')
 
 		return (
 			<section
@@ -1541,7 +1543,7 @@ export function ChatRoute(handle: Handle) {
 														resizeMessageInput(event.currentTarget),
 													keydown: handleComposerKeyDown,
 												}}
-												placeholder="Send a message\u2026"
+												placeholder={'Send a message\u2026'}
 												css={{
 													display: 'block',
 													width: '100%',
@@ -1636,7 +1638,7 @@ export function ChatRoute(handle: Handle) {
 													resizeMessageInput(event.currentTarget),
 												keydown: handleComposerKeyDown,
 											}}
-											placeholder="Send a message\u2026"
+											placeholder={'Send a message\u2026'}
 											css={{
 												display: 'block',
 												width: '100%',
