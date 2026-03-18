@@ -903,9 +903,6 @@ export function ChatRoute(handle: Handle) {
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
 		const hasThreadInUrl = Boolean(getSelectedThreadIdFromLocation())
-		const mobileShowChatPanel =
-			hasThreadInUrl ||
-			(showEmptyStateComposer && threadStatus === 'ready')
 
 		return (
 			<section
@@ -954,7 +951,7 @@ export function ChatRoute(handle: Handle) {
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 							[mq.tablet]: {
-								display: mobileShowChatPanel ? 'none' : 'flex',
+								display: hasThreadInUrl ? 'none' : 'flex',
 								position: 'static',
 								height: 'calc(100vh - 4rem)',
 								borderRadius: radius.md,
@@ -1264,7 +1261,7 @@ export function ChatRoute(handle: Handle) {
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 							[mq.tablet]: {
-								display: mobileShowChatPanel ? 'flex' : 'none',
+								display: hasThreadInUrl ? 'flex' : 'none',
 								padding: spacing.sm,
 								height: 'calc(100vh - 4rem)',
 								borderRadius: radius.md,
