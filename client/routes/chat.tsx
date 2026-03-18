@@ -16,6 +16,7 @@ import {
 } from '#client/scroll-container.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
 import {
+	breakpoints,
 	colors,
 	mq,
 	radius,
@@ -43,6 +44,13 @@ function getSelectedThreadIdFromLocation() {
 
 function buildThreadHref(threadId: string) {
 	return `/chat/${threadId}`
+}
+
+function isMobileViewport() {
+	return (
+		typeof window !== 'undefined' &&
+		window.matchMedia(`(max-width: ${breakpoints.tablet})`).matches
+	)
 }
 
 const MESSAGES_SCROLL_CONTAINER_ID = 'chat-messages-scroll-container'
@@ -375,7 +383,6 @@ export function ChatRoute(handle: Handle) {
 	let actionError: string | null = null
 	let syncInFlight = false
 	let shouldAutoScrollMessages = true
-	let mobileSidebarOpen = !getSelectedThreadIdFromLocation()
 	let showMessageScrollFadeTop = false
 	let showMessageScrollFadeBottom = false
 	let showThreadListScrollFadeTop = false
@@ -414,16 +421,6 @@ export function ChatRoute(handle: Handle) {
 
 	function update() {
 		handle.update()
-	}
-
-	function handleMobileBackToThreads() {
-		mobileSidebarOpen = true
-		update()
-	}
-
-	function handleSelectThread(threadId: string) {
-		mobileSidebarOpen = false
-		navigate(buildThreadHref(threadId))
 	}
 
 	function setThreadState(
@@ -639,7 +636,6 @@ export function ChatRoute(handle: Handle) {
 		if (activeThreadId === threadId && activeClient) return
 
 		activeClient?.close()
-		mobileSidebarOpen = false
 		shouldAutoScrollMessages = true
 		activeClient = new ChatClient({
 			threadId,
@@ -719,7 +715,9 @@ export function ChatRoute(handle: Handle) {
 			if (!resolvedThreadId) return
 
 			if (locationThreadId !== resolvedThreadId) {
-				navigate(buildThreadHref(resolvedThreadId))
+				if (locationThreadId || !isMobileViewport()) {
+					navigate(buildThreadHref(resolvedThreadId))
+				}
 				return
 			}
 
@@ -904,7 +902,8 @@ export function ChatRoute(handle: Handle) {
 			: null
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
-		const showMobileSidebar = mobileSidebarOpen && !showEmptyStateComposer
+		const hasThreadInUrl = Boolean(getSelectedThreadIdFromLocation())
+		const mobileShowChatPanel = hasThreadInUrl || showEmptyStateComposer
 
 		return (
 			<section
@@ -953,7 +952,7 @@ export function ChatRoute(handle: Handle) {
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 							[mq.tablet]: {
-								display: showMobileSidebar ? 'flex' : 'none',
+								display: mobileShowChatPanel ? 'none' : 'flex',
 								position: 'static',
 								height: 'calc(100vh - 4rem)',
 								borderRadius: radius.md,
@@ -1062,7 +1061,7 @@ export function ChatRoute(handle: Handle) {
 											<button
 												type="button"
 												on={{
-													click: () => handleSelectThread(thread.id),
+													click: () => navigate(buildThreadHref(thread.id)),
 												}}
 												css={{
 													display: 'grid',
@@ -1263,7 +1262,7 @@ export function ChatRoute(handle: Handle) {
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 							[mq.tablet]: {
-								display: showMobileSidebar ? 'none' : 'flex',
+								display: mobileShowChatPanel ? 'flex' : 'none',
 								padding: spacing.sm,
 								height: 'calc(100vh - 4rem)',
 								borderRadius: radius.md,
@@ -1281,9 +1280,8 @@ export function ChatRoute(handle: Handle) {
 										gap: spacing.sm,
 									}}
 								>
-									<button
-										type="button"
-										on={{ click: handleMobileBackToThreads }}
+									<a
+										href="/chat"
 										aria-label="Back to chats"
 										css={{
 											display: 'none',
@@ -1297,7 +1295,7 @@ export function ChatRoute(handle: Handle) {
 											border: `1px solid ${colors.border}`,
 											backgroundColor: 'transparent',
 											color: colors.text,
-											cursor: 'pointer',
+											textDecoration: 'none',
 											transition: `background-color ${transitions.normal}`,
 											'&:hover': {
 												backgroundColor: colors.primarySoftest,
@@ -1308,7 +1306,7 @@ export function ChatRoute(handle: Handle) {
 										}}
 									>
 										{renderBackIcon()}
-									</button>
+									</a>
 									<div
 										css={{
 											position: 'relative',
@@ -1543,7 +1541,7 @@ export function ChatRoute(handle: Handle) {
 														resizeMessageInput(event.currentTarget),
 													keydown: handleComposerKeyDown,
 												}}
-												placeholder='Ask a question or send "help" when using the local mock.'
+												placeholder="Send a message\u2026"
 												css={{
 													display: 'block',
 													width: '100%',
@@ -1638,7 +1636,7 @@ export function ChatRoute(handle: Handle) {
 													resizeMessageInput(event.currentTarget),
 												keydown: handleComposerKeyDown,
 											}}
-											placeholder='Ask a question or send "help" when using the local mock.'
+											placeholder="Send a message\u2026"
 											css={{
 												display: 'block',
 												width: '100%',
