@@ -959,7 +959,8 @@ export function ChatRoute(handle: Handle) {
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 							[mq.tablet]: {
-								display: hasThreadInUrl ? 'none' : 'flex',
+								display:
+									hasThreadInUrl || showEmptyStateComposer ? 'none' : 'flex',
 								position: 'static',
 								height: 'calc(100vh - 4rem)',
 								borderRadius: radius.md,
@@ -1269,7 +1270,8 @@ export function ChatRoute(handle: Handle) {
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
 							[mq.tablet]: {
-								display: hasThreadInUrl ? 'flex' : 'none',
+								display:
+									hasThreadInUrl || showEmptyStateComposer ? 'flex' : 'none',
 								padding: spacing.sm,
 								height: 'calc(100vh - 4rem)',
 								borderRadius: radius.md,
