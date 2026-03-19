@@ -717,6 +717,14 @@ export function ChatRoute(handle: Handle) {
 			if (locationThreadId !== resolvedThreadId) {
 				if (locationThreadId || !isMobileViewport()) {
 					navigate(buildThreadHref(resolvedThreadId))
+				} else {
+					activeClient?.close()
+					activeClient = null
+					activeThreadId = null
+					resetChatSnapshot()
+					disconnectedIndicator.reset()
+					setMessageScrollFades(false, false)
+					update()
 				}
 				return
 			}
