@@ -540,11 +540,12 @@ function showNextSteps() {
 	console.log(
 		'• This setup script does not create Cloudflare resources or rewrite Wrangler resource IDs.',
 	)
-	console.log('• Add repository secrets for deploys:')
+	console.log('• Add repository secrets and variables for deploys:')
 	console.log('  - CLOUDFLARE_API_TOKEN')
 	console.log('  - COOKIE_SECRET')
+	console.log('  - APP_BASE_URL (GitHub Actions variable, optional)')
 	console.log(
-		'• See `docs/setup-manifest.md` for required/optional GitHub secrets and how to get them.',
+		'• See `docs/setup-manifest.md` for required/optional GitHub Actions secrets and variables and how to get them.',
 	)
 	console.log('• Review `docs/getting-started.md` for the rest of the setup.')
 }
