@@ -11,7 +11,7 @@ import {
 	type SessionStatus,
 } from './session.ts'
 import { buildAuthLink } from './auth-links.ts'
-import { colors, spacing, typography } from './styles/tokens.ts'
+import { colors, mq, spacing, typography } from './styles/tokens.ts'
 
 export function App(handle: Handle) {
 	let session: SessionInfo | null = null
@@ -112,6 +112,11 @@ export function App(handle: Handle) {
 					minHeight: isChatLayout ? '100vh' : undefined,
 					fontFamily: typography.fontFamily,
 					boxSizing: 'border-box',
+					[mq.tablet]: {
+						padding: isChatLayout
+							? `${spacing.sm} ${spacing.sm} 0`
+							: spacing.md,
+					},
 				}}
 			>
 				<nav
@@ -121,6 +126,10 @@ export function App(handle: Handle) {
 						gap: spacing.md,
 						flexWrap: 'wrap',
 						marginBottom: isChatLayout ? spacing.lg : spacing.xl,
+						[mq.tablet]: {
+							gap: spacing.sm,
+							marginBottom: isChatLayout ? spacing.sm : spacing.md,
+						},
 					}}
 				>
 					<a href="/" css={navHomeLinkCss} aria-label="Home">

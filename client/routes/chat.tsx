@@ -16,7 +16,9 @@ import {
 } from '#client/scroll-container.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
 import {
+	breakpoints,
 	colors,
+	mq,
 	radius,
 	shadows,
 	spacing,
@@ -42,6 +44,13 @@ function getSelectedThreadIdFromLocation() {
 
 function buildThreadHref(threadId: string) {
 	return `/chat/${threadId}`
+}
+
+function isMobileViewport() {
+	return (
+		typeof window !== 'undefined' &&
+		window.matchMedia(`(max-width: ${breakpoints.tablet})`).matches
+	)
 }
 
 const MESSAGES_SCROLL_CONTAINER_ID = 'chat-messages-scroll-container'
@@ -294,6 +303,25 @@ function renderPaperAirplaneIcon() {
 				strokeLinecap="round"
 				strokeLinejoin="round"
 				strokeWidth="1.75"
+			/>
+		</svg>
+	)
+}
+
+function renderBackIcon() {
+	return (
+		<svg
+			aria-hidden="true"
+			viewBox="0 0 24 24"
+			css={{ width: '1.25rem', height: '1.25rem' }}
+		>
+			<path
+				d="M15 18l-6-6 6-6"
+				fill="none"
+				stroke="currentColor"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth="2"
 			/>
 		</svg>
 	)
@@ -687,7 +715,17 @@ export function ChatRoute(handle: Handle) {
 			if (!resolvedThreadId) return
 
 			if (locationThreadId !== resolvedThreadId) {
-				navigate(buildThreadHref(resolvedThreadId))
+				if (locationThreadId || !isMobileViewport()) {
+					navigate(buildThreadHref(resolvedThreadId))
+				} else {
+					activeClient?.close()
+					activeClient = null
+					activeThreadId = null
+					resetChatSnapshot()
+					disconnectedIndicator.reset()
+					setMessageScrollFades(false, false)
+					update()
+				}
 				return
 			}
 
@@ -872,6 +910,7 @@ export function ChatRoute(handle: Handle) {
 			: null
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
+		const hasThreadInUrl = Boolean(getSelectedThreadIdFromLocation())
 
 		return (
 			<section
@@ -879,6 +918,12 @@ export function ChatRoute(handle: Handle) {
 					display: 'grid',
 					gap: spacing.lg,
 					minHeight: showEmptyStateComposer ? 'calc(100vh - 7rem)' : undefined,
+					[mq.tablet]: {
+						gap: spacing.sm,
+						minHeight: showEmptyStateComposer
+							? 'calc(100vh - 4rem)'
+							: undefined,
+					},
 				}}
 			>
 				{actionError ? (
@@ -892,6 +937,11 @@ export function ChatRoute(handle: Handle) {
 						gridTemplateColumns: '18rem minmax(0, 1fr)',
 						alignItems: 'stretch',
 						minHeight: CHAT_PANEL_HEIGHT,
+						[mq.tablet]: {
+							gridTemplateColumns: '1fr',
+							gap: 0,
+							minHeight: 'calc(100vh - 4rem)',
+						},
 					}}
 				>
 					<aside
@@ -908,6 +958,14 @@ export function ChatRoute(handle: Handle) {
 							top: spacing.lg,
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
+							[mq.tablet]: {
+								display:
+									hasThreadInUrl || showEmptyStateComposer ? 'none' : 'flex',
+								position: 'static',
+								height: 'calc(100vh - 4rem)',
+								borderRadius: radius.md,
+								boxShadow: 'none',
+							},
 						}}
 					>
 						<button
@@ -1211,6 +1269,14 @@ export function ChatRoute(handle: Handle) {
 							boxShadow: shadows.sm,
 							height: CHAT_PANEL_HEIGHT,
 							overflow: 'hidden',
+							[mq.tablet]: {
+								display:
+									hasThreadInUrl || showEmptyStateComposer ? 'flex' : 'none',
+								padding: spacing.sm,
+								height: 'calc(100vh - 4rem)',
+								borderRadius: radius.md,
+								boxShadow: 'none',
+							},
 						}}
 					>
 						{activeThread ? (
@@ -1219,15 +1285,42 @@ export function ChatRoute(handle: Handle) {
 									css={{
 										flexShrink: 0,
 										display: 'flex',
-										justifyContent: 'space-between',
 										alignItems: 'center',
-										gap: spacing.md,
+										gap: spacing.sm,
 									}}
 								>
+									<a
+										href="/chat"
+										aria-label="Back to chats"
+										css={{
+											display: 'none',
+											alignItems: 'center',
+											justifyContent: 'center',
+											flexShrink: 0,
+											width: '2rem',
+											height: '2rem',
+											padding: 0,
+											borderRadius: radius.md,
+											border: `1px solid ${colors.border}`,
+											backgroundColor: 'transparent',
+											color: colors.text,
+											textDecoration: 'none',
+											transition: `background-color ${transitions.normal}`,
+											'&:hover': {
+												backgroundColor: colors.primarySoftest,
+											},
+											[mq.tablet]: {
+												display: 'inline-flex',
+											},
+										}}
+									>
+										{renderBackIcon()}
+									</a>
 									<div
 										css={{
 											position: 'relative',
 											minWidth: 0,
+											flex: 1,
 										}}
 									>
 										<span
@@ -1259,6 +1352,9 @@ export function ChatRoute(handle: Handle) {
 													? 'auto'
 													: 'none',
 												transition: `opacity ${transitions.normal}, transform ${transitions.normal}`,
+												[mq.tablet]: {
+													left: `calc(-1 * ${spacing.sm})`,
+												},
 											}}
 										/>
 										<h3 css={{ margin: 0, color: colors.text, minWidth: 0 }}>
@@ -1287,6 +1383,9 @@ export function ChatRoute(handle: Handle) {
 										maxWidth: '56rem',
 										width: '100%',
 										margin: '0 auto',
+										[mq.tablet]: {
+											maxWidth: '100%',
+										},
 									}}
 								>
 									<div
@@ -1427,6 +1526,9 @@ export function ChatRoute(handle: Handle) {
 										maxWidth: '56rem',
 										width: '100%',
 										margin: '0 auto',
+										[mq.tablet]: {
+											maxWidth: '100%',
+										},
 									}}
 								>
 									<label css={{ display: 'grid', gap: spacing.xs }}>
@@ -1451,7 +1553,7 @@ export function ChatRoute(handle: Handle) {
 														resizeMessageInput(event.currentTarget),
 													keydown: handleComposerKeyDown,
 												}}
-												placeholder='Ask a question or send "help" when using the local mock.'
+												placeholder={'Send a message\u2026'}
 												css={{
 													display: 'block',
 													width: '100%',
@@ -1519,6 +1621,9 @@ export function ChatRoute(handle: Handle) {
 									margin: '0 auto',
 									width: '100%',
 									paddingBottom: spacing.sm,
+									[mq.tablet]: {
+										maxWidth: '100%',
+									},
 								}}
 							>
 								<form
@@ -1543,7 +1648,7 @@ export function ChatRoute(handle: Handle) {
 													resizeMessageInput(event.currentTarget),
 												keydown: handleComposerKeyDown,
 											}}
-											placeholder='Ask a question or send "help" when using the local mock.'
+											placeholder={'Send a message\u2026'}
 											css={{
 												display: 'block',
 												width: '100%',
