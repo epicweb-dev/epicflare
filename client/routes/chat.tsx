@@ -1350,6 +1350,9 @@ export function ChatRoute(handle: Handle) {
 													? 'auto'
 													: 'none',
 												transition: `opacity ${transitions.normal}, transform ${transitions.normal}`,
+												[mq.tablet]: {
+													left: `calc(-1 * ${spacing.sm})`,
+												},
 											}}
 										/>
 										<h3 css={{ margin: 0, color: colors.text, minWidth: 0 }}>
