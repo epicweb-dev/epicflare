@@ -15,6 +15,9 @@ Quick notes for getting a local epicflare environment running.
 
 - Copy `.env.example` to `.env` before starting any work, then update secrets as
   needed.
+- `bun ./docs/post-download.ts` sanitizes copied Cloudflare D1/KV IDs in
+  `wrangler.jsonc`, so new projects do not inherit another project's remote
+  resources.
 - `bun run dev` (starts mock API servers automatically and sets
   `RESEND_API_BASE_URL`, `AI_MODE=mock`, and `AI_MOCK_BASE_URL` to local mock
   Workers).
@@ -120,6 +123,12 @@ migrations/deploy:
 
 - D1 database: from `env.production.d1_databases` binding `APP_DB`
 - KV namespace: `OAUTH_KV` (defaults to `<worker-name>-oauth` when creating)
+
+For projects started from this template, the checked-in `wrangler.jsonc` does
+not keep real remote D1/KV IDs. The post-download setup strips any copied IDs,
+and the production/preview deploy workflows create or resolve the correct
+resources and inject those IDs into generated Wrangler config files at deploy
+time.
 
 Both the preview and production deploy workflows run a post-deploy healthcheck
 against `<deploy-url>/health` and fail the job if it does not return

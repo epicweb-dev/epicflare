@@ -95,6 +95,32 @@ function replaceBrandingTokens(content: string, replacement: string) {
 	return next
 }
 
+function escapeRegExp(value: string) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function removeJsoncPropertiesFromBinding({
+	content,
+	binding,
+	propertyNames,
+}: {
+	content: string
+	binding: string
+	propertyNames: Array<string>
+}) {
+	const objectPattern = new RegExp(
+		String.raw`\{[\s\S]*?"binding":\s*"${escapeRegExp(binding)}",[\s\S]*?\}`,
+		'g',
+	)
+	const propertyPattern = new RegExp(
+		String.raw`^\s*"(?:${propertyNames.map(escapeRegExp).join('|')})":\s*"[^"]+",\n`,
+		'gm',
+	)
+	return content.replace(objectPattern, (entry) =>
+		entry.replace(propertyPattern, ''),
+	)
+}
+
 function logDryRun(message: string) {
 	console.log(`${paint('🧪 [dry-run]', 'dim')} ${message}`)
 }
@@ -522,6 +548,40 @@ function updateEnv({
 	return changed
 }
 
+function sanitizeWranglerResourceIds({ dryRun }: { dryRun: boolean }) {
+	const wranglerPath = join(process.cwd(), 'wrangler.jsonc')
+	if (!existsSync(wranglerPath)) {
+		return false
+	}
+
+	const original = readFileSync(wranglerPath, 'utf8')
+	let next = removeJsoncPropertiesFromBinding({
+		content: original,
+		binding: 'APP_DB',
+		propertyNames: ['database_id', 'preview_database_id'],
+	})
+	next = removeJsoncPropertiesFromBinding({
+		content: next,
+		binding: 'OAUTH_KV',
+		propertyNames: ['id', 'preview_id'],
+	})
+	const changed = next !== original
+
+	if (dryRun) {
+		logDryRun(
+			changed
+				? 'Would remove copied Cloudflare D1/KV IDs from wrangler.jsonc.'
+				: 'wrangler.jsonc already has no copied Cloudflare D1/KV IDs.',
+		)
+		return changed
+	}
+
+	if (changed) {
+		writeFileSync(wranglerPath, next)
+	}
+	return changed
+}
+
 function removeSelf() {
 	const scriptPath = fileURLToPath(import.meta.url)
 	try {
@@ -535,10 +595,10 @@ function removeSelf() {
 function showNextSteps() {
 	console.log(`\n${paint('✅ Next steps', 'bold')}`)
 	console.log(
-		'• For CI deploys, missing production D1/KV resources are auto-created.',
+		'• This setup removes copied Cloudflare D1/KV IDs from wrangler.jsonc.',
 	)
 	console.log(
-		'• This setup script does not create Cloudflare resources or rewrite Wrangler resource IDs.',
+		'• CI deploys auto-create production and preview D1/KV resources and inject the real IDs at deploy time.',
 	)
 	console.log('• Add repository secrets and variables for deploys:')
 	console.log('  - CLOUDFLARE_API_TOKEN')
@@ -804,6 +864,7 @@ async function run() {
 		dryRun,
 	})
 	const changedEnv = updateEnv({ cookieSecret, dryRun })
+	const changedWrangler = sanitizeWranglerResourceIds({ dryRun })
 
 	buildSummaryOutput({
 		dryRun,
@@ -818,6 +879,7 @@ async function run() {
 			brandingTokens: changedBranding,
 			packageJson: changedPackageJson,
 			env: changedEnv,
+			wrangler: changedWrangler,
 		},
 	})
 
@@ -852,6 +914,7 @@ async function run() {
 						brandingTokens: changedBranding,
 						packageJson: changedPackageJson,
 						env: changedEnv,
+						wrangler: changedWrangler,
 					},
 				},
 				null,
