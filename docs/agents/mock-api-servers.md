@@ -12,7 +12,10 @@ it can also be deployed alongside the main app.
    mirrors the third-party API (for example, `POST /resource`).
 3. Add `mock-servers/acme/wrangler.jsonc` with the Worker config. Give the mock
    its own D1 `database_name` (not the main app database) and set
-   `migrations_dir` to `./migrations` next to that Worker.
+   `migrations_dir` to `./migrations` next to that Worker. Do not commit
+   `database_id` in the template: preview CI writes
+   `wrangler-preview.generated.json` with the resolved id; for production,
+   Wrangler resolves the database from `database_name` in each account.
 4. Add SQL migrations under `mock-servers/acme/migrations/` (for example
    `0001-init.sql`) and table metadata in a local module (for example
    `db-tables.ts`) consumed only by that Worker.
