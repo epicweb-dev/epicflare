@@ -138,7 +138,10 @@ For projects started from this template, the checked-in `wrangler.jsonc` does
 not keep real remote D1/KV IDs. The post-download setup strips any copied IDs,
 and the production/preview deploy workflows create or resolve the correct
 resources and inject those IDs into generated Wrangler config files at deploy
-time.
+time. The production output file `wrangler-production.generated.json` is
+gitignored; CI writes it during deploy. For a local copy (for example
+`wrangler deploy --config wrangler-production.generated.json`), run
+`bun tools/ci/production-resources.ts ensure --out-config wrangler-production.generated.json`.
 
 Both the preview and production deploy workflows run a post-deploy healthcheck
 against `<deploy-url>/health` and fail the job if it does not return

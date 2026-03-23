@@ -12,6 +12,7 @@
 				{
 					"binding": "APP_DB",
 					"database_name": "epicflare-mock-resend",
+					"database_id": "60a274e7-f6f0-4e77-8e0e-cac6649b9cde",
 					"migrations_dir": "./migrations",
 				},
 			],

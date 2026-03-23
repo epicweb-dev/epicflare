@@ -24,6 +24,7 @@ package-lock.json
 *.sln
 *.sw?
 .wrangler
+wrangler-production.generated.json
 .env
 mock-data
 playwright-report
