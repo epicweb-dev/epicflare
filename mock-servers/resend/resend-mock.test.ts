@@ -95,6 +95,34 @@ async function waitForMockServer(
 	)
 }
 
+function applyResendMockMigrations(persistDir: string) {
+	const proc = Bun.spawnSync({
+		cmd: [
+			bunBin,
+			'x',
+			'wrangler',
+			'd1',
+			'migrations',
+			'apply',
+			'APP_DB',
+			'--local',
+			'--env',
+			'test',
+			'--config',
+			workerConfig,
+			'--persist-to',
+			persistDir,
+		],
+		cwd: projectRoot,
+		stdout: 'pipe',
+		stderr: 'pipe',
+	})
+	if (proc.exitCode !== 0) {
+		const err = proc.stderr?.toString() ?? proc.stdout?.toString() ?? ''
+		throw new Error(`Resend mock D1 migrations failed: ${err}`)
+	}
+}
+
 async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
 	let exited = false
 	void proc.exited.then(() => {
@@ -120,6 +148,7 @@ async function startMockResendWorker(persistDir: string, token: string) {
 		).filter((candidate) => candidate > 0 && candidate <= 65_535),
 	})
 	const origin = `http://127.0.0.1:${port}`
+	applyResendMockMigrations(persistDir)
 	const proc = Bun.spawn({
 		cmd: [
 			bunBin,

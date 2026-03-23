@@ -1,9 +1,13 @@
+import { existsSync } from 'node:fs'
+import { readdir } from 'node:fs/promises'
+import path from 'node:path'
 import {
 	fail,
 	listD1Databases,
 	listKvNamespaces,
 	runWrangler,
 	truncateWithSuffix,
+	writeGeneratedMockWranglerConfig,
 	writeGeneratedWranglerConfig,
 } from './resource-utils'
 
@@ -243,12 +247,52 @@ async function ensurePreviewResources(options: CliOptions) {
 		oauthKvId: kv.id,
 	})
 
+	const mockGeneratedPaths: Array<string> = []
+	const mockRoot = path.join(process.cwd(), 'mock-servers')
+	if (existsSync(mockRoot)) {
+		const entries = await readdir(mockRoot, { withFileTypes: true })
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue
+			const service = entry.name
+			const baseWrangler = path.join(mockRoot, service, 'wrangler.jsonc')
+			if (!existsSync(baseWrangler)) continue
+
+			const suffix = `-mock-${service}-db`
+			const mockD1Name = truncateWithSuffix(options.workerName, suffix, 63)
+			const mockD1 = ensureD1Database({
+				name: mockD1Name,
+				location: options.d1Location,
+				dryRun: options.dryRun,
+			})
+			const outPath = path.join(
+				mockRoot,
+				service,
+				'wrangler-preview.generated.json',
+			)
+			const mockGen = await writeGeneratedMockWranglerConfig({
+				baseConfigPath: baseWrangler,
+				outConfigPath: outPath,
+				envName: 'preview',
+				d1DatabaseName: mockD1.name,
+				d1DatabaseId: mockD1.id,
+			})
+			mockGeneratedPaths.push(path.relative(process.cwd(), mockGen))
+		}
+	}
+
 	// Emit GitHub Actions-friendly outputs (stdout only).
 	console.log(`wrangler_config=${generatedConfigPath}`)
 	console.log(`d1_database_name=${d1.name}`)
 	console.log(`d1_database_id=${d1.id}`)
 	console.log(`oauth_kv_title=${kv.title}`)
 	console.log(`oauth_kv_id=${kv.id}`)
+	if (mockGeneratedPaths.length > 0) {
+		console.log('mock_wrangler_configs<<MOCK_WRANGLER_EOF')
+		for (const mockPath of mockGeneratedPaths) {
+			console.log(mockPath)
+		}
+		console.log('MOCK_WRANGLER_EOF')
+	}
 }
 
 async function cleanupPreviewResources(options: CliOptions) {
@@ -257,6 +301,21 @@ async function cleanupPreviewResources(options: CliOptions) {
 	)
 	deleteKvNamespace({ title: oauthKvTitle, dryRun: options.dryRun })
 	deleteD1Database({ name: d1DatabaseName, dryRun: options.dryRun })
+
+	const mockRoot = path.join(process.cwd(), 'mock-servers')
+	if (existsSync(mockRoot)) {
+		const entries = await readdir(mockRoot, { withFileTypes: true })
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue
+			const service = entry.name
+			const baseWrangler = path.join(mockRoot, service, 'wrangler.jsonc')
+			if (!existsSync(baseWrangler)) continue
+
+			const suffix = `-mock-${service}-db`
+			const mockD1Name = truncateWithSuffix(options.workerName, suffix, 63)
+			deleteD1Database({ name: mockD1Name, dryRun: options.dryRun })
+		}
+	}
 }
 
 async function main() {

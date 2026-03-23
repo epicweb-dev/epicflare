@@ -318,3 +318,64 @@ export async function writeGeneratedWranglerConfig({
 	console.error(`Wrote generated Wrangler config: ${resolvedOut}`)
 	return resolvedOut
 }
+
+/** Patches only `APP_DB` D1 binding (no KV). Used for mock Workers. */
+export async function writeGeneratedMockWranglerConfig({
+	baseConfigPath,
+	outConfigPath,
+	envName,
+	d1DatabaseName,
+	d1DatabaseId,
+}: {
+	baseConfigPath: string
+	outConfigPath: string
+	envName: WranglerEnvName
+	d1DatabaseName: string
+	d1DatabaseId: string
+}) {
+	const baseText = await readFile(baseConfigPath, 'utf8')
+	const config = parseJsonc<Record<string, unknown>>(baseText)
+
+	const env = config.env
+	if (!env || typeof env !== 'object') {
+		fail(`wrangler config "${baseConfigPath}" is missing "env".`)
+	}
+
+	const targetEnv = (env as Record<string, unknown>)[envName]
+	if (!targetEnv || typeof targetEnv !== 'object') {
+		fail(`wrangler config "${baseConfigPath}" is missing "env.${envName}".`)
+	}
+
+	const d1Databases = (targetEnv as Record<string, unknown>).d1_databases
+	if (!Array.isArray(d1Databases)) {
+		fail(
+			`wrangler config "${baseConfigPath}" is missing "env.${envName}.d1_databases".`,
+		)
+	}
+
+	const d1EntryIndex = d1Databases.findIndex((entry) => {
+		if (!entry || typeof entry !== 'object') return false
+		return (entry as Record<string, unknown>).binding === 'APP_DB'
+	})
+	if (d1EntryIndex < 0) {
+		fail(
+			`wrangler config "${baseConfigPath}" has no ${envName} D1 binding for "APP_DB".`,
+		)
+	}
+
+	const d1Entry = d1Databases[d1EntryIndex] as Record<string, unknown>
+	d1Databases[d1EntryIndex] = {
+		...d1Entry,
+		database_name: d1DatabaseName,
+		database_id: d1DatabaseId,
+	}
+
+	const resolvedOut = path.resolve(outConfigPath)
+	await writeFile(
+		resolvedOut,
+		`${JSON.stringify(config, null, '\t')}\n`,
+		'utf8',
+	)
+	console.error(`Wrote generated mock Wrangler config: ${resolvedOut}`)
+	return resolvedOut
+}

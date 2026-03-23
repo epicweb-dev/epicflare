@@ -1,6 +1,7 @@
 import { parseSafe } from 'remix/data-schema'
 import { resendEmailSchema } from '#shared/resend-email.ts'
-import { createDb, mockResendMessagesTable } from '#worker/db.ts'
+import { createDb } from '#worker/db.ts'
+import { resendCapturedEmailsTable } from './db-tables.ts'
 
 type MockResendEnv = {
 	APP_DB: D1Database
@@ -46,8 +47,6 @@ const dashboardEndpoints: Array<DashboardEndpoint> = [
 		requiresAuth: true,
 	},
 ]
-
-let schemaReady: Promise<void> | null = null
 
 function htmlEscape(value: string) {
 	return value
@@ -131,29 +130,6 @@ function getTokenPartition(env: MockResendEnv) {
 
 type MockResendDb = ReturnType<typeof createDb>
 
-async function ensureSchema(db: MockResendDb) {
-	if (!schemaReady) {
-		schemaReady = (async () => {
-			await db.exec(`CREATE TABLE IF NOT EXISTS mock_resend_messages (
-				id TEXT PRIMARY KEY,
-				token_hash TEXT NOT NULL,
-				received_at INTEGER NOT NULL,
-				from_email TEXT NOT NULL,
-				to_json TEXT NOT NULL,
-				subject TEXT NOT NULL,
-				html TEXT NOT NULL,
-				payload_json TEXT NOT NULL
-			)`)
-			await db.exec(`CREATE INDEX IF NOT EXISTS mock_resend_messages_token_received_at
-				ON mock_resend_messages(token_hash, received_at DESC)`)
-		})().catch((error) => {
-			schemaReady = null
-			throw error
-		})
-	}
-	await schemaReady
-}
-
 async function readJsonBody(request: Request) {
 	try {
 		return await request.json()
@@ -163,8 +139,7 @@ async function readJsonBody(request: Request) {
 }
 
 async function countMessages(db: MockResendDb, tokenHash: string) {
-	await ensureSchema(db)
-	return db.count(mockResendMessagesTable, {
+	return db.count(resendCapturedEmailsTable, {
 		where: { token_hash: tokenHash },
 	})
 }
@@ -174,8 +149,7 @@ async function listMessages(
 	tokenHash: string,
 	limit: number,
 ) {
-	await ensureSchema(db)
-	return db.findMany(mockResendMessagesTable, {
+	return db.findMany(resendCapturedEmailsTable, {
 		where: { token_hash: tokenHash },
 		orderBy: ['received_at', 'desc'],
 		limit,
@@ -183,15 +157,13 @@ async function listMessages(
 }
 
 async function getMessage(db: MockResendDb, tokenHash: string, id: string) {
-	await ensureSchema(db)
-	return db.findOne(mockResendMessagesTable, {
+	return db.findOne(resendCapturedEmailsTable, {
 		where: { token_hash: tokenHash, id },
 	})
 }
 
 async function clearMessages(db: MockResendDb, tokenHash: string) {
-	await ensureSchema(db)
-	await db.deleteMany(mockResendMessagesTable, {
+	await db.deleteMany(resendCapturedEmailsTable, {
 		where: { token_hash: tokenHash },
 	})
 }
@@ -212,13 +184,12 @@ async function handlePostEmails(
 		return json({ error: 'Invalid email payload.' }, { status: 400 })
 	}
 
-	await ensureSchema(db)
 	const tokenHash = await getTokenPartition(env)
 	const now = Date.now()
 	const id = `email_${crypto.randomUUID()}`
 	const payloadJson = JSON.stringify(parsed.value)
 
-	await db.create(mockResendMessagesTable, {
+	await db.create(resendCapturedEmailsTable, {
 		id,
 		token_hash: tokenHash,
 		received_at: now,

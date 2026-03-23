@@ -17,9 +17,19 @@ App access pattern:
 - `worker/db.ts` defines shared `remix/data-table` table metadata and creates a
   D1-backed database runtime via `worker/d1-data-table-adapter.ts`
 - Database row validation and API payload parsing use `remix/data-schema`
-- app handlers and the mock Resend worker perform CRUD/query operations through
-  `remix/data-table` (including `findOne`, `create`, `update`, `deleteMany`, and
-  `count`)
+- App handlers perform CRUD/query operations through `remix/data-table`
+  (including `findOne`, `create`, `update`, `deleteMany`, and `count`)
+
+## Mock Worker D1
+
+Third-party mock Workers under `mock-servers/<service>/` each bind `APP_DB` to
+their **own** Cloudflare D1 database (for example `epicflare-mock-resend` in
+production). Schema lives only in that service’s
+`mock-servers/<service>/migrations/` (for example `resend_captured_emails`,
+`ai_captured_requests`), not in the root `migrations/` folder. PR previews
+provision per-preview mock databases and write
+`mock-servers/<service>/wrangler-preview.generated.json` with the resolved
+`database_id`.
 
 ## KV (`OAUTH_KV`)
 

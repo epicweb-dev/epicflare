@@ -22,16 +22,20 @@ CREATE TABLE IF NOT EXISTS password_resets (
 CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets(token_hash);
 
-CREATE TABLE IF NOT EXISTS mock_resend_messages (
-	id TEXT PRIMARY KEY,
-	token_hash TEXT NOT NULL,
-	received_at INTEGER NOT NULL,
-	from_email TEXT NOT NULL,
-	to_json TEXT NOT NULL,
-	subject TEXT NOT NULL,
-	html TEXT NOT NULL,
-	payload_json TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS chat_threads (
+	id TEXT PRIMARY KEY NOT NULL,
+	user_id INTEGER NOT NULL,
+	title TEXT NOT NULL DEFAULT '',
+	last_message_preview TEXT NOT NULL DEFAULT '',
+	message_count INTEGER NOT NULL DEFAULT 0,
+	created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+	updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+	deleted_at TEXT,
+	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS mock_resend_messages_token_received_at
-	ON mock_resend_messages(token_hash, received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_threads_user_updated_at
+	ON chat_threads(user_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_chat_threads_user_deleted_at
+	ON chat_threads(user_id, deleted_at);

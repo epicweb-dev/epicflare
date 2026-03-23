@@ -1,5 +1,6 @@
-import { createDb, mockAiRequestsTable } from '#worker/db.ts'
+import { createDb } from '#worker/db.ts'
 import { buildMockAiScenario } from '#shared/mock-ai.ts'
+import { aiCapturedRequestsTable } from './db-tables.ts'
 
 type MockAiEnv = {
 	APP_DB: D1Database
@@ -45,8 +46,6 @@ const dashboardEndpoints: Array<DashboardEndpoint> = [
 		requiresAuth: true,
 	},
 ]
-
-const schemaReadyByDb = new WeakMap<D1Database, Promise<void>>()
 
 function json(data: unknown, init: ResponseInit = {}) {
 	const headers = new Headers(init.headers)
@@ -127,43 +126,6 @@ function withTokenQueryParam(baseUrl: URL, href: string, token: string | null) {
 	return `${next.pathname}${next.search}${next.hash}`
 }
 
-async function ensureSchema(
-	db: ReturnType<typeof createDb>,
-	rawDb: D1Database,
-) {
-	const existing = schemaReadyByDb.get(rawDb)
-	if (existing) {
-		await existing
-		return
-	}
-
-	const schemaReady = db
-		.exec(
-			`CREATE TABLE IF NOT EXISTS mock_ai_requests (
-				id TEXT PRIMARY KEY,
-				token_hash TEXT NOT NULL,
-				received_at INTEGER NOT NULL,
-				scenario TEXT NOT NULL,
-				last_user_message TEXT NOT NULL,
-				tool_names_json TEXT NOT NULL,
-				request_json TEXT NOT NULL,
-				response_text TEXT NOT NULL
-			)`,
-		)
-		.then(() =>
-			db.exec(`CREATE INDEX IF NOT EXISTS idx_mock_ai_requests_token_received_at
-					ON mock_ai_requests(token_hash, received_at DESC)`),
-		)
-		.then(() => undefined)
-		.catch((error) => {
-			schemaReadyByDb.delete(rawDb)
-			throw error
-		})
-
-	schemaReadyByDb.set(rawDb, schemaReady)
-	await schemaReady
-}
-
 function getLastUserMessageText(
 	messages: Array<{
 		role?: string
@@ -212,9 +174,8 @@ async function handleChat(request: Request, env: MockAiEnv, url: URL) {
 	})
 
 	const db = createDb(env.APP_DB)
-	await ensureSchema(db, env.APP_DB)
 	const tokenHash = await getTokenPartition(env)
-	await db.create(mockAiRequestsTable, {
+	await db.create(aiCapturedRequestsTable, {
 		id: `mock_ai_${crypto.randomUUID()}`,
 		token_hash: tokenHash,
 		received_at: Date.now(),
@@ -231,10 +192,9 @@ async function handleChat(request: Request, env: MockAiEnv, url: URL) {
 async function handleMeta(request: Request, env: MockAiEnv, url: URL) {
 	const authorized = isAuthorized(request, env, url)
 	const db = createDb(env.APP_DB)
-	await ensureSchema(db, env.APP_DB)
 	const tokenHash = authorized ? await getTokenPartition(env) : null
 	const requestCount = tokenHash
-		? await db.count(mockAiRequestsTable, {
+		? await db.count(aiCapturedRequestsTable, {
 				where: { token_hash: tokenHash },
 			})
 		: undefined
@@ -253,9 +213,8 @@ async function handleGetRequests(request: Request, env: MockAiEnv, url: URL) {
 	}
 
 	const db = createDb(env.APP_DB)
-	await ensureSchema(db, env.APP_DB)
 	const tokenHash = await getTokenPartition(env)
-	const requests = await db.findMany(mockAiRequestsTable, {
+	const requests = await db.findMany(aiCapturedRequestsTable, {
 		where: { token_hash: tokenHash },
 		orderBy: ['received_at', 'desc'],
 		limit: 100,
@@ -269,9 +228,8 @@ async function handleClear(request: Request, env: MockAiEnv, url: URL) {
 	}
 
 	const db = createDb(env.APP_DB)
-	await ensureSchema(db, env.APP_DB)
 	const tokenHash = await getTokenPartition(env)
-	await db.deleteMany(mockAiRequestsTable, {
+	await db.deleteMany(aiCapturedRequestsTable, {
 		where: { token_hash: tokenHash },
 	})
 	return json({ ok: true })

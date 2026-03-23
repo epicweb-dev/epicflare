@@ -1,7 +1,7 @@
 # Setup manifest
 
-This document describes the infrastructure and GitHub Actions configuration
-that epicflare expects.
+This document describes the infrastructure and GitHub Actions configuration that
+epicflare expects.
 
 ## Cloudflare resources
 
@@ -72,8 +72,7 @@ Configure these GitHub Actions values for workflows:
 - `COOKIE_SECRET` (same format as local)
 - `APP_BASE_URL` (optional GitHub Actions variable, used by the production
   deploy)
-- `AI_GATEWAY_ID` (required for production deploys that use remote AI
-  inference)
+- `AI_GATEWAY_ID` (required for production deploys that use remote AI inference)
 - `AI_GATEWAY_ID_PREVIEW` (required for preview deploys that use remote AI
   inference)
 - `RESEND_API_KEY` (optional, required to send via Resend in non-mock

@@ -25,10 +25,10 @@ Quick notes for getting a local epicflare environment running.
 - To opt into live remote inference locally, set `AI_MODE=remote` before
   starting `bun run dev`.
 - When `AI_MODE=remote`, set `AI_GATEWAY_ID`, `CLOUDFLARE_ACCOUNT_ID`, and
-  `CLOUDFLARE_API_TOKEN` in `.env`; remote AI mode now requires requests to
-  flow through a configured Cloudflare AI Gateway using your Cloudflare
-  account credentials. If any are missing, `bun run dev` fails fast with an
-  explanatory startup error.
+  `CLOUDFLARE_API_TOKEN` in `.env`; remote AI mode now requires requests to flow
+  through a configured Cloudflare AI Gateway using your Cloudflare account
+  credentials. If any are missing, `bun run dev` fails fast with an explanatory
+  startup error.
 - Local remote inference does not require `wrangler dev --remote`; the normal
   dev server keeps local Durable Objects/D1 while routing Workers AI calls
   through Cloudflare using the configured account credentials.
@@ -83,7 +83,7 @@ Use this script to ensure a known test login exists in any deployed environment:
 For a full local reset before seeding:
 
 1. Drop app tables:
-   - `bun ./wrangler-env.ts d1 execute APP_DB --local --command "PRAGMA foreign_keys=OFF; DROP TABLE IF EXISTS password_resets; DROP TABLE IF EXISTS mock_resend_messages; DROP TABLE IF EXISTS users; PRAGMA foreign_keys=ON;"`
+   - `bun ./wrangler-env.ts d1 execute APP_DB --local --command "PRAGMA foreign_keys=OFF; DROP TABLE IF EXISTS chat_threads; DROP TABLE IF EXISTS password_resets; DROP TABLE IF EXISTS users; PRAGMA foreign_keys=ON;"`
 2. Re-apply migrations:
    - `bun run migrate:local`
 3. Seed test account:
@@ -100,6 +100,14 @@ For preview environments, we do a full resource reset:
 4. Seed test account:
    - `CLOUDFLARE_ENV=preview bun tools/seed-test-data.ts --remote --config wrangler-preview.generated.json`
 
+Mock Workers use separate D1 databases (not the app `APP_DB`). In production,
+create the databases named in each mock `wrangler.jsonc` (for example
+`epicflare-mock-resend` and `epicflare-mock-ai`) with
+`wrangler d1 create <name>` before deploying those Workers. After changing mock
+SQL under `mock-servers/<service>/migrations/`, apply it locally with
+`bun ./wrangler-env.ts d1 migrations apply APP_DB --local --config mock-servers/<service>/wrangler.jsonc`
+(the `dev:mock-*` scripts run this before `wrangler dev`).
+
 ## PR preview deployments
 
 The GitHub Actions preview workflow creates per-preview Cloudflare resources so
@@ -107,6 +115,8 @@ each PR preview is isolated:
 
 - D1 database: `<preview-worker-name>-db`
 - KV namespace (OAuth state): `<preview-worker-name>-oauth-kv`
+- Mock D1 databases: `<preview-worker-name>-mock-<service>-db` (one per
+  directory under `mock-servers/` that has a `wrangler.jsonc`)
 
 When a PR is closed, the cleanup job deletes the preview Worker(s) and these
 resources as well.
