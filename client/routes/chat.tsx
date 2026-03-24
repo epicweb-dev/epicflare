@@ -627,7 +627,8 @@ export function ChatRoute(handle: Handle) {
 
 	function handleComposerKeyDown(event: KeyboardEvent) {
 		if (!(event.currentTarget instanceof HTMLTextAreaElement)) return
-		if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+		if (event.key !== 'Enter' || event.isComposing) return
+		if (event.metaKey || event.ctrlKey || event.shiftKey) return
 		event.preventDefault()
 		event.currentTarget.form?.requestSubmit()
 	}
