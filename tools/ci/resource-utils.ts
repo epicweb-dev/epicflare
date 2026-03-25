@@ -233,6 +233,34 @@ export function parseJsonc<T>(source: string): T {
 	return JSON.parse(json) as T
 }
 
+function appendRequiredSecrets({
+	targetEnv,
+	requiredSecrets,
+}: {
+	targetEnv: Record<string, unknown>
+	requiredSecrets: ReadonlyArray<string>
+}) {
+	if (requiredSecrets.length === 0) return
+
+	const currentSecrets =
+		targetEnv.secrets && typeof targetEnv.secrets === 'object'
+			? (targetEnv.secrets as Record<string, unknown>)
+			: {}
+	const currentRequired = Array.isArray(currentSecrets.required)
+		? currentSecrets.required.filter(
+				(secret): secret is string =>
+					typeof secret === 'string' && secret.trim().length > 0,
+			)
+		: []
+
+	targetEnv.secrets = {
+		...currentSecrets,
+		required: Array.from(
+			new Set([...currentRequired, ...requiredSecrets.map((secret) => secret.trim())]),
+		),
+	}
+}
+
 export async function writeGeneratedWranglerConfig({
 	baseConfigPath,
 	outConfigPath,
@@ -240,6 +268,7 @@ export async function writeGeneratedWranglerConfig({
 	d1DatabaseName,
 	d1DatabaseId,
 	oauthKvId,
+	requiredSecrets = [],
 }: {
 	baseConfigPath: string
 	outConfigPath: string
@@ -247,6 +276,7 @@ export async function writeGeneratedWranglerConfig({
 	d1DatabaseName: string
 	d1DatabaseId: string
 	oauthKvId: string
+	requiredSecrets?: ReadonlyArray<string>
 }) {
 	const baseText = await readFile(baseConfigPath, 'utf8')
 	const config = parseJsonc<Record<string, unknown>>(baseText)
@@ -308,6 +338,11 @@ export async function writeGeneratedWranglerConfig({
 		id: oauthKvId,
 		preview_id: oauthKvId,
 	}
+
+	appendRequiredSecrets({
+		targetEnv: targetEnv as Record<string, unknown>,
+		requiredSecrets,
+	})
 
 	const resolvedOut = path.resolve(outConfigPath)
 	await writeFile(

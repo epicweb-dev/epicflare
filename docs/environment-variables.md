@@ -35,12 +35,22 @@ types, runtime validation, and documentation in sync.
 3. **Add local defaults**
    - Update `.env.example` (source for new local `.env` files).
 
-4. **Update required resources docs**
+4. **Declare required Worker secrets**
+   - If the variable is a Worker secret that must exist for a given Wrangler
+     environment, add it to `wrangler.jsonc` under
+     `env.<environment>.secrets.required`.
+   - Wrangler now uses that list as the source of truth for local secret loading,
+     deploy validation, and `bun run generate-types`.
+   - Only declare secrets that are truly required for that environment. Leave
+     runtime-conditional values out of `secrets.required` unless you want Wrangler
+     to validate them on every `dev`/`deploy` for that environment.
+
+5. **Update required resources docs**
    - Add the variable to `docs/setup-manifest.md`.
 
-5. **Sync deploy secrets**
+6. **Sync deploy secrets**
    - Add the variable to the relevant GitHub Actions workflows so it is pushed
-     via `wrangler secret put`:
+     via `tools/ci/sync-worker-secrets.ts`:
      - `.github/workflows/deploy.yml` (production deploys)
      - `.github/workflows/preview.yml` (preview deploys)
 
@@ -48,4 +58,5 @@ types, runtime validation, and documentation in sync.
 
 Zod gives type inference for `Env`-driven values and a single runtime gate that
 fails fast with clear errors. It keeps the “what’s required” definition in one
-place.
+place for application code, while `wrangler.jsonc` is the source of truth for
+required Worker secrets.

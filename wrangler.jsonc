@@ -24,6 +24,9 @@
 				"binding": "AI",
 				"remote": true,
 			},
+			"secrets": {
+				"required": ["COOKIE_SECRET"],
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -63,6 +66,9 @@
 				"binding": "AI",
 				"remote": true,
 			},
+			"secrets": {
+				"required": ["COOKIE_SECRET"],
+			},
 			"assets": {
 				"directory": "./public",
 				"binding": "ASSETS",
@@ -101,6 +107,9 @@
 			"ai": {
 				"binding": "AI",
 				"remote": true,
+			},
+			"secrets": {
+				"required": ["COOKIE_SECRET"],
 			},
 			"assets": {
 				"directory": "./public",
