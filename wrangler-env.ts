@@ -16,6 +16,18 @@ const hasPortFlag = args.includes('--port')
 const hasInspectorPortFlag = args.some(
 	(arg) => arg === '--inspector-port' || arg.startsWith('--inspector-port='),
 )
+const localDevPassthroughVarNames = [
+	'APP_BASE_URL',
+	'APP_COMMIT_SHA',
+	'RESEND_API_BASE_URL',
+	'RESEND_API_KEY',
+	'RESEND_FROM_EMAIL',
+	'AI_GATEWAY_ID',
+	'AI_MOCK_BASE_URL',
+	'AI_MOCK_API_KEY',
+	'CLOUDFLARE_ACCOUNT_ID',
+	'CLOUDFLARE_API_TOKEN',
+] as const
 
 if (isLocalDevCommand) {
 	const startupError = getRemoteAiLocalDevStartupError(process.env)
@@ -32,6 +44,11 @@ if (!hasEnvFlag) {
 
 if (isDevCommand) {
 	commandArgs.push('--var', 'WRANGLER_IS_LOCAL_DEV:true')
+	for (const key of localDevPassthroughVarNames) {
+		const value = process.env[key]?.trim()
+		if (!value) continue
+		commandArgs.push('--var', `${key}:${value}`)
+	}
 }
 
 let resolvedPort = process.env.PORT

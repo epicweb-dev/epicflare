@@ -63,6 +63,13 @@ Local development uses `.env`, which Wrangler loads automatically:
 Tests run with `CLOUDFLARE_ENV=test` (set by Playwright) and still read local
 secrets from `.env`.
 
+Required Worker secrets are declared in `wrangler.jsonc` via
+`env.<name>.secrets.required`. Keep that list aligned with the runtime env
+schema and deploy workflows. This repo currently declares only
+`COOKIE_SECRET` as universally required so local dev and deploy validation use
+the same source of truth without forcing optional integrations to be present in
+every environment.
+
 ## GitHub Actions secrets and variables
 
 Configure these GitHub Actions values for workflows:

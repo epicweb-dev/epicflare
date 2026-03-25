@@ -15,6 +15,9 @@ Quick notes for getting a local epicflare environment running.
 
 - Copy `.env.example` to `.env` before starting any work, then update secrets as
   needed.
+- `wrangler.jsonc` now declares required Worker secrets with
+  `env.<name>.secrets.required`. Keep that list as the source of truth for
+  secrets Wrangler should load, type, and validate.
 - `bun ./docs/post-download.ts` sanitizes copied Cloudflare D1/KV IDs in
   `wrangler.jsonc`, so new projects do not inherit another project's remote
   resources.
@@ -29,6 +32,10 @@ Quick notes for getting a local epicflare environment running.
   through a configured Cloudflare AI Gateway using your Cloudflare account
   credentials. If any are missing, `bun run dev` fails fast with an explanatory
   startup error.
+- `bun ./wrangler-env.ts dev --local` forwards optional `.env` values like
+  `AI_GATEWAY_ID`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_API_TOKEN` via
+  `--var` so local remote AI still works even when those names are not in
+  `secrets.required`.
 - Local remote inference does not require `wrangler dev --remote`; the normal
   dev server keeps local Durable Objects/D1 while routing Workers AI calls
   through Cloudflare using the configured account credentials.

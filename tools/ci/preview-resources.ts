@@ -245,6 +245,7 @@ async function ensurePreviewResources(options: CliOptions) {
 		d1DatabaseName: d1.name,
 		d1DatabaseId: d1.id,
 		oauthKvId: kv.id,
+		requiredSecrets: ['COOKIE_SECRET', 'AI_GATEWAY_ID'],
 	})
 
 	const mockGeneratedPaths: Array<string> = []

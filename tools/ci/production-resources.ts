@@ -315,6 +315,7 @@ async function ensureProductionResources(options: CliOptions) {
 		d1DatabaseName: d1.name,
 		d1DatabaseId: d1.id,
 		oauthKvId: kv.id,
+		requiredSecrets: ['COOKIE_SECRET', 'AI_GATEWAY_ID'],
 	})
 
 	// Emit GitHub Actions-friendly outputs (stdout only).

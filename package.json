@@ -52,7 +52,7 @@
     "prettier": "^3.8.1",
     "set-cookie-parser": "^3.0.1",
     "typescript": "^5.9.3",
-    "wrangler": "^4.72.0"
+    "wrangler": "^4.77.0"
   },
   "prettier": "@epic-web/config/prettier",
   "overrides": {
