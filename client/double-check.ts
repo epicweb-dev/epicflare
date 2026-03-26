@@ -1,8 +1,11 @@
 import { on, type Handle } from 'remix/component'
 
-
 type ButtonLikeProps = {
 	mix?: Array<unknown>
+	onConfirm?: (event: MouseEvent) => void
+	on?: {
+		click?: (event: MouseEvent) => void
+	}
 	[key: string]: unknown
 }
 
@@ -24,7 +27,14 @@ export function createDoubleCheck(handle: Handle) {
 		},
 		getButtonProps<Props extends ButtonLikeProps>(props?: Props): Props {
 			const buttonProps = props ?? ({} as Props)
-			const mix = [...(buttonProps.mix ?? [])]
+			const {
+				mix: inputMix,
+				onConfirm,
+				on,
+				...rest
+			} = buttonProps as ButtonLikeProps
+			const mix = [...(inputMix ?? [])]
+			const confirmHandler = onConfirm ?? on?.click
 
 			mix.push(
 				on<HTMLButtonElement, 'blur'>('blur', () => {
@@ -40,11 +50,12 @@ export function createDoubleCheck(handle: Handle) {
 						return
 					}
 					setDoubleCheck(false)
+					confirmHandler?.(event)
 				}),
 			)
 
 			return {
-				...buttonProps,
+				...rest,
 				mix,
 			}
 		},
