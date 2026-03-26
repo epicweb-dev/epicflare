@@ -1,4 +1,4 @@
-import { on, type Handle } from 'remix/component'
+import { type Handle } from 'remix/component'
 
 type ButtonLikeProps = {
 	mix?: Array<unknown>
@@ -36,23 +36,23 @@ export function createDoubleCheck(handle: Handle) {
 			const mix = [...(inputMix ?? [])]
 			const confirmHandler = onConfirm ?? onOverrides?.click
 
-			mix.push(
-				on<HTMLButtonElement, 'blur'>('blur', () => {
-					setDoubleCheck(false)
-				}),
-			)
+			mix.push({
+				handleEvent(handle) {
+					handle.addEventListener('blur', () => {
+						setDoubleCheck(false)
+					})
 
-			mix.push(
-				on<HTMLButtonElement, 'click'>('click', (event) => {
-					if (!doubleCheck) {
-						event.preventDefault()
-						setDoubleCheck(true)
-						return
-					}
-					setDoubleCheck(false)
-					confirmHandler?.(event)
-				}),
-			)
+					handle.addEventListener('click', (event) => {
+						if (!doubleCheck) {
+							event.preventDefault()
+							setDoubleCheck(true)
+							return
+						}
+						setDoubleCheck(false)
+						confirmHandler?.(event)
+					})
+				},
+			})
 
 			return {
 				...rest,
