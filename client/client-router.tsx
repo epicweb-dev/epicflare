@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { addEventListeners, type Handle } from 'remix/component'
 
 type RouterSetup = {
 	routes: Record<string, JSX.Element>
@@ -251,7 +251,7 @@ function ensureRouter() {
 
 export function listenToRouterNavigation(handle: Handle, listener: () => void) {
 	ensureRouter()
-	handle.on(routerEvents, {
+	addEventListeners(routerEvents, handle.signal, {
 		navigate: () => listener(),
 	})
 }

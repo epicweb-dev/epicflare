@@ -1,24 +1,12 @@
 import { type Handle } from 'remix/component'
 
-type BlurHandler = (event: FocusEvent) => void
-type ClickHandler = (event: MouseEvent) => void
-
 type ButtonLikeProps = {
+	mix?: Array<unknown>
+	onConfirm?: (event: MouseEvent) => void
 	on?: {
-		blur?: BlurHandler
-		click?: ClickHandler
+		click?: (event: MouseEvent) => void
 	}
 	[key: string]: unknown
-}
-
-function callAll<Event>(
-	...handlers: Array<((event: Event) => void) | undefined>
-) {
-	return (event: Event) => {
-		for (const handler of handlers) {
-			handler?.(event)
-		}
-	}
 }
 
 export function createDoubleCheck(handle: Handle) {
@@ -39,29 +27,36 @@ export function createDoubleCheck(handle: Handle) {
 		},
 		getButtonProps<Props extends ButtonLikeProps>(props?: Props): Props {
 			const buttonProps = props ?? ({} as Props)
+			const {
+				mix: inputMix,
+				onConfirm,
+				on: onOverrides,
+				...rest
+			} = buttonProps as ButtonLikeProps
+			const mix = [...(inputMix ?? [])]
+			const confirmHandler = onConfirm ?? onOverrides?.click
 
-			const onBlur: BlurHandler = () => {
-				setDoubleCheck(false)
-			}
+			mix.push({
+				handleEvent(handle) {
+					handle.addEventListener('blur', () => {
+						setDoubleCheck(false)
+					})
 
-			const onClick: ClickHandler = (event) => {
-				if (!doubleCheck) {
-					event.preventDefault()
-					setDoubleCheck(true)
-					return
-				}
-
-				buttonProps.on?.click?.(event)
-				setDoubleCheck(false)
-			}
+					handle.addEventListener('click', (event) => {
+						if (!doubleCheck) {
+							event.preventDefault()
+							setDoubleCheck(true)
+							return
+						}
+						confirmHandler?.(event)
+						setDoubleCheck(false)
+					})
+				},
+			})
 
 			return {
-				...buttonProps,
-				on: {
-					...buttonProps.on,
-					blur: callAll(onBlur, buttonProps.on?.blur),
-					click: onClick,
-				},
+				...rest,
+				mix,
 			}
 		},
 	}
