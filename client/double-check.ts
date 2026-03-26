@@ -30,11 +30,11 @@ export function createDoubleCheck(handle: Handle) {
 			const {
 				mix: inputMix,
 				onConfirm,
-				on,
+				on: onOverrides,
 				...rest
 			} = buttonProps as ButtonLikeProps
 			const mix = [...(inputMix ?? [])]
-			const confirmHandler = onConfirm ?? on?.click
+			const confirmHandler = onConfirm ?? onOverrides?.click
 
 			mix.push(
 				on<HTMLButtonElement, 'blur'>('blur', () => {
