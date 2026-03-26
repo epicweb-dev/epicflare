@@ -30,29 +30,26 @@ export function createAppRouter(appEnv: AppEnv) {
 		},
 	})
 	const chatThreadsHandler = createChatThreadsHandler(appEnv)
-
-	router.map(routes.home, home)
-	router.map(routes.chat, chat)
-	router.map(routes.chatThread, chat)
-	router.map(routes.chatThreads, chatThreadsHandler)
-	router.map(routes.chatThreadsCreate, chatThreadsHandler)
-	router.map(routes.chatThreadsUpdate, createUpdateChatThreadHandler(appEnv))
-	router.map(routes.chatThreadsDelete, createDeleteChatThreadHandler(appEnv))
-	router.map(routes.health, createHealthHandler(appEnv))
-	router.map(routes.login, login)
-	router.map(routes.signup, signup)
-	router.map(routes.account, account)
-	router.map(routes.auth, createAuthHandler(appEnv))
-	router.map(routes.session, session)
-	router.map(routes.logout, logout)
-	router.map(
-		routes.passwordResetRequest,
-		createPasswordResetRequestHandler(appEnv),
-	)
-	router.map(
-		routes.passwordResetConfirm,
-		createPasswordResetConfirmHandler(appEnv),
-	)
+	router.map(routes, {
+		actions: {
+			home,
+			chat,
+			chatThread: chat,
+			chatThreads: chatThreadsHandler,
+			chatThreadsCreate: chatThreadsHandler,
+			chatThreadsUpdate: createUpdateChatThreadHandler(appEnv),
+			chatThreadsDelete: createDeleteChatThreadHandler(appEnv),
+			health: createHealthHandler(appEnv),
+			login,
+			signup,
+			account,
+			auth: createAuthHandler(appEnv),
+			session,
+			logout,
+			passwordResetRequest: createPasswordResetRequestHandler(appEnv),
+			passwordResetConfirm: createPasswordResetConfirmHandler(appEnv),
+		},
+	})
 
 	return router
 }

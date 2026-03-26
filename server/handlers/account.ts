@@ -7,7 +7,7 @@ import { type routes } from '#server/routes.ts'
 
 export const account = {
 	middleware: [],
-	async action({ request }) {
+	async handler({ request }) {
 		const { session, setCookie } = await readAuthSessionResult(request)
 
 		if (!session) {
