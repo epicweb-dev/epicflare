@@ -48,8 +48,8 @@ export function createDoubleCheck(handle: Handle) {
 							setDoubleCheck(true)
 							return
 						}
-						setDoubleCheck(false)
 						confirmHandler?.(event)
+						setDoubleCheck(false)
 					})
 				},
 			})
