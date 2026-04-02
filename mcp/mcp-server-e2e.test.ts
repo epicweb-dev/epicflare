@@ -256,15 +256,11 @@ async function waitForServer(
 	)
 }
 
-function waitForExit(proc: ChildProcess): Promise<number> {
+function waitForExit(proc: ChildProcess): Promise<number | null> {
 	return new Promise((resolve, reject) => {
 		proc.once('error', reject)
-		proc.once('exit', (code, signal) => {
-			if (code !== null) {
-				resolve(code)
-				return
-			}
-			reject(new Error(`Process exited from signal ${signal ?? 'unknown'}`))
+		proc.once('exit', (code) => {
+			resolve(code)
 		})
 	})
 }
