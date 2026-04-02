@@ -39,7 +39,8 @@
     "test:e2e": "bun tools/prepare-e2e-env.ts && playwright test",
     "test:e2e:ui": "bun tools/prepare-e2e-env.ts && playwright test --ui",
     "test:e2e:install": "playwright install chromium --with-deps",
-    "test:mcp": "bun run build:mcp-apps && bun test mcp/mcp-server-e2e.test.ts"
+    "test:mcp": "bun run build:mcp-apps && bun test mcp/mcp-server-e2e.test.ts",
+    "test:vitest": "vitest run --config vitest.config.ts"
   },
   "devDependencies": {
     "@epic-web/config": "^1.24.1",
@@ -52,6 +53,7 @@
     "prettier": "^3.8.1",
     "set-cookie-parser": "^3.0.1",
     "typescript": "^5.9.3",
+    "vitest": "^4.1.2",
     "wrangler": "^4.72.0"
   },
   "prettier": "@epic-web/config/prettier",
