@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { beforeAll, expect, test } from 'bun:test'
+import { beforeAll, expect, test } from 'vitest'
 import { RequestContext } from 'remix/fetch-router'
 import {
 	createAuthCookie,

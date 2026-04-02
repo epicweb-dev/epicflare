@@ -1,7 +1,8 @@
 /// <reference types="bun" />
-import { expect, mock, test } from 'bun:test'
+import { expect, test, vi } from 'vitest'
 
 async function loadCreateAiRuntime(cacheKey = crypto.randomUUID()) {
+	vi.resetModules()
 	const module = await import(`./ai-runtime.ts?test=${cacheKey}`)
 	return module.createAiRuntime
 }
@@ -95,7 +96,7 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 	const streamTextCalls: Array<Record<string, unknown>> = []
 	const stopWhenCalls: Array<number> = []
 
-	mock.module('ai', () => ({
+	vi.doMock('ai', () => ({
 		convertToModelMessages: async (messages: Array<unknown>) => messages,
 		stepCountIs: (stepCount: number) => {
 			stopWhenCalls.push(stepCount)
@@ -111,7 +112,7 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 			}
 		},
 	}))
-	mock.module('workers-ai-provider', () => ({
+	vi.doMock('workers-ai-provider', () => ({
 		createWorkersAI: () => (model: string) => ({ provider: 'workers-ai', model }),
 	}))
 
@@ -140,4 +141,7 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 		onFinish,
 		stopWhen: { kind: 'stop-condition', stepCount: 5 },
 	})
+
+	vi.doUnmock('ai')
+	vi.doUnmock('workers-ai-provider')
 })
