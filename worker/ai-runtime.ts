@@ -1,5 +1,6 @@
 import {
 	convertToModelMessages,
+	stepCountIs,
 	streamText,
 	type StreamTextOnFinishCallback,
 	type ToolSet,
@@ -11,6 +12,7 @@ import { type AiMode } from '#shared/chat.ts'
 import { buildMockAiScenario, type MockAiResponse } from '#shared/mock-ai.ts'
 
 const defaultModel = '@cf/zai-org/glm-4.7-flash'
+const remoteToolLoopStepLimit = 5
 
 export type StreamChatReplyInput = {
 	messages: Array<UIMessage>
@@ -81,6 +83,7 @@ function createRemoteAiRuntime(env: WorkersAiCredentialsEnv): AiRuntime {
 				system: input.system,
 				messages: await convertToModelMessages(input.messages),
 				tools: input.tools,
+				stopWhen: stepCountIs(remoteToolLoopStepLimit),
 				abortSignal: input.abortSignal,
 				onFinish: input.onFinish,
 			})
