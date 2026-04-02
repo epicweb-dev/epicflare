@@ -32,6 +32,10 @@ start the dev server.
 See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup
 paths and expectations.
 
+After `bun install`, Husky installs local Git hooks automatically. Commits
+format staged files with `lint-staged`, then run `build`, `typecheck`, and
+`lint`; pushes run the test suite.
+
 ## Tech Stack
 
 | Layer           | Technology                                                            |
