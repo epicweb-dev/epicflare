@@ -35,6 +35,11 @@
     "generate-types": "bun ./wrangler-env.ts types ./types/worker-configuration.d.ts",
     "typecheck": "tsc -b --noEmit",
     "inspect": "bunx -p @mcpjam/inspector inspector",
+    "prepare": "husky",
+    "lint-staged": "lint-staged",
+    "hooks:pre-commit": "bun run lint-staged && bun run lint && bun run typecheck && bun run build",
+    "test": "bun test ./server ./mock-servers ./worker ./shared ./client ./tools mcp/context.test.ts",
+    "hooks:pre-push": "bun run migrate:local && bun run test && bun run test:e2e && bun run test:mcp",
     "validate": "concurrently --kill-others-on-fail -n format,lint,build,typecheck,test,test:mcp -c green,yellow,blue,magenta,cyan,red \"bun run format:check\" \"bun run lint:fix\" \"bun run build\" \"bun run typecheck\" \"bun run test:e2e\" \"bun run test:mcp\"",
     "test:e2e": "bun tools/prepare-e2e-env.ts && playwright test",
     "test:e2e:ui": "bun tools/prepare-e2e-env.ts && playwright test --ui",
@@ -48,11 +53,16 @@
     "@types/set-cookie-parser": "^2.4.10",
     "concurrently": "^9.2.1",
     "esbuild": "^0.27.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "oxlint": "^1.55.0",
     "prettier": "^3.8.1",
     "set-cookie-parser": "^3.0.1",
     "typescript": "^5.9.3",
     "wrangler": "^4.72.0"
+  },
+  "lint-staged": {
+    "*": "prettier --ignore-unknown --write"
   },
   "prettier": "@epic-web/config/prettier",
   "overrides": {

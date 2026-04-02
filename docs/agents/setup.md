@@ -10,6 +10,17 @@ Quick notes for getting a local epicflare environment running.
 ## Install
 
 - `bun install`
+- `bun install` also runs the `prepare` script, which installs Git hooks via
+  Husky.
+
+## Git hooks
+
+- `pre-commit` runs `lint-staged` to format staged files with Prettier, then
+  runs `bun run build`, `bun run typecheck`, and `bun run lint`.
+- `pre-push` runs `bun run migrate:local`, `bun run test`, `bun run test:e2e`,
+  and `bun run test:mcp`.
+- Use `HUSKY=0` to skip hooks for one command when you intentionally need to
+  bypass them.
 
 ## Local development
 
@@ -42,7 +53,11 @@ Quick notes for getting a local epicflare environment running.
 
 - `bun run validate` runs format check, lint fix, build, typecheck, Playwright
   tests, and MCP E2E tests.
+- `bun run hooks:pre-commit` runs the same checks as the commit hook.
+- `bun run hooks:pre-push` runs the same checks as the push hook.
 - `bun run format` applies formatting updates.
+- `bun run test` runs the Bun test suites for server, worker, client, shared,
+  mock-server, MCP, and tools code.
 - `bun run test:e2e:install` to install Playwright browsers.
 - `bun run test:e2e` to run Playwright specs.
 - `bun run test:mcp` to run MCP server E2E tests.
