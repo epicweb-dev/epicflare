@@ -9,33 +9,27 @@ import { createTemporaryDirectory } from '#tools/temp-directory.ts'
 const workerConfig = 'mock-servers/resend/wrangler.jsonc'
 const projectRoot = process.cwd()
 const nodeBin = process.execPath
-const wranglerCli = join(projectRoot, 'node_modules', 'wrangler', 'wrangler-dist', 'cli.js')
+const wranglerCli = join(
+	projectRoot,
+	'node_modules',
+	'wrangler',
+	'wrangler-dist',
+	'cli.js',
+)
 const defaultTimeoutMs = 60_000
 
-function captureOutput(stream: ReadableStream<Uint8Array> | null) {
+function captureOutput(stream: NodeJS.ReadableStream | null | undefined) {
 	let output = ''
 	if (!stream) {
 		return () => output
 	}
-
-	const reader = stream.getReader()
-	const decoder = new TextDecoder()
-
-	const read = async () => {
-		try {
-			while (true) {
-				const { value, done } = await reader.read()
-				if (done) break
-				if (value) {
-					output += decoder.decode(value)
-				}
-			}
-		} catch {
-			// Ignore stream errors while capturing output.
-		}
-	}
-
-	void read()
+	stream.setEncoding('utf8')
+	stream.on('data', (chunk) => {
+		output += chunk
+	})
+	stream.on('error', () => {
+		// Ignore stream errors while capturing output.
+	})
 	return () => output
 }
 
@@ -206,8 +200,8 @@ async function startMockResendWorker(persistDir: string, token: string) {
 		},
 	)
 
-	const getStdout = captureOutput(proc.stdout ? ReadableStream.from(proc.stdout) : null)
-	const getStderr = captureOutput(proc.stderr ? ReadableStream.from(proc.stderr) : null)
+	const getStdout = captureOutput(proc.stdout)
+	const getStderr = captureOutput(proc.stderr)
 
 	await waitForMockServer(origin, proc, getStdout, getStderr)
 
@@ -285,7 +279,7 @@ test(
 		expect(JSON.parse(listJson.messages[0]?.payload_json ?? 'null')).toEqual(
 			email,
 		)
-	}
+	},
 )
 
 test(
@@ -307,7 +301,7 @@ test(
 			}),
 		})
 		expect(createResp.status).toBe(401)
-	}
+	},
 )
 
 test(
@@ -337,5 +331,5 @@ test(
 		const dashboardHtml = await dashboardResp.text()
 		expect(dashboardHtml).toContain(`href="/__mocks/meta?token=${token}"`)
 		expect(dashboardHtml).toContain(`href="/__mocks/messages?token=${token}"`)
-	}
+	},
 )
