@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { parseMockToolCommand } from './mock-ai.ts'
 
 test('parseMockToolCommand returns null for non-tool messages', () => {

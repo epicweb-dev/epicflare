@@ -1,38 +1,35 @@
 /// <reference types="bun" />
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import getPort from 'get-port'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
+import { join } from 'node:path'
 import { createTemporaryDirectory } from '#tools/temp-directory.ts'
 
 const workerConfig = 'mock-servers/resend/wrangler.jsonc'
-const bunBin = process.execPath
 const projectRoot = process.cwd()
+const nodeBin = process.execPath
+const wranglerCli = join(
+	projectRoot,
+	'node_modules',
+	'wrangler',
+	'wrangler-dist',
+	'cli.js',
+)
 const defaultTimeoutMs = 60_000
 
-function captureOutput(stream: ReadableStream<Uint8Array> | null) {
+function captureOutput(stream: NodeJS.ReadableStream | null | undefined) {
 	let output = ''
 	if (!stream) {
 		return () => output
 	}
-
-	const reader = stream.getReader()
-	const decoder = new TextDecoder()
-
-	const read = async () => {
-		try {
-			while (true) {
-				const { value, done } = await reader.read()
-				if (done) break
-				if (value) {
-					output += decoder.decode(value)
-				}
-			}
-		} catch {
-			// Ignore stream errors while capturing output.
-		}
-	}
-
-	void read()
+	stream.setEncoding('utf8')
+	stream.on('data', (chunk) => {
+		output += chunk
+	})
+	stream.on('error', () => {
+		// Ignore stream errors while capturing output.
+	})
 	return () => output
 }
 
@@ -47,15 +44,22 @@ function formatOutput(stdout: string, stderr: string) {
 	return snippets.length > 0 ? ` Output:\n${snippets.join('\n')}` : ''
 }
 
+function bufferToText(buffer: Uint8Array<ArrayBufferLike> | null | undefined) {
+	return buffer ? Buffer.from(buffer).toString() : ''
+}
+
 async function waitForMockServer(
 	origin: string,
-	proc: ReturnType<typeof Bun.spawn>,
+	proc: ChildProcess,
 	getStdout: () => string,
 	getStderr: () => string,
 ) {
 	let exited = false
 	let exitCode: number | null = null
-	void proc.exited
+	void new Promise<number | null>((resolve) => {
+		proc.once('exit', (code) => resolve(code))
+		proc.once('error', () => resolve(null))
+	})
 		.then((code) => {
 			exited = true
 			exitCode = code
@@ -96,11 +100,12 @@ async function waitForMockServer(
 }
 
 function applyResendMockMigrations(persistDir: string) {
-	const proc = Bun.spawnSync({
-		cmd: [
-			bunBin,
-			'x',
-			'wrangler',
+	const proc = spawnSync(
+		nodeBin,
+		[
+			'--no-warnings',
+			'--experimental-vm-modules',
+			wranglerCli,
 			'd1',
 			'migrations',
 			'apply',
@@ -113,26 +118,35 @@ function applyResendMockMigrations(persistDir: string) {
 			'--persist-to',
 			persistDir,
 		],
-		cwd: projectRoot,
-		stdout: 'pipe',
-		stderr: 'pipe',
-	})
-	if (proc.exitCode !== 0) {
-		const err = proc.stderr?.toString() ?? proc.stdout?.toString() ?? ''
+		{
+			cwd: projectRoot,
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: {
+				...process.env,
+				CLOUDFLARE_ENV: 'test',
+				NODE_OPTIONS: '',
+			},
+		},
+	)
+	if (proc.status !== 0) {
+		const err = bufferToText(proc.stderr) || bufferToText(proc.stdout)
 		throw new Error(`Resend mock D1 migrations failed: ${err}`)
 	}
 }
 
-async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
-	let exited = false
-	void proc.exited.then(() => {
-		exited = true
+async function stopProcess(proc: ChildProcess) {
+	const exitPromise = new Promise<number | null>((resolve) => {
+		proc.once('exit', (code) => resolve(code))
+		proc.once('error', () => resolve(null))
 	})
 	proc.kill('SIGINT')
-	await Promise.race([proc.exited, delay(5_000)])
+	const exited = await Promise.race([
+		exitPromise.then(() => true),
+		delay(5_000).then(() => false),
+	])
 	if (!exited) {
 		proc.kill('SIGKILL')
-		await proc.exited
+		await exitPromise
 	}
 }
 
@@ -149,11 +163,12 @@ async function startMockResendWorker(persistDir: string, token: string) {
 	})
 	const origin = `http://127.0.0.1:${port}`
 	applyResendMockMigrations(persistDir)
-	const proc = Bun.spawn({
-		cmd: [
-			bunBin,
-			'x',
-			'wrangler',
+	const proc = spawn(
+		nodeBin,
+		[
+			'--no-warnings',
+			'--experimental-vm-modules',
+			wranglerCli,
 			'dev',
 			'--local',
 			'--env',
@@ -174,14 +189,16 @@ async function startMockResendWorker(persistDir: string, token: string) {
 			'--log-level',
 			'error',
 		],
-		cwd: projectRoot,
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: {
-			...process.env,
-			CLOUDFLARE_ENV: 'test',
+		{
+			cwd: projectRoot,
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: {
+				...process.env,
+				CLOUDFLARE_ENV: 'test',
+				NODE_OPTIONS: '',
+			},
 		},
-	})
+	)
 
 	const getStdout = captureOutput(proc.stdout)
 	const getStderr = captureOutput(proc.stderr)
@@ -198,6 +215,7 @@ async function startMockResendWorker(persistDir: string, token: string) {
 
 test(
 	'resend mock stores messages in D1 and exposes a count',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using tempDir = await createTemporaryDirectory('resend-mock-d1-')
 		const token = 'test-mock-token'
@@ -262,11 +280,11 @@ test(
 			email,
 		)
 	},
-	{ timeout: defaultTimeoutMs },
 )
 
 test(
 	'resend mock rejects unauthenticated requests when a token is configured',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using tempDir = await createTemporaryDirectory('resend-mock-auth-')
 		const token = 'test-mock-token'
@@ -284,11 +302,11 @@ test(
 		})
 		expect(createResp.status).toBe(401)
 	},
-	{ timeout: defaultTimeoutMs },
 )
 
 test(
 	'resend mock dashboard keeps token in endpoint links',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using tempDir = await createTemporaryDirectory(
 			'resend-mock-dashboard-',
@@ -314,5 +332,4 @@ test(
 		expect(dashboardHtml).toContain(`href="/__mocks/meta?token=${token}"`)
 		expect(dashboardHtml).toContain(`href="/__mocks/messages?token=${token}"`)
 	},
-	{ timeout: defaultTimeoutMs },
 )

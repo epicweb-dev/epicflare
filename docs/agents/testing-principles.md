@@ -17,7 +17,7 @@ magic.
 - Write tests so they could run offline if necessary: avoid relying on the
   public internet and third-party services; prefer local fakes/fixtures.
 - Prefer fast unit tests for server logic; keep e2e tests focused on journeys.
-- Run server/unit tests with `bun test ./server ./mock-servers` to avoid
+- Run server/unit tests with `bun run test:unit` to avoid
   Playwright spec discovery and accidental matches like `mcp-server-e2e`.
 
 ## Examples
@@ -25,7 +25,7 @@ magic.
 ### `Symbol.dispose` with `using`
 
 ```ts
-import { test, expect } from 'bun:test'
+import { test, expect } from 'vitest'
 
 const createTempFile = () => {
 	const path = `/tmp/test-${crypto.randomUUID()}.txt`
@@ -53,7 +53,7 @@ test('reads a temp file', () => {
 ### `Symbol.asyncDispose` with `await using`
 
 ```ts
-import { test, expect } from 'bun:test'
+import { test, expect } from 'vitest'
 
 const createDisposableServer = async () => {
 	const server = Bun.serve({
