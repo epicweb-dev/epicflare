@@ -614,8 +614,8 @@ jobs:
                 core.warning(
                   [
                     `Cannot delete GitHub environment "${envName}" with the current token (403).`,
-                    "The default workflow token is not allowed to delete environments.",
-                    "Add repository secret PREVIEW_ENV_CLEANUP_TOKEN (PAT: classic `repo`, or fine-grained with Administration read/write on this repository) to enable automatic removal.",
+                    "The current token may not have permission to delete environments.",
+                    "If you're using the default workflow token, add repository secret PREVIEW_ENV_CLEANUP_TOKEN (PAT: classic `repo`, or fine-grained with Administration read/write on this repository). If you're already using a PAT, ensure it has the required permissions.",
                   ].join(" "),
                 );
               } else {
