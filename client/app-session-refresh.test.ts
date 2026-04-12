@@ -103,6 +103,9 @@ test('aborted refresh does not erase a ready authenticated session', async () =>
 	}
 	expect(accountEntryAfterAbort.props?.children).toBe('signed-in@example.com')
 	expect(logoutEntryAfterAbort.props?.children?.props?.children).toBe('Log out')
+	const navAfterAbortText = JSON.stringify(navAfterAbort)
+	expect(navAfterAbortText).not.toContain('Login')
+	expect(navAfterAbortText).not.toContain('Signup')
 
 	vi.doUnmock('./client-router.tsx')
 	vi.doUnmock('./session.ts')

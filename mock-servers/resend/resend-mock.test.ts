@@ -3,6 +3,7 @@ import { expect, test } from 'vitest'
 import getPort from 'get-port'
 import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
+import { join } from 'node:path'
 import { createTemporaryDirectory } from '#tools/temp-directory.ts'
 import {
 	captureOutput,
@@ -14,7 +15,8 @@ import {
 
 const workerConfig = 'mock-servers/resend/wrangler.jsonc'
 const projectRoot = process.cwd()
-const bunBin = process.execPath
+const nodeBin = process.execPath
+const wranglerCli = join(projectRoot, 'node_modules', 'wrangler', 'wrangler-dist', 'cli.js')
 const defaultTimeoutMs = 60_000
 
 function bufferToText(buffer: Uint8Array<ArrayBufferLike> | null | undefined) {
@@ -71,10 +73,11 @@ async function waitForMockServer(
 
 function applyResendMockMigrations(persistDir: string) {
 	const proc = spawnSync(
-		bunBin,
+		nodeBin,
 		[
-			'x',
-			'wrangler',
+			'--no-warnings',
+			'--experimental-vm-modules',
+			wranglerCli,
 			'd1',
 			'migrations',
 			'apply',
@@ -117,10 +120,11 @@ async function startMockResendWorker(persistDir: string, token: string) {
 	const origin = `http://127.0.0.1:${port}`
 	applyResendMockMigrations(persistDir)
 	const proc = spawn(
-		bunBin,
+		nodeBin,
 		[
-			'x',
-			'wrangler',
+			'--no-warnings',
+			'--experimental-vm-modules',
+			wranglerCli,
 			'dev',
 			'--local',
 			'--env',

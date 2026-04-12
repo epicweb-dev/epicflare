@@ -1,6 +1,9 @@
 export class WorkerEntrypoint<Env = unknown> {
-	constructor(
-		public ctx?: ExecutionContext,
-		public env?: Env,
-	) {}
+	ctx?: unknown
+	env?: Env
+
+	constructor(ctx?: unknown, env?: Env) {
+		this.ctx = ctx
+		this.env = env
+	}
 }

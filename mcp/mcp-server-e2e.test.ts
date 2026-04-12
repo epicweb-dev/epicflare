@@ -29,7 +29,8 @@ import {
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))
 const migrationsDir = join(projectRoot, 'migrations')
-const bunBin = process.execPath
+const nodeBin = process.execPath
+const wranglerCli = join(projectRoot, 'node_modules', 'wrangler', 'wrangler-dist', 'cli.js')
 const defaultTimeoutMs = 60_000
 const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html'
 
@@ -78,8 +79,8 @@ function escapeSql(value: string) {
 
 async function runWrangler(args: Array<string>) {
 	const proc = spawn(
-		bunBin,
-		['x', 'wrangler', ...args],
+		nodeBin,
+		['--no-warnings', '--experimental-vm-modules', wranglerCli, ...args],
 		{
 			cwd: projectRoot,
 			stdio: ['ignore', 'pipe', 'pipe'],
@@ -250,10 +251,11 @@ async function startDevServer(persistDir: string) {
 	})
 	const origin = `http://127.0.0.1:${port}`
 	const proc = spawn(
-		bunBin,
+		nodeBin,
 		[
-			'x',
-			'wrangler',
+			'--no-warnings',
+			'--experimental-vm-modules',
+			wranglerCli,
 			'dev',
 			'--local',
 			'--env',

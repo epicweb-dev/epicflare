@@ -4,12 +4,11 @@ import { type AddressInfo } from 'node:net'
 import { expect, test, vi } from 'vitest'
 
 async function loadCreateAiRuntime(
-	cacheKey = crypto.randomUUID(),
 	setupMocks?: () => void,
 ) {
 	vi.resetModules()
 	setupMocks?.()
-	const module = await import(`./ai-runtime.ts?test=${cacheKey}`)
+	const module = await import('./ai-runtime.ts')
 	return module.createAiRuntime
 }
 
@@ -119,7 +118,7 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 	const streamTextCalls: Array<Record<string, unknown>> = []
 	const stopWhenCalls: Array<number> = []
 
-	const createAiRuntime = await loadCreateAiRuntime('remote-tool-loop', () => {
+	const createAiRuntime = await loadCreateAiRuntime(() => {
 		vi.doMock('ai', () => ({
 			convertToModelMessages: async (messages: Array<unknown>) => messages,
 			stepCountIs: (stepCount: number) => {

@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises'
-import type { ChildProcess } from 'node:child_process'
+import { type ChildProcess } from 'node:child_process'
 
 export type TrackedProcess = {
 	proc: ChildProcess

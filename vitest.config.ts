@@ -21,6 +21,5 @@ export default defineConfig({
 			'tools/**/*.test.ts',
 			'worker/**/*.test.ts',
 		],
-		exclude: ['e2e/**/*.spec.ts'],
 	},
 })
