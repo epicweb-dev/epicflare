@@ -121,6 +121,16 @@ each PR preview is isolated:
 When a PR is closed, the cleanup job deletes the preview Worker(s) and these
 resources as well.
 
+The same cleanup job removes the matching GitHub deployment environment
+(`preview-<pr>`). GitHub’s default `GITHUB_TOKEN` cannot call the delete
+environment API (you would see HTTP 403). That step is non-fatal: the workflow
+still succeeds and Cloudflare resources are still removed. To delete the GitHub
+environment automatically, add an Actions secret named
+`PREVIEW_ENV_CLEANUP_TOKEN` whose value is a personal access token with
+permission to administer this repository (for example a classic PAT with the
+`repo` scope, or a fine-grained PAT with **Administration** read and write on
+this repo only).
+
 Cloudflare Workers supports version `preview_urls`, but those preview URLs are
 not currently available for Workers that use Durable Objects. The main app
 Worker binds `MCP_OBJECT`, so app previews continue to use per-PR Worker names.

@@ -561,6 +561,10 @@ jobs:
           INPUT_TARGET: ${{ inputs.target }}
           INPUT_PR_NUMBER: ${{ inputs.pr_number }}
         with:
+          # The default GITHUB_TOKEN cannot delete deployment environments (403).
+          # Optional: set repo secret PREVIEW_ENV_CLEANUP_TOKEN to a PAT with repo
+          # scope (classic) or Administration: write (fine-grained) for this repo.
+          github-token: ${{ secrets.PREVIEW_ENV_CLEANUP_TOKEN || github.token }}
           script: |
             const eventName = process.env.EVENT_NAME;
             let envName;
@@ -605,6 +609,14 @@ jobs:
               if (e.status === 404) {
                 core.info(
                   `GitHub environment not found (already deleted): ${envName}`,
+                );
+              } else if (e.status === 403) {
+                core.warning(
+                  [
+                    `Cannot delete GitHub environment "${envName}" with the current token (403).`,
+                    "The default workflow token is not allowed to delete environments.",
+                    "Add repository secret PREVIEW_ENV_CLEANUP_TOKEN (PAT: classic `repo`, or fine-grained with Administration read/write on this repository) to enable automatic removal.",
+                  ].join(" "),
                 );
               } else {
                 throw e;
