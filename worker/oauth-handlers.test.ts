@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import {
 	type AuthRequest,
 	type ClientInfo,

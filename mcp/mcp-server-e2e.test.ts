@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { expect, test } from 'vitest'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import {
@@ -14,14 +14,23 @@ import {
 	type ContentBlock,
 } from '@modelcontextprotocol/sdk/types.js'
 import getPort from 'get-port'
+import { spawn } from 'node:child_process'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+	captureOutput,
+	createExitPromise,
+	formatOutput,
+	stopProcess,
+	type TrackedProcess,
+} from '#test-support/process-utils.ts'
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))
 const migrationsDir = join(projectRoot, 'migrations')
-const bunBin = process.execPath
+const nodeBin = process.execPath
+const wranglerCli = join(projectRoot, 'node_modules', 'wrangler', 'wrangler-dist', 'cli.js')
 const defaultTimeoutMs = 60_000
 const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html'
 
@@ -69,19 +78,27 @@ function escapeSql(value: string) {
 }
 
 async function runWrangler(args: Array<string>) {
-	const proc = Bun.spawn({
-		cmd: [bunBin, 'x', 'wrangler', ...args],
-		cwd: projectRoot,
-		stdout: 'pipe',
-		stderr: 'pipe',
-	})
+	const proc = spawn(
+		nodeBin,
+		['--no-warnings', '--experimental-vm-modules', wranglerCli, ...args],
+		{
+			cwd: projectRoot,
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: {
+				...process.env,
+				CLOUDFLARE_ENV: 'test',
+				NODE_OPTIONS: '',
+			},
+		},
+	)
+	const exitPromise = createExitPromise(proc)
 	const stdoutPromise = proc.stdout
-		? new Response(proc.stdout).text()
+		? streamToText(proc.stdout)
 		: Promise.resolve('')
 	const stderrPromise = proc.stderr
-		? new Response(proc.stderr).text()
+		? streamToText(proc.stderr)
 		: Promise.resolve('')
-	const exitCode = await proc.exited
+	const exitCode = await exitPromise
 	const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise])
 	if (exitCode !== 0) {
 		throw new Error(
@@ -158,53 +175,30 @@ async function listMigrationFiles() {
 		.sort((left, right) => left.localeCompare(right))
 }
 
-function captureOutput(stream: ReadableStream<Uint8Array> | null) {
-	let output = ''
-	if (!stream) {
-		return () => output
-	}
-
-	const reader = stream.getReader()
-	const decoder = new TextDecoder()
-
-	const read = async () => {
-		try {
-			while (true) {
-				const { value, done } = await reader.read()
-				if (done) break
-				if (value) {
-					output += decoder.decode(value)
-				}
-			}
-		} catch {
-			// Ignore stream errors while capturing output.
-		}
-	}
-
-	void read()
-	return () => output
-}
-
-function formatOutput(stdout: string, stderr: string) {
-	const snippets: Array<string> = []
-	if (stdout.trim()) {
-		snippets.push(`stdout: ${stdout.trim().slice(-2000)}`)
-	}
-	if (stderr.trim()) {
-		snippets.push(`stderr: ${stderr.trim().slice(-2000)}`)
-	}
-	return snippets.length > 0 ? ` Output:\n${snippets.join('\n')}` : ''
+function streamToText(
+	stream: NodeJS.ReadableStream | null | undefined,
+): Promise<string> {
+	if (!stream) return Promise.resolve('')
+	return new Promise((resolve, reject) => {
+		let output = ''
+		stream.setEncoding('utf8')
+		stream.on('data', (chunk) => {
+			output += chunk
+		})
+		stream.on('end', () => resolve(output))
+		stream.on('error', reject)
+	})
 }
 
 async function waitForServer(
 	origin: string,
-	proc: ReturnType<typeof Bun.spawn>,
+	process: TrackedProcess,
 	getStdout: () => string,
 	getStderr: () => string,
 ) {
 	let exited = false
 	let exitCode: number | null = null
-	void proc.exited
+	void process.exitPromise
 		.then((code) => {
 			exited = true
 			exitCode = code
@@ -244,19 +238,6 @@ async function waitForServer(
 	)
 }
 
-async function stopProcess(proc: ReturnType<typeof Bun.spawn>) {
-	let exited = false
-	void proc.exited.then(() => {
-		exited = true
-	})
-	proc.kill('SIGINT')
-	await Promise.race([proc.exited, delay(5_000)])
-	if (!exited) {
-		proc.kill('SIGKILL')
-		await proc.exited
-	}
-}
-
 async function startDevServer(persistDir: string) {
 	const port = await getPort({ host: '127.0.0.1' })
 	const inspectorPortBase =
@@ -269,11 +250,12 @@ async function startDevServer(persistDir: string) {
 		).filter((candidate) => candidate > 0 && candidate <= 65_535),
 	})
 	const origin = `http://127.0.0.1:${port}`
-	const proc = Bun.spawn({
-		cmd: [
-			bunBin,
-			'x',
-			'wrangler',
+	const proc = spawn(
+		nodeBin,
+		[
+			'--no-warnings',
+			'--experimental-vm-modules',
+			wranglerCli,
 			'dev',
 			'--local',
 			'--env',
@@ -290,24 +272,30 @@ async function startDevServer(persistDir: string) {
 			'--log-level',
 			'error',
 		],
-		cwd: projectRoot,
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: {
-			...process.env,
-			CLOUDFLARE_ENV: 'test',
+		{
+			cwd: projectRoot,
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: {
+				...process.env,
+				CLOUDFLARE_ENV: 'test',
+				NODE_OPTIONS: '',
+			},
 		},
-	})
+	)
+	const trackedProcess: TrackedProcess = {
+		proc,
+		exitPromise: createExitPromise(proc),
+	}
 
 	const getStdout = captureOutput(proc.stdout)
 	const getStderr = captureOutput(proc.stderr)
 
-	await waitForServer(origin, proc, getStdout, getStderr)
+	await waitForServer(origin, trackedProcess, getStdout, getStderr)
 
 	return {
 		origin,
 		[Symbol.asyncDispose]: async () => {
-			await stopProcess(proc)
+			await stopProcess(trackedProcess)
 		},
 	}
 }
@@ -481,6 +469,7 @@ async function createMcpClient(
 
 test(
 	'mcp server lists tools after interactive oauth authorize flow',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using database = await createTestDatabase()
 		await using server = await startDevServer(database.persistDir)
@@ -496,12 +485,12 @@ test(
 		const toolNames = result.tools.map((tool) => tool.name)
 
 		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
-	},
-	{ timeout: defaultTimeoutMs },
+	}
 )
 
 test(
 	'mcp server lists tools after oauth flow',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using database = await createTestDatabase()
 		await using server = await startDevServer(database.persistDir)
@@ -521,12 +510,12 @@ test(
 		)
 
 		expect(resourceUris).toContain(calculatorUiResourceUri)
-	},
-	{ timeout: defaultTimeoutMs },
+	}
 )
 
 test(
 	'mcp server executes do_math tool',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using database = await createTestDatabase()
 		await using server = await startDevServer(database.persistDir)
@@ -553,12 +542,12 @@ test(
 			)?.text ?? ''
 
 		expect(textOutput).toContain('12')
-	},
-	{ timeout: defaultTimeoutMs },
+	}
 )
 
 test(
 	'mcp server executes calculator ui tool and serves resource entry point',
+	{ timeout: defaultTimeoutMs },
 	async () => {
 		await using database = await createTestDatabase()
 		await using server = await startDevServer(database.persistDir)
@@ -640,6 +629,5 @@ test(
 		expect(calculatorResourceMeta?.ui?.csp?.resourceDomains).toContain(
 			server.origin,
 		)
-	},
-	{ timeout: defaultTimeoutMs },
+	}
 )

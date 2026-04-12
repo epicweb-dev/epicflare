@@ -1,31 +1,54 @@
 /// <reference types="bun" />
-import { expect, mock, test } from 'bun:test'
+import { createServer } from 'node:http'
+import { type AddressInfo } from 'node:net'
+import { expect, test, vi } from 'vitest'
 
-async function loadCreateAiRuntime(cacheKey = crypto.randomUUID()) {
-	const module = await import(`./ai-runtime.ts?test=${cacheKey}`)
+async function loadCreateAiRuntime(
+	setupMocks?: () => void,
+) {
+	vi.resetModules()
+	setupMocks?.()
+	const module = await import('./ai-runtime.ts')
 	return module.createAiRuntime
 }
 
 async function createMockServer() {
-	const server = Bun.serve({
-		port: 0,
-		fetch(request) {
-			const url = new URL(request.url)
-			if (url.pathname !== '/chat') {
-				return new Response('Not Found', { status: 404 })
-			}
-			return Response.json({
+	const server = createServer((request, response) => {
+		const url = new URL(request.url ?? '', 'http://127.0.0.1')
+		if (url.pathname !== '/chat') {
+			response.statusCode = 404
+			response.end('Not Found')
+			return
+		}
+
+		response.statusCode = 200
+		response.setHeader('Content-Type', 'application/json')
+		response.end(
+			JSON.stringify({
 				kind: 'text',
 				text: 'hello from mock runtime',
 				chunks: ['hello ', 'from ', 'mock runtime'],
-			})
-		},
+			}),
+		)
 	})
 
+	await new Promise<void>((resolve) => {
+		server.listen(0, '127.0.0.1', resolve)
+	})
+	const address = server.address() as AddressInfo
+
 	return {
-		baseUrl: `http://127.0.0.1:${server.port}`,
+		baseUrl: `http://127.0.0.1:${address.port}`,
 		[Symbol.asyncDispose]: async () => {
-			await server.stop()
+			await new Promise<void>((resolve, reject) => {
+				server.close((error) => {
+					if (error) {
+						reject(error)
+						return
+					}
+					resolve()
+				})
+			})
 		},
 	}
 }
@@ -95,27 +118,27 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 	const streamTextCalls: Array<Record<string, unknown>> = []
 	const stopWhenCalls: Array<number> = []
 
-	mock.module('ai', () => ({
-		convertToModelMessages: async (messages: Array<unknown>) => messages,
-		stepCountIs: (stepCount: number) => {
-			stopWhenCalls.push(stepCount)
-			return { kind: 'stop-condition', stepCount }
-		},
-		streamText: (options: Record<string, unknown>) => {
-			streamTextCalls.push(options)
-			return {
-				toUIMessageStreamResponse: () =>
-					new Response('ok', {
-						headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-					}),
-			}
-		},
-	}))
-	mock.module('workers-ai-provider', () => ({
-		createWorkersAI: () => (model: string) => ({ provider: 'workers-ai', model }),
-	}))
-
-	const createAiRuntime = await loadCreateAiRuntime('remote-tool-loop')
+	const createAiRuntime = await loadCreateAiRuntime(() => {
+		vi.doMock('ai', () => ({
+			convertToModelMessages: async (messages: Array<unknown>) => messages,
+			stepCountIs: (stepCount: number) => {
+				stopWhenCalls.push(stepCount)
+				return { kind: 'stop-condition', stepCount }
+			},
+			streamText: (options: Record<string, unknown>) => {
+				streamTextCalls.push(options)
+				return {
+					toUIMessageStreamResponse: () =>
+						new Response('ok', {
+							headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+						}),
+				}
+			},
+		}))
+		vi.doMock('workers-ai-provider', () => ({
+			createWorkersAI: () => (model: string) => ({ provider: 'workers-ai', model }),
+		}))
+	})
 	const runtime = createAiRuntime({
 		AI_MODE: 'remote',
 		AI_GATEWAY_ID: 'gateway-id',
@@ -140,4 +163,7 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 		onFinish,
 		stopWhen: { kind: 'stop-condition', stepCount: 5 },
 	})
+
+	vi.doUnmock('ai')
+	vi.doUnmock('workers-ai-provider')
 })
