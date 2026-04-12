@@ -32,6 +32,11 @@ const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const passwordHashIterations = 100_000
 
+type TrackedProcess = {
+	proc: ChildProcess
+	exitPromise: Promise<number | null>
+}
+
 function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -84,13 +89,14 @@ async function runWrangler(args: Array<string>) {
 			},
 		},
 	)
+	const exitPromise = createExitPromise(proc)
 	const stdoutPromise = proc.stdout
 		? streamToText(proc.stdout)
 		: Promise.resolve('')
 	const stderrPromise = proc.stderr
 		? streamToText(proc.stderr)
 		: Promise.resolve('')
-	const exitCode = await waitForExit(proc)
+	const exitCode = await exitPromise
 	const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise])
 	if (exitCode !== 0) {
 		throw new Error(
@@ -210,13 +216,13 @@ function formatOutput(stdout: string, stderr: string) {
 
 async function waitForServer(
 	origin: string,
-	proc: ChildProcess,
+	process: TrackedProcess,
 	getStdout: () => string,
 	getStderr: () => string,
 ) {
 	let exited = false
 	let exitCode: number | null = null
-	void waitForExit(proc)
+	void process.exitPromise
 		.then((code) => {
 			exited = true
 			exitCode = code
@@ -256,18 +262,25 @@ async function waitForServer(
 	)
 }
 
-function waitForExit(proc: ChildProcess): Promise<number | null> {
-	return new Promise((resolve, reject) => {
-		proc.once('error', reject)
-		proc.once('exit', (code) => {
+function createExitPromise(proc: ChildProcess): Promise<number | null> {
+	if (proc.exitCode !== null || proc.signalCode !== null) {
+		return Promise.resolve(proc.exitCode)
+	}
+	return new Promise((resolve) => {
+		const finalize = (code: number | null) => {
+			proc.off('error', onError)
+			proc.off('exit', onExit)
 			resolve(code)
-		})
+		}
+		const onError = () => finalize(null)
+		const onExit = (code: number | null) => finalize(code)
+		proc.once('error', onError)
+		proc.once('exit', onExit)
 	})
 }
 
-async function stopProcess(proc: ChildProcess) {
+async function stopProcess({ proc, exitPromise }: TrackedProcess) {
 	let exited = false
-	const exitPromise = waitForExit(proc)
 	void exitPromise.then(() => {
 		exited = true
 	})
@@ -323,16 +336,20 @@ async function startDevServer(persistDir: string) {
 			},
 		},
 	)
+	const trackedProcess: TrackedProcess = {
+		proc,
+		exitPromise: createExitPromise(proc),
+	}
 
 	const getStdout = captureOutput(proc.stdout)
 	const getStderr = captureOutput(proc.stderr)
 
-	await waitForServer(origin, proc, getStdout, getStderr)
+	await waitForServer(origin, trackedProcess, getStdout, getStderr)
 
 	return {
 		origin,
 		[Symbol.asyncDispose]: async () => {
-			await stopProcess(proc)
+			await stopProcess(trackedProcess)
 		},
 	}
 }

@@ -18,6 +18,11 @@ const wranglerCli = join(
 )
 const defaultTimeoutMs = 60_000
 
+type TrackedProcess = {
+	proc: ChildProcess
+	exitPromise: Promise<number | null>
+}
+
 function captureOutput(stream: NodeJS.ReadableStream | null | undefined) {
 	let output = ''
 	if (!stream) {
@@ -50,16 +55,13 @@ function bufferToText(buffer: Uint8Array<ArrayBufferLike> | null | undefined) {
 
 async function waitForMockServer(
 	origin: string,
-	proc: ChildProcess,
+	process: TrackedProcess,
 	getStdout: () => string,
 	getStderr: () => string,
 ) {
 	let exited = false
 	let exitCode: number | null = null
-	void new Promise<number | null>((resolve) => {
-		proc.once('exit', (code) => resolve(code))
-		proc.once('error', () => resolve(null))
-	})
+	void process.exitPromise
 		.then((code) => {
 			exited = true
 			exitCode = code
@@ -134,11 +136,24 @@ function applyResendMockMigrations(persistDir: string) {
 	}
 }
 
-async function stopProcess(proc: ChildProcess) {
-	const exitPromise = new Promise<number | null>((resolve) => {
-		proc.once('exit', (code) => resolve(code))
-		proc.once('error', () => resolve(null))
+function createExitPromise(proc: ChildProcess): Promise<number | null> {
+	if (proc.exitCode !== null || proc.signalCode !== null) {
+		return Promise.resolve(proc.exitCode)
+	}
+	return new Promise((resolve) => {
+		const finalize = (code: number | null) => {
+			proc.off('error', onError)
+			proc.off('exit', onExit)
+			resolve(code)
+		}
+		const onError = () => finalize(null)
+		const onExit = (code: number | null) => finalize(code)
+		proc.once('error', onError)
+		proc.once('exit', onExit)
 	})
+}
+
+async function stopProcess({ proc, exitPromise }: TrackedProcess) {
 	proc.kill('SIGINT')
 	const exited = await Promise.race([
 		exitPromise.then(() => true),
@@ -199,16 +214,20 @@ async function startMockResendWorker(persistDir: string, token: string) {
 			},
 		},
 	)
+	const trackedProcess: TrackedProcess = {
+		proc,
+		exitPromise: createExitPromise(proc),
+	}
 
 	const getStdout = captureOutput(proc.stdout)
 	const getStderr = captureOutput(proc.stderr)
 
-	await waitForMockServer(origin, proc, getStdout, getStderr)
+	await waitForMockServer(origin, trackedProcess, getStdout, getStderr)
 
 	return {
 		origin,
 		[Symbol.asyncDispose]: async () => {
-			await stopProcess(proc)
+			await stopProcess(trackedProcess)
 		},
 	}
 }
