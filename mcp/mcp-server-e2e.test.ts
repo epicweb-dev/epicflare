@@ -14,16 +14,22 @@ import {
 	type ContentBlock,
 } from '@modelcontextprotocol/sdk/types.js'
 import getPort from 'get-port'
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+	captureOutput,
+	createExitPromise,
+	formatOutput,
+	stopProcess,
+	type TrackedProcess,
+} from '#test-support/process-utils.ts'
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))
 const migrationsDir = join(projectRoot, 'migrations')
-const nodeBin = process.execPath
-const wranglerCli = join(projectRoot, 'node_modules', 'wrangler', 'wrangler-dist', 'cli.js')
+const bunBin = process.execPath
 const defaultTimeoutMs = 60_000
 const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html'
 
@@ -31,11 +37,6 @@ const passwordHashPrefix = 'pbkdf2_sha256'
 const passwordSaltBytes = 16
 const passwordHashBytes = 32
 const passwordHashIterations = 100_000
-
-type TrackedProcess = {
-	proc: ChildProcess
-	exitPromise: Promise<number | null>
-}
 
 function delay(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms))
@@ -77,8 +78,8 @@ function escapeSql(value: string) {
 
 async function runWrangler(args: Array<string>) {
 	const proc = spawn(
-		nodeBin,
-		['--no-warnings', '--experimental-vm-modules', wranglerCli, ...args],
+		bunBin,
+		['x', 'wrangler', ...args],
 		{
 			cwd: projectRoot,
 			stdio: ['ignore', 'pipe', 'pipe'],
@@ -188,32 +189,6 @@ function streamToText(
 	})
 }
 
-function captureOutput(stream: NodeJS.ReadableStream | null | undefined) {
-	let output = ''
-	if (!stream) {
-		return () => output
-	}
-	stream.setEncoding('utf8')
-	stream.on('data', (chunk) => {
-		output += chunk
-	})
-	stream.on('error', () => {
-		// Ignore stream errors while capturing output.
-	})
-	return () => output
-}
-
-function formatOutput(stdout: string, stderr: string) {
-	const snippets: Array<string> = []
-	if (stdout.trim()) {
-		snippets.push(`stdout: ${stdout.trim().slice(-2000)}`)
-	}
-	if (stderr.trim()) {
-		snippets.push(`stderr: ${stderr.trim().slice(-2000)}`)
-	}
-	return snippets.length > 0 ? ` Output:\n${snippets.join('\n')}` : ''
-}
-
 async function waitForServer(
 	origin: string,
 	process: TrackedProcess,
@@ -262,36 +237,6 @@ async function waitForServer(
 	)
 }
 
-function createExitPromise(proc: ChildProcess): Promise<number | null> {
-	if (proc.exitCode !== null || proc.signalCode !== null) {
-		return Promise.resolve(proc.exitCode)
-	}
-	return new Promise((resolve) => {
-		const finalize = (code: number | null) => {
-			proc.off('error', onError)
-			proc.off('exit', onExit)
-			resolve(code)
-		}
-		const onError = () => finalize(null)
-		const onExit = (code: number | null) => finalize(code)
-		proc.once('error', onError)
-		proc.once('exit', onExit)
-	})
-}
-
-async function stopProcess({ proc, exitPromise }: TrackedProcess) {
-	let exited = false
-	void exitPromise.then(() => {
-		exited = true
-	})
-	proc.kill('SIGINT')
-	await Promise.race([exitPromise, delay(5_000)])
-	if (!exited) {
-		proc.kill('SIGKILL')
-		await exitPromise
-	}
-}
-
 async function startDevServer(persistDir: string) {
 	const port = await getPort({ host: '127.0.0.1' })
 	const inspectorPortBase =
@@ -305,11 +250,10 @@ async function startDevServer(persistDir: string) {
 	})
 	const origin = `http://127.0.0.1:${port}`
 	const proc = spawn(
-		nodeBin,
+		bunBin,
 		[
-			'--no-warnings',
-			'--experimental-vm-modules',
-			wranglerCli,
+			'x',
+			'wrangler',
 			'dev',
 			'--local',
 			'--env',

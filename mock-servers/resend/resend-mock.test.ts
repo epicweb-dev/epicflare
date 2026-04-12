@@ -1,53 +1,21 @@
 /// <reference types="bun" />
 import { expect, test } from 'vitest'
 import getPort from 'get-port'
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
-import { join } from 'node:path'
 import { createTemporaryDirectory } from '#tools/temp-directory.ts'
+import {
+	captureOutput,
+	createExitPromise,
+	formatOutput,
+	stopProcess,
+	type TrackedProcess,
+} from '#test-support/process-utils.ts'
 
 const workerConfig = 'mock-servers/resend/wrangler.jsonc'
 const projectRoot = process.cwd()
-const nodeBin = process.execPath
-const wranglerCli = join(
-	projectRoot,
-	'node_modules',
-	'wrangler',
-	'wrangler-dist',
-	'cli.js',
-)
+const bunBin = process.execPath
 const defaultTimeoutMs = 60_000
-
-type TrackedProcess = {
-	proc: ChildProcess
-	exitPromise: Promise<number | null>
-}
-
-function captureOutput(stream: NodeJS.ReadableStream | null | undefined) {
-	let output = ''
-	if (!stream) {
-		return () => output
-	}
-	stream.setEncoding('utf8')
-	stream.on('data', (chunk) => {
-		output += chunk
-	})
-	stream.on('error', () => {
-		// Ignore stream errors while capturing output.
-	})
-	return () => output
-}
-
-function formatOutput(stdout: string, stderr: string) {
-	const snippets: Array<string> = []
-	if (stdout.trim()) {
-		snippets.push(`stdout: ${stdout.trim().slice(-2000)}`)
-	}
-	if (stderr.trim()) {
-		snippets.push(`stderr: ${stderr.trim().slice(-2000)}`)
-	}
-	return snippets.length > 0 ? ` Output:\n${snippets.join('\n')}` : ''
-}
 
 function bufferToText(buffer: Uint8Array<ArrayBufferLike> | null | undefined) {
 	return buffer ? Buffer.from(buffer).toString() : ''
@@ -103,11 +71,10 @@ async function waitForMockServer(
 
 function applyResendMockMigrations(persistDir: string) {
 	const proc = spawnSync(
-		nodeBin,
+		bunBin,
 		[
-			'--no-warnings',
-			'--experimental-vm-modules',
-			wranglerCli,
+			'x',
+			'wrangler',
 			'd1',
 			'migrations',
 			'apply',
@@ -136,35 +103,6 @@ function applyResendMockMigrations(persistDir: string) {
 	}
 }
 
-function createExitPromise(proc: ChildProcess): Promise<number | null> {
-	if (proc.exitCode !== null || proc.signalCode !== null) {
-		return Promise.resolve(proc.exitCode)
-	}
-	return new Promise((resolve) => {
-		const finalize = (code: number | null) => {
-			proc.off('error', onError)
-			proc.off('exit', onExit)
-			resolve(code)
-		}
-		const onError = () => finalize(null)
-		const onExit = (code: number | null) => finalize(code)
-		proc.once('error', onError)
-		proc.once('exit', onExit)
-	})
-}
-
-async function stopProcess({ proc, exitPromise }: TrackedProcess) {
-	proc.kill('SIGINT')
-	const exited = await Promise.race([
-		exitPromise.then(() => true),
-		delay(5_000).then(() => false),
-	])
-	if (!exited) {
-		proc.kill('SIGKILL')
-		await exitPromise
-	}
-}
-
 async function startMockResendWorker(persistDir: string, token: string) {
 	const port = await getPort({ host: '127.0.0.1' })
 	const inspectorPortBase =
@@ -179,11 +117,10 @@ async function startMockResendWorker(persistDir: string, token: string) {
 	const origin = `http://127.0.0.1:${port}`
 	applyResendMockMigrations(persistDir)
 	const proc = spawn(
-		nodeBin,
+		bunBin,
 		[
-			'--no-warnings',
-			'--experimental-vm-modules',
-			wranglerCli,
+			'x',
+			'wrangler',
 			'dev',
 			'--local',
 			'--env',
