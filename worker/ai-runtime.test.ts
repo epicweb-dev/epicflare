@@ -3,8 +3,12 @@ import { createServer } from 'node:http'
 import { type AddressInfo } from 'node:net'
 import { expect, test, vi } from 'vitest'
 
-async function loadCreateAiRuntime(cacheKey = crypto.randomUUID()) {
+async function loadCreateAiRuntime(
+	cacheKey = crypto.randomUUID(),
+	setupMocks?: () => void,
+) {
 	vi.resetModules()
+	setupMocks?.()
 	const module = await import(`./ai-runtime.ts?test=${cacheKey}`)
 	return module.createAiRuntime
 }
@@ -115,27 +119,27 @@ test('createAiRuntime configures remote streaming to continue after tool calls',
 	const streamTextCalls: Array<Record<string, unknown>> = []
 	const stopWhenCalls: Array<number> = []
 
-	vi.doMock('ai', () => ({
-		convertToModelMessages: async (messages: Array<unknown>) => messages,
-		stepCountIs: (stepCount: number) => {
-			stopWhenCalls.push(stepCount)
-			return { kind: 'stop-condition', stepCount }
-		},
-		streamText: (options: Record<string, unknown>) => {
-			streamTextCalls.push(options)
-			return {
-				toUIMessageStreamResponse: () =>
-					new Response('ok', {
-						headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-					}),
-			}
-		},
-	}))
-	vi.doMock('workers-ai-provider', () => ({
-		createWorkersAI: () => (model: string) => ({ provider: 'workers-ai', model }),
-	}))
-
-	const createAiRuntime = await loadCreateAiRuntime('remote-tool-loop')
+	const createAiRuntime = await loadCreateAiRuntime('remote-tool-loop', () => {
+		vi.doMock('ai', () => ({
+			convertToModelMessages: async (messages: Array<unknown>) => messages,
+			stepCountIs: (stepCount: number) => {
+				stopWhenCalls.push(stepCount)
+				return { kind: 'stop-condition', stepCount }
+			},
+			streamText: (options: Record<string, unknown>) => {
+				streamTextCalls.push(options)
+				return {
+					toUIMessageStreamResponse: () =>
+						new Response('ok', {
+							headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+						}),
+				}
+			},
+		}))
+		vi.doMock('workers-ai-provider', () => ({
+			createWorkersAI: () => (model: string) => ({ provider: 'workers-ai', model }),
+		}))
+	})
 	const runtime = createAiRuntime({
 		AI_MODE: 'remote',
 		AI_GATEWAY_ID: 'gateway-id',
