@@ -75,6 +75,10 @@ function getNavigationApi() {
 	return (window as Window & { navigation?: RouterNavigation }).navigation ?? null
 }
 
+function isSameOriginUrl(url: URL) {
+	return url.origin === window.location.origin
+}
+
 function compileRoutePattern(pattern: string) {
 	const regexPattern = pattern
 		.replace(/:([^/]+)/g, '([^/]+)')
@@ -358,9 +362,10 @@ function shouldInterceptNavigationEvent(event: RouterNavigateEvent) {
 	if (!event.canIntercept) return false
 	if (event.downloadRequest !== null) return false
 	if (event.hashChange) return false
+	if (event.navigationType === 'reload') return false
 
 	const destination = new URL(event.destination.url, window.location.href)
-	if (destination.origin !== window.location.origin) return false
+	if (!isSameOriginUrl(destination)) return false
 	return true
 }
 
@@ -379,10 +384,19 @@ function handleNavigationEvent(event: RouterNavigateEvent) {
 
 	const formDetails = resolveNavigateEventFormSubmitDetails(event)
 	if (formDetails) {
+		let externalRedirect: URL | null = null
 		event.intercept({
 			async precommitHandler(controller) {
 				try {
 					const destination = await submitPostFormThroughRouter(formDetails)
+					if (!isSameOriginUrl(destination)) {
+						externalRedirect = destination
+						controller.redirect(window.location.href, {
+							history: 'replace',
+						})
+						return
+					}
+
 					controller.redirect(destination.toString(), {
 						history: getRedirectHistoryForDestination(destination),
 					})
@@ -392,6 +406,10 @@ function handleNavigationEvent(event: RouterNavigateEvent) {
 				}
 			},
 			handler() {
+				if (externalRedirect) {
+					window.location.assign(externalRedirect.toString())
+					return
+				}
 				notify()
 			},
 		})
