@@ -16,6 +16,7 @@ const originalFetch = globalThis.fetch
 const originalHtmlFormElement = globalThis.HTMLFormElement
 const originalHtmlButtonElement = globalThis.HTMLButtonElement
 const originalHtmlInputElement = globalThis.HTMLInputElement
+const originalDocument = globalThis.document
 
 afterEach(() => {
 	vi.resetModules()
@@ -35,6 +36,11 @@ afterEach(() => {
 	} else {
 		Reflect.deleteProperty(globalThis, 'HTMLInputElement')
 	}
+	if (originalDocument) {
+		globalThis.document = originalDocument
+	} else {
+		Reflect.deleteProperty(globalThis, 'document')
+	}
 	if (originalWindow) {
 		globalThis.window = originalWindow
 		return
@@ -44,6 +50,25 @@ afterEach(() => {
 
 async function loadClientRouter() {
 	return import('./client-router.tsx')
+}
+
+function installDocumentStub() {
+	const documentEventTarget = new EventTarget()
+	class MockHtmlFormElement {}
+	class MockHtmlButtonElement {}
+	class MockHtmlInputElement {}
+	globalThis.HTMLFormElement =
+		MockHtmlFormElement as unknown as typeof HTMLFormElement
+	globalThis.HTMLButtonElement =
+		MockHtmlButtonElement as unknown as typeof HTMLButtonElement
+	globalThis.HTMLInputElement =
+		MockHtmlInputElement as unknown as typeof HTMLInputElement
+	globalThis.document = {
+		addEventListener: documentEventTarget.addEventListener.bind(documentEventTarget),
+		removeEventListener:
+			documentEventTarget.removeEventListener.bind(documentEventTarget),
+		dispatchEvent: documentEventTarget.dispatchEvent.bind(documentEventTarget),
+	} as unknown as Document
 }
 
 test('navigate uses the Navigation API when available', async () => {
@@ -80,6 +105,7 @@ test('navigate uses the Navigation API when available', async () => {
 test('listenToRouterNavigation rerenders for intercepted Navigation API events', async () => {
 	const navigationEventTarget = new EventTarget()
 	const listenerCalls: Array<string> = []
+	installDocumentStub()
 
 	globalThis.window = {
 		location: {
@@ -143,6 +169,7 @@ test('listenToRouterNavigation rerenders for intercepted Navigation API events',
 test('reload navigations are not intercepted', async () => {
 	const navigationEventTarget = new EventTarget()
 	const locationAssign = vi.fn()
+	installDocumentStub()
 
 	globalThis.window = {
 		location: {
@@ -204,32 +231,13 @@ test('reload navigations are not intercepted', async () => {
 	expect(locationAssign).not.toHaveBeenCalled()
 })
 
-test('cross-origin post redirects fall back to document navigation', async () => {
+test('navigate-event data-router-skip forms are not intercepted', async () => {
 	const navigationEventTarget = new EventTarget()
-	const locationAssign = vi.fn()
-	const fetchMock = vi.fn(async () => {
-		return {
-			redirected: true,
-			headers: new Headers(),
-			status: 302,
-			statusText: 'Found',
-			url: 'https://oauth.example.com/authorize',
-		}
-	})
+	installDocumentStub()
 
-	globalThis.fetch = fetchMock as unknown as typeof fetch
-	class MockHtmlFormElement {}
-	class MockHtmlButtonElement {}
-	class MockHtmlInputElement {}
-	globalThis.HTMLFormElement =
-		MockHtmlFormElement as unknown as typeof HTMLFormElement
-	globalThis.HTMLButtonElement =
-		MockHtmlButtonElement as unknown as typeof HTMLButtonElement
-	globalThis.HTMLInputElement =
-		MockHtmlInputElement as unknown as typeof HTMLInputElement
 	globalThis.window = {
 		location: {
-			assign: locationAssign,
+			assign: vi.fn(),
 			hash: '',
 			href: 'https://example.com/login',
 			origin: 'https://example.com',
@@ -258,23 +266,22 @@ test('cross-origin post redirects fall back to document navigation', async () =>
 			}
 		},
 	} as unknown as Handle
+
+	let notified = false
 	listenToRouterNavigation(handle, () => {
-		return
+		notified = true
 	})
 
-	const controllerRedirect = vi.fn()
-	let interceptedHandler:
-		| ((controller: { redirect(url: string): void }) => Promise<void>)
-		| null = null
-	const form = new MockHtmlFormElement() as unknown as HTMLFormElement
+	let intercepted = false
+	const form = new (globalThis.HTMLFormElement as typeof HTMLFormElement)()
 	Object.assign(form, {
 		getAttribute(name: string) {
 			if (name === 'method') return 'post'
 			if (name === 'action') return '/oauth/start'
 			return null
 		},
-		hasAttribute() {
-			return false
+		hasAttribute(name: string) {
+			return name === 'data-router-skip'
 		},
 	})
 
@@ -286,25 +293,15 @@ test('cross-origin post redirects fall back to document navigation', async () =>
 		downloadRequest: null,
 		formData: new FormData(),
 		hashChange: false,
-		intercept(options?: {
-			precommitHandler?: (controller: { redirect(url: string): void }) => Promise<void>
-			handler?: () => void | Promise<void>
-		}) {
-			interceptedHandler = options?.precommitHandler ?? null
+		intercept() {
+			intercepted = true
 		},
 		navigationType: 'push' as const,
 		sourceElement: form,
 	})
 
 	;(globalThis.window as TestWindow).navigation!.dispatchEvent(event)
-	expect(interceptedHandler).not.toBeNull()
 
-	await interceptedHandler!({
-		redirect: controllerRedirect,
-	})
-
-	expect(controllerRedirect).toHaveBeenCalledWith('https://example.com/login', {
-		history: 'replace',
-	})
-	expect(locationAssign).not.toHaveBeenCalled()
+	expect(intercepted).toBe(false)
+	expect(notified).toBe(false)
 })
