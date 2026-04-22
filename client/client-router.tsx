@@ -7,6 +7,55 @@ type RouterSetup = {
 
 type FormMethod = 'get' | 'post'
 
+type RouterNavigationHistory = 'push' | 'replace'
+
+type RouterNavigationNavigateOptions = {
+	history?: 'auto' | RouterNavigationHistory
+	state?: unknown
+}
+
+type RouterNavigationNavigateResult = {
+	committed: Promise<unknown>
+	finished: Promise<unknown>
+}
+
+type RouterNavigationPrecommitController = {
+	addHandler(handler: () => void | Promise<void>): void
+	redirect(url: string, options?: RouterNavigationNavigateOptions): void
+}
+
+type RouterNavigateEvent = Event & {
+	canIntercept: boolean
+	destination: {
+		url: string
+	}
+	downloadRequest: string | null
+	formData: FormData | null
+	hashChange: boolean
+	intercept(options?: {
+		focusReset?: 'after-transition' | 'manual'
+		handler?: () => void | Promise<void>
+		precommitHandler?: (
+			controller: RouterNavigationPrecommitController,
+		) => void | Promise<void>
+		scroll?: 'after-transition' | 'manual'
+	}): void
+	navigationType: 'push' | 'replace' | 'reload' | 'traverse'
+	sourceElement: Element | null
+}
+
+type RouterNavigation = EventTarget & {
+	addEventListener(
+		type: 'navigate',
+		listener: (event: RouterNavigateEvent) => void,
+		options?: AddEventListenerOptions | boolean,
+	): void
+	navigate(
+		url: string,
+		options?: RouterNavigationNavigateOptions,
+	): RouterNavigationNavigateResult
+}
+
 type FormSubmitDetails = {
 	action: URL
 	method: FormMethod
@@ -19,6 +68,11 @@ let routerInitialized = false
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
+}
+
+function getNavigationApi() {
+	if (typeof window === 'undefined') return null
+	return (window as Window & { navigation?: RouterNavigation }).navigation ?? null
 }
 
 function compileRoutePattern(pattern: string) {
@@ -93,6 +147,28 @@ function normalizeTarget(rawTarget: string | null) {
 	return (rawTarget ?? '').trim().toLowerCase()
 }
 
+function getFormForSourceElement(sourceElement: Element | null) {
+	if (sourceElement instanceof HTMLFormElement) {
+		return {
+			form: sourceElement,
+			submitter: null,
+		}
+	}
+	if (
+		sourceElement instanceof HTMLButtonElement ||
+		sourceElement instanceof HTMLInputElement
+	) {
+		return {
+			form: sourceElement.form,
+			submitter: sourceElement,
+		}
+	}
+	return {
+		form: null,
+		submitter: null,
+	}
+}
+
 function createSubmitFormData(
 	form: HTMLFormElement,
 	submitter: HTMLButtonElement | HTMLInputElement | null,
@@ -138,6 +214,39 @@ function resolveFormSubmitDetails(
 	}
 }
 
+function resolveNavigateEventFormSubmitDetails(event: RouterNavigateEvent) {
+	if (!event.formData) return null
+
+	const { form, submitter } = getFormForSourceElement(event.sourceElement)
+	if (!form) return null
+	if (form.hasAttribute('data-router-skip')) return null
+
+	const method = normalizeFormMethod(
+		submitter?.getAttribute('formmethod') ?? form.getAttribute('method'),
+	)
+	if (method !== 'post') return null
+
+	const target = normalizeTarget(
+		submitter?.getAttribute('formtarget') ?? form.getAttribute('target'),
+	)
+	if (target && target !== '_self') return null
+
+	const enctype = (
+		submitter?.getAttribute('formenctype') ??
+		form.getAttribute('enctype') ??
+		'application/x-www-form-urlencoded'
+	)
+		.trim()
+		.toLowerCase()
+
+	return {
+		action: new URL(event.destination.url, window.location.href),
+		method,
+		enctype,
+		formData: event.formData,
+	} satisfies FormSubmitDetails
+}
+
 function formDataToSearchParams(formData: FormData) {
 	const params = new URLSearchParams()
 	for (const [name, value] of formData.entries()) {
@@ -181,12 +290,7 @@ function navigateWithRefreshForSamePath(destination: URL) {
 	navigate(destination.toString())
 }
 
-async function submitFormThroughRouter(details: FormSubmitDetails) {
-	if (details.method === 'get') {
-		navigate(buildGetDestination(details.action, details.formData).toString())
-		return
-	}
-
+async function submitPostFormThroughRouter(details: FormSubmitDetails) {
 	const init: RequestInit = {
 		method: details.method.toUpperCase(),
 		credentials: 'include',
@@ -209,19 +313,27 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 
 	const response = await fetch(details.action.toString(), init)
 	if (response.redirected) {
-		navigateWithRefreshForSamePath(new URL(response.url, window.location.href))
-		return
+		return new URL(response.url, window.location.href)
 	}
 
 	const location = response.headers.get('Location')
 	if (location) {
-		navigateWithRefreshForSamePath(new URL(location, details.action))
-		return
+		return new URL(location, details.action)
 	}
 
 	throw new Error(
 		`Expected redirect location after form submit (${response.status} ${response.statusText})`,
 	)
+}
+
+async function submitFormThroughRouter(details: FormSubmitDetails) {
+	if (details.method === 'get') {
+		navigate(buildGetDestination(details.action, details.formData).toString())
+		return
+	}
+
+	const destination = await submitPostFormThroughRouter(details)
+	navigateWithRefreshForSamePath(destination)
 }
 
 function handleDocumentSubmit(event: Event) {
@@ -241,9 +353,68 @@ function handleDocumentSubmit(event: Event) {
 	})
 }
 
+function shouldInterceptNavigationEvent(event: RouterNavigateEvent) {
+	if (typeof window === 'undefined') return false
+	if (!event.canIntercept) return false
+	if (event.downloadRequest !== null) return false
+	if (event.hashChange) return false
+
+	const destination = new URL(event.destination.url, window.location.href)
+	if (destination.origin !== window.location.origin) return false
+	return true
+}
+
+function getRedirectHistoryForDestination(destination: URL): RouterNavigationHistory {
+	if (
+		getPathWithSearchAndHashFromUrl(destination) ===
+		getCurrentPathWithSearchAndHash()
+	) {
+		return 'replace'
+	}
+	return 'push'
+}
+
+function handleNavigationEvent(event: RouterNavigateEvent) {
+	if (!shouldInterceptNavigationEvent(event)) return
+
+	const formDetails = resolveNavigateEventFormSubmitDetails(event)
+	if (formDetails) {
+		event.intercept({
+			async precommitHandler(controller) {
+				try {
+					const destination = await submitPostFormThroughRouter(formDetails)
+					controller.redirect(destination.toString(), {
+						history: getRedirectHistoryForDestination(destination),
+					})
+					controller.addHandler(() => {
+						notify()
+					})
+				} catch (error) {
+					console.error('Router form submit failed', error)
+					throw error
+				}
+			},
+		})
+		return
+	}
+
+	event.intercept({
+		handler() {
+			notify()
+		},
+	})
+}
+
 function ensureRouter() {
 	if (routerInitialized) return
 	routerInitialized = true
+
+	const navigationApi = getNavigationApi()
+	if (navigationApi) {
+		navigationApi.addEventListener('navigate', handleNavigationEvent)
+		return
+	}
+
 	window.addEventListener('popstate', notify)
 	document.addEventListener('click', handleDocumentClick)
 	document.addEventListener('submit', handleDocumentSubmit)
@@ -276,6 +447,12 @@ export function navigate(to: string) {
 
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
+
+	const navigationApi = getNavigationApi()
+	if (navigationApi) {
+		navigationApi.navigate(nextPath)
+		return
+	}
 
 	window.history.pushState({}, '', nextPath)
 	notify()
