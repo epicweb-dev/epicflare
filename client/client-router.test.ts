@@ -1,6 +1,16 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { type Handle } from 'remix/component'
 
+type TestWindow = Window &
+	typeof globalThis & {
+		navigation?: EventTarget & {
+			navigate?: (url: string) => {
+				committed: Promise<unknown>
+				finished: Promise<unknown>
+			}
+		}
+	}
+
 const originalWindow = globalThis.window
 
 afterEach(() => {
@@ -31,13 +41,14 @@ test('navigate uses the Navigation API when available', async () => {
 			assign: vi.fn(),
 			hash: '',
 			href: 'https://example.com/',
+			origin: 'https://example.com',
 			pathname: '/',
 			search: '',
 		},
 		navigation: {
 			navigate: navigationNavigate,
 		},
-	} as unknown as Window & typeof globalThis
+	} as unknown as TestWindow
 
 	const { navigate } = await loadClientRouter()
 	navigate('/login?redirectTo=%2Faccount#start')
@@ -55,6 +66,7 @@ test('listenToRouterNavigation rerenders for intercepted Navigation API events',
 			assign: vi.fn(),
 			hash: '',
 			href: 'https://example.com/',
+			origin: 'https://example.com',
 			pathname: '/',
 			search: '',
 		},
@@ -68,7 +80,7 @@ test('listenToRouterNavigation rerenders for intercepted Navigation API events',
 				finished: Promise.resolve(),
 			})),
 		},
-	} as unknown as Window & typeof globalThis
+	} as unknown as TestWindow
 
 	const { listenToRouterNavigation } = await loadClientRouter()
 	const handle = {
@@ -102,7 +114,7 @@ test('listenToRouterNavigation rerenders for intercepted Navigation API events',
 		sourceElement: null,
 	})
 
-	globalThis.window.navigation!.dispatchEvent(event)
+	;(globalThis.window as TestWindow).navigation!.dispatchEvent(event)
 
 	expect(intercepted).toBe(true)
 	expect(listenerCalls).toEqual(['navigate'])

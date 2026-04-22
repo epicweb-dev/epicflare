@@ -386,13 +386,13 @@ function handleNavigationEvent(event: RouterNavigateEvent) {
 					controller.redirect(destination.toString(), {
 						history: getRedirectHistoryForDestination(destination),
 					})
-					controller.addHandler(() => {
-						notify()
-					})
 				} catch (error) {
 					console.error('Router form submit failed', error)
 					throw error
 				}
+			},
+			handler() {
+				notify()
 			},
 		})
 		return
