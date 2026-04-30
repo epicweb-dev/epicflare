@@ -1,4 +1,4 @@
-<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-alpha.6/packages/route-pattern -->
+<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-beta.0/packages/route-pattern -->
 
 # route-pattern
 
@@ -161,7 +161,7 @@ router.match('https://example.com/search?q=hello')
 ## Benchmark
 
 Benchmarks live in
-[`bench/`](https://github.com/remix-run/remix/tree/remix%403.0.0-alpha.6/packages/route-pattern/bench).
+[`bench/`](https://github.com/remix-run/remix/tree/remix%403.0.0-beta.0/packages/route-pattern/bench).
 
 ## Related Work
 

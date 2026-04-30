@@ -1,4 +1,4 @@
-<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-alpha.6/packages/cors-middleware -->
+<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-beta.0/packages/cors-middleware -->
 
 # cors-middleware
 

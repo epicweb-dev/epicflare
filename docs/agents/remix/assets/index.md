@@ -1,4 +1,4 @@
-<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-alpha.6/packages/assets -->
+<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-beta.0/packages/assets -->
 
 # assets
 
@@ -34,9 +34,10 @@ import { createRouter } from 'remix/fetch-router'
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
+	basePath: '/assets',
 	fileMap: {
-		'/assets/app/*path': 'app/*path',
-		'/assets/npm/*path': 'node_modules/*path',
+		'/app/*path': 'app/*path',
+		'/npm/*path': 'node_modules/*path',
 	},
 	allow: ['app/assets/**', 'node_modules/**'],
 })
@@ -62,9 +63,10 @@ import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
 	rootDir: path.resolve(import.meta.dirname, '..'),
+	basePath: '/assets',
 	fileMap: {
-		'/assets/app/*path': 'app/*path',
-		'/assets/npm/*path': 'node_modules/*path',
+		'/app/*path': 'app/*path',
+		'/npm/*path': 'node_modules/*path',
 	},
 	allow: ['app/assets/**', 'node_modules/**'],
 })
@@ -79,7 +81,8 @@ served. `deny` is optional and takes precedence over `allow`.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	deny: ['app/**/*.server.*'],
 })
@@ -91,16 +94,18 @@ directory paths also match their descendants.
 
 ## File Map
 
-Use `fileMap` to map public URLs to file paths on disk. The keys are public URL
-patterns, and the values are root-relative file path patterns.
+Use `fileMap` to map public URLs to file paths on disk. `basePath` defines the
+shared public mount point, and the `fileMap` keys are URL patterns relative to
+that base path. The values are root-relative file path patterns.
 
 ```ts
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
+	basePath: '/assets',
 	fileMap: {
-		'/assets/app/*path': 'app/*path',
-		'/assets/packages/*path': '../packages/*path',
+		'/app/*path': 'app/*path',
+		'/packages/*path': '../packages/*path',
 	},
 	allow: ['app/assets/**', '../packages/**'],
 })
@@ -110,7 +115,8 @@ let assetServer = createAssetServer({
 [`route-pattern`](https://github.com/remix-run/remix/tree/main/packages/route-pattern)
 syntax for both URL and file patterns. Wildcards must be named, and the same
 params must appear in both patterns so imports can be rewritten back to public
-URLs.
+URLs. For example, with `basePath: '/assets'`, a `fileMap` key of `'/app/*path'`
+is served at `/assets/app/*path`.
 
 ### File watching
 
@@ -121,7 +127,8 @@ requiring a server restart.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**', 'app/node_modules/**'],
 })
 ```
@@ -140,7 +147,8 @@ is managed at a higher level (e.g. Node's `--watch` flag).
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**', 'app/node_modules/**'],
 	watch: false,
 })
@@ -153,7 +161,8 @@ option:
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**', 'app/node_modules/**'],
 	watch: {
 		ignore: ['**/node_modules/**'],
@@ -205,7 +214,8 @@ opt into source-based fingerprinting.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	watch: false,
 	fingerprint: {
@@ -232,7 +242,8 @@ ECMAScript version.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	target: {
 		chrome: '109',
@@ -253,7 +264,8 @@ Enable sourcemaps with either `'external'` or `'inline'` using `sourceMaps`:
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	sourceMaps: 'external',
 })
@@ -267,7 +279,8 @@ paths instead with `sourceMapSourcePaths`:
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	sourceMaps: 'inline',
 	sourceMapSourcePaths: 'absolute',
@@ -282,7 +295,8 @@ Enable minification with `minify`:
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	minify: true,
 })
@@ -298,7 +312,8 @@ Use `scripts.define` to replace global identifiers with constant expressions.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**', 'app/node_modules/**'],
 	scripts: {
 		define: {
@@ -321,7 +336,8 @@ providing an array of specifiers.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	scripts: {
 		external: ['my-external-import'],
@@ -351,7 +367,8 @@ response.
 import { createAssetServer } from 'remix/assets'
 
 let assetServer = createAssetServer({
-	fileMap: { '/assets/app/*path': 'app/*path' },
+	basePath: '/assets',
+	fileMap: { '/app/*path': 'app/*path' },
 	allow: ['app/assets/**'],
 	onError(error) {
 		console.error('Failed to build client assets', error)

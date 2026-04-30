@@ -1,4 +1,4 @@
-<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-alpha.6/packages/fetch-proxy -->
+<!-- Downloaded from https://github.com/remix-run/remix/tree/remix@3.0.0-beta.0/packages/fetch-proxy -->
 
 # fetch-proxy
 
