@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/ui'
+import { addEventListeners, type Handle } from 'remix/ui'
 
 type RouterSetup = {
 	routes: Record<string, JSX.Element>
@@ -363,9 +363,12 @@ function ensureRouter() {
 	document.addEventListener('click', handleDocumentClick)
 }
 
-export function listenToRouterNavigation(handle: Handle, listener: () => void) {
+export function listenToRouterNavigation(
+	handle: Handle<any>,
+	listener: () => void,
+) {
 	ensureRouter()
-	handle.on(routerEvents, {
+	addEventListeners(routerEvents, handle.signal, {
 		navigate: () => listener(),
 	})
 }
@@ -401,15 +404,15 @@ export function navigate(to: string) {
 	notify()
 }
 
-export function Router(handle: Handle, setup: RouterSetup) {
+export function Router(handle: Handle<RouterSetup>) {
 	listenToRouterNavigation(handle, () => {
 		void handle.update()
 	})
 
 	return () => {
 		const path = getPathname()
-		const routeElement = matchRoute(path, setup.routes)
+		const routeElement = matchRoute(path, handle.props.routes)
 		if (routeElement) return routeElement
-		return setup.fallback ?? null
+		return handle.props.fallback ?? null
 	}
 }
