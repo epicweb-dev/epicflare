@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 import { buildAuthLink } from '#client/auth-links.ts'
 import {
 	getPathname,

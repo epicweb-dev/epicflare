@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 
 type RouterSetup = {
 	routes: Record<string, JSX.Element>
@@ -64,7 +64,9 @@ function notify() {
 
 function getNavigationApi() {
 	if (typeof window === 'undefined') return null
-	return (window as Window & { navigation?: RouterNavigation }).navigation ?? null
+	return (
+		(window as Window & { navigation?: RouterNavigation }).navigation ?? null
+	)
 }
 
 function isSameOriginUrl(url: URL) {

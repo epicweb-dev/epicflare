@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 import { Counter } from '#client/counter.tsx'
 import {
 	colors,

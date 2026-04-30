@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { expect, test, vi } from 'vitest'
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 
 type QueueTask = Parameters<Handle['queueTask']>[0]
 
@@ -95,10 +95,12 @@ test('aborted refresh does not erase a ready authenticated session', async () =>
 	const accountLinkAfterAbort = navAfterAbortItems[2] as {
 		props?: { children?: Array<unknown> }
 	}
-	const accountEntryAfterAbort = (accountLinkAfterAbort.props?.children ?? [])[1] as {
+	const accountEntryAfterAbort = (accountLinkAfterAbort.props?.children ??
+		[])[1] as {
 		props?: { children?: string }
 	}
-	const logoutEntryAfterAbort = (accountLinkAfterAbort.props?.children ?? [])[2] as {
+	const logoutEntryAfterAbort = (accountLinkAfterAbort.props?.children ??
+		[])[2] as {
 		props?: { children?: { props?: { children?: string } } }
 	}
 	expect(accountEntryAfterAbort.props?.children).toBe('signed-in@example.com')

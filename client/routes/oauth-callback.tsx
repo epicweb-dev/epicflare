@@ -1,5 +1,5 @@
 import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 
 export function OAuthCallbackRoute(_handle: Handle) {
 	return () => {
