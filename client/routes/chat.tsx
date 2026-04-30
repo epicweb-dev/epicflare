@@ -1,7 +1,6 @@
 import { addEventListeners, css, on, type Handle } from 'remix/ui'
 import { ChatClient, type ChatClientSnapshot } from '#client/chat-client.ts'
 import { navigate, routerEvents } from '#client/client-router.tsx'
-import { createDoubleCheck } from '#client/double-check.ts'
 import { EditableText } from '#client/editable-text.tsx'
 import {
 	createInfiniteList,
@@ -384,22 +383,19 @@ export function ChatRoute(handle: Handle) {
 	let showThreadListScrollFadeTop = false
 	let showThreadListScrollFadeBottom = false
 	const disconnectedIndicator = createSpinDelay(handle, { ssr: false })
-	const deleteThreadChecks = new Map<
-		string,
-		ReturnType<typeof createDoubleCheck>
-	>()
+	const confirmingDeleteThreadIds = new Set<string>()
 	const threadList = createInfiniteList<ChatThreadSummary>({
 		mergeDirection: 'append',
 		getKey: (thread) => thread.id,
 		onSnapshot(snapshot) {
 			threadListSnapshot = snapshot
-			if (deleteThreadChecks.size) {
+			if (confirmingDeleteThreadIds.size) {
 				const activeThreadIds = new Set(
 					snapshot.items.map((thread) => thread.id),
 				)
-				for (const threadId of deleteThreadChecks.keys()) {
+				for (const threadId of confirmingDeleteThreadIds) {
 					if (!activeThreadIds.has(threadId)) {
-						deleteThreadChecks.delete(threadId)
+						confirmingDeleteThreadIds.delete(threadId)
 					}
 				}
 			}
@@ -778,10 +774,10 @@ export function ChatRoute(handle: Handle) {
 	}
 	async function handleDeleteThread(threadId: string) {
 		actionError = null
+		confirmingDeleteThreadIds.delete(threadId)
 		update()
 		try {
 			await deleteThread(threadId)
-			deleteThreadChecks.delete(threadId)
 			if (activeThreadId === threadId) {
 				activeClient?.close()
 				activeClient = null
@@ -803,6 +799,19 @@ export function ChatRoute(handle: Handle) {
 				error instanceof Error ? error.message : 'Unable to delete thread.'
 			update()
 		}
+	}
+	function handleDeleteThreadClick(event: MouseEvent, threadId: string) {
+		if (!confirmingDeleteThreadIds.has(threadId)) {
+			event.preventDefault()
+			confirmingDeleteThreadIds.add(threadId)
+			update()
+			return
+		}
+		void handleDeleteThread(threadId)
+	}
+	function resetThreadDeleteConfirmation(threadId: string) {
+		if (!confirmingDeleteThreadIds.delete(threadId)) return
+		update()
 	}
 	async function handleRenameThread(threadId: string, title: string) {
 		actionError = null
@@ -1024,11 +1033,9 @@ export function ChatRoute(handle: Handle) {
 									</p>
 								) : null}
 								{threads.map((thread) => {
-									let deleteThreadCheck = deleteThreadChecks.get(thread.id)
-									if (!deleteThreadCheck) {
-										deleteThreadCheck = createDoubleCheck(handle)
-										deleteThreadChecks.set(thread.id, deleteThreadCheck)
-									}
+									const isDeleteConfirming = confirmingDeleteThreadIds.has(
+										thread.id,
+									)
 									const isActive = thread.id === activeThreadId
 									return (
 										<div
@@ -1116,22 +1123,23 @@ export function ChatRoute(handle: Handle) {
 											<button
 												type="button"
 												data-thread-delete-button="true"
-												{...deleteThreadCheck.getButtonProps({
-													on: {
-														click: () => handleDeleteThread(thread.id),
-													},
-												})}
 												aria-label={
-													deleteThreadCheck.doubleCheck
+													isDeleteConfirming
 														? `Confirm delete chat "${thread.title}"`
 														: `Delete chat "${thread.title}"`
 												}
 												title={
-													deleteThreadCheck.doubleCheck
+													isDeleteConfirming
 														? `Click again to delete "${thread.title}"`
 														: `Delete chat "${thread.title}"`
 												}
 												mix={[
+													on('blur', () =>
+														resetThreadDeleteConfirmation(thread.id),
+													),
+													on('click', (event) =>
+														handleDeleteThreadClick(event, thread.id),
+													),
 													css({
 														position: 'absolute',
 														right: spacing.sm,
@@ -1141,26 +1149,23 @@ export function ChatRoute(handle: Handle) {
 														justifyContent: 'center',
 														minWidth: '2rem',
 														height: '2rem',
-														padding: deleteThreadCheck.doubleCheck
-															? `0 ${spacing.sm}`
-															: 0,
-														borderRadius: deleteThreadCheck.doubleCheck
+														padding: isDeleteConfirming ? `0 ${spacing.sm}` : 0,
+														borderRadius: isDeleteConfirming
 															? radius.md
 															: radius.full,
 														border: `1px solid ${
-															deleteThreadCheck.doubleCheck
+															isDeleteConfirming
 																? colors.dangerHover
 																: colors.border
 														}`,
-														backgroundColor: deleteThreadCheck.doubleCheck
+														backgroundColor: isDeleteConfirming
 															? colors.danger
 															: colors.surface,
-														color: deleteThreadCheck.doubleCheck
+														color: isDeleteConfirming
 															? colors.onDanger
 															: colors.textMuted,
 														cursor: 'pointer',
 														opacity: 0,
-														pointerEvents: 'none',
 														transition: `opacity ${transitions.normal}, background-color ${transitions.normal}, border-color ${transitions.normal}, color ${transitions.normal}`,
 														'&:hover': {
 															backgroundColor: colors.danger,
@@ -1180,9 +1185,7 @@ export function ChatRoute(handle: Handle) {
 													}),
 												]}
 											>
-												{deleteThreadCheck.doubleCheck
-													? 'Confirm'
-													: renderTrashIcon()}
+												{isDeleteConfirming ? 'Confirm' : renderTrashIcon()}
 											</button>
 										</div>
 									)

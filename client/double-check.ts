@@ -1,13 +1,20 @@
-import { type Handle } from 'remix/ui'
+import {
+	on,
+	type ElementProps,
+	type Handle,
+	type MixinDescriptor,
+} from 'remix/ui'
 
 type BlurHandler = (event: FocusEvent) => void
 type ClickHandler = (event: MouseEvent) => void
+type ButtonMixin = MixinDescriptor<HTMLButtonElement, any, ElementProps>
 
 type ButtonLikeProps = {
 	on?: {
 		blur?: BlurHandler
 		click?: ClickHandler
 	}
+	mix?: ButtonMixin | Array<ButtonMixin | null | undefined> | null
 	[key: string]: unknown
 }
 
@@ -19,6 +26,13 @@ function callAll<Event>(
 			handler?.(event)
 		}
 	}
+}
+
+function normalizeMix(
+	mix: ButtonLikeProps['mix'],
+): Array<ButtonMixin | null | undefined> {
+	if (!mix) return []
+	return Array.isArray(mix) ? [...mix] : [mix]
 }
 
 export function createDoubleCheck(handle: Handle) {
@@ -37,8 +51,9 @@ export function createDoubleCheck(handle: Handle) {
 		reset() {
 			setDoubleCheck(false)
 		},
-		getButtonProps<Props extends ButtonLikeProps>(props?: Props): Props {
-			const buttonProps = props ?? ({} as Props)
+		getButtonProps(props: ButtonLikeProps = {}) {
+			const buttonProps = props
+			const { on: handlers, mix, ...rest } = buttonProps
 
 			const onBlur: BlurHandler = () => {
 				setDoubleCheck(false)
@@ -51,17 +66,20 @@ export function createDoubleCheck(handle: Handle) {
 					return
 				}
 
-				buttonProps.on?.click?.(event)
+				handlers?.click?.(event)
 				setDoubleCheck(false)
 			}
 
 			return {
-				...buttonProps,
-				on: {
-					...buttonProps.on,
-					blur: callAll(onBlur, buttonProps.on?.blur),
-					click: onClick,
-				},
+				...rest,
+				mix: [
+					...normalizeMix(mix),
+					on<HTMLButtonElement, 'blur'>(
+						'blur',
+						callAll(onBlur, handlers?.blur),
+					),
+					on<HTMLButtonElement, 'click'>('click', onClick),
+				],
 			}
 		},
 	}
