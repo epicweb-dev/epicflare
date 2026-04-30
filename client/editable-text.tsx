@@ -1,5 +1,4 @@
-import { type Handle } from 'remix/component'
-
+import { css, on, type Handle } from 'remix/ui'
 type EditableTextProps = {
 	id: string
 	ariaLabel: string
@@ -9,7 +8,6 @@ type EditableTextProps = {
 	inputCss?: Record<string, unknown>
 	onSave: (value: string) => Promise<boolean> | boolean
 }
-
 const inheritTextStyles = {
 	fontSize: 'inherit',
 	fontStyle: 'inherit',
@@ -19,12 +17,10 @@ const inheritTextStyles = {
 	lineHeight: 'inherit',
 	color: 'inherit',
 } as const
-
 export function EditableText(handle: Handle) {
 	let isEditing = false
 	let draftValue = ''
 	let isSaving = false
-
 	function focusInput(inputId: string) {
 		void handle.queueTask(async () => {
 			const input = document.getElementById(inputId)
@@ -33,7 +29,6 @@ export function EditableText(handle: Handle) {
 			input.select()
 		})
 	}
-
 	function focusButton(buttonId: string) {
 		void handle.queueTask(async () => {
 			const button = document.getElementById(buttonId)
@@ -41,10 +36,8 @@ export function EditableText(handle: Handle) {
 			button.focus()
 		})
 	}
-
 	return (props: EditableTextProps) => {
 		const buttonId = `${props.id}-button`
-
 		function startEditing() {
 			if (isSaving) return
 			draftValue = props.value
@@ -52,7 +45,6 @@ export function EditableText(handle: Handle) {
 			handle.update()
 			focusInput(props.id)
 		}
-
 		function cancelEditing() {
 			if (isSaving) return
 			draftValue = props.value
@@ -60,13 +52,11 @@ export function EditableText(handle: Handle) {
 			handle.update()
 			focusButton(buttonId)
 		}
-
 		async function submitEditing(event: SubmitEvent) {
 			event.preventDefault()
 			if (isSaving) return
 			const nextValue = draftValue.trim()
 			if (!nextValue) return
-
 			isSaving = true
 			handle.update()
 			let didSave = false
@@ -82,18 +72,15 @@ export function EditableText(handle: Handle) {
 				handle.update()
 				return
 			}
-
 			isEditing = false
 			handle.update()
 			focusButton(buttonId)
 		}
-
 		function handleDraftInput(event: Event) {
 			if (!(event.currentTarget instanceof HTMLInputElement)) return
 			draftValue = event.currentTarget.value
 			handle.update()
 		}
-
 		function handleDraftKeyDown(event: KeyboardEvent) {
 			if (!(event.currentTarget instanceof HTMLInputElement)) return
 			if (event.key === 'Escape') {
@@ -106,15 +93,16 @@ export function EditableText(handle: Handle) {
 				event.currentTarget.form?.requestSubmit()
 			}
 		}
-
 		if (isEditing) {
 			return (
 				<form
-					on={{ submit: submitEditing }}
-					css={{
-						display: 'block',
-						width: '100%',
-					}}
+					mix={[
+						on<HTMLFormElement, 'submit'>('submit', submitEditing),
+						css({
+							display: 'block',
+							width: '100%',
+						}),
+					]}
 				>
 					<input
 						required
@@ -126,43 +114,44 @@ export function EditableText(handle: Handle) {
 						autocomplete="off"
 						value={draftValue}
 						disabled={isSaving}
-						on={{
-							input: handleDraftInput,
-							keydown: handleDraftKeyDown,
-						}}
-						css={{
-							display: 'block',
-							width: 'auto',
-							maxWidth: '100%',
-							minWidth: '1ch',
-							padding: 0,
-							border: 'none',
-							background: 'none',
-							outline: 'none',
-							fieldSizing: 'content',
-							...inheritTextStyles,
-							...props.inputCss,
-						}}
+						mix={[
+							on<HTMLInputElement, 'input'>('input', handleDraftInput),
+							on<HTMLElement, 'keydown'>('keydown', handleDraftKeyDown),
+							css({
+								display: 'block',
+								width: 'auto',
+								maxWidth: '100%',
+								minWidth: '1ch',
+								padding: 0,
+								border: 'none',
+								background: 'none',
+								outline: 'none',
+								fieldSizing: 'content',
+								...inheritTextStyles,
+								...props.inputCss,
+							}),
+						]}
 					/>
 				</form>
 			)
 		}
-
 		return (
 			<button
 				id={buttonId}
 				type="button"
-				on={{ click: startEditing }}
-				css={{
-					display: 'block',
-					width: '100%',
-					padding: 0,
-					border: 'none',
-					background: 'none',
-					cursor: 'pointer',
-					...inheritTextStyles,
-					...props.buttonCss,
-				}}
+				mix={[
+					on('click', startEditing),
+					css({
+						display: 'block',
+						width: '100%',
+						padding: 0,
+						border: 'none',
+						background: 'none',
+						cursor: 'pointer',
+						...inheritTextStyles,
+						...props.buttonCss,
+					}),
+				]}
 			>
 				{props.value.trim() || props.emptyText || 'Edit'}
 			</button>

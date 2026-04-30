@@ -1,17 +1,16 @@
-import { createTable } from 'remix/data-table'
-import { number, string } from 'remix/data-schema'
+import { column as c, table } from 'remix/data-table'
 
-export const aiCapturedRequestsTable = createTable({
+export const aiCapturedRequestsTable = table({
 	name: 'ai_captured_requests',
 	columns: {
-		id: string(),
-		token_hash: string(),
-		received_at: number(),
-		scenario: string(),
-		last_user_message: string(),
-		tool_names_json: string(),
-		request_json: string(),
-		response_text: string(),
+		id: c.text(),
+		token_hash: c.text(),
+		received_at: c.integer(),
+		scenario: c.text(),
+		last_user_message: c.text(),
+		tool_names_json: c.text(),
+		request_json: c.text(),
+		response_text: c.text(),
 	},
 	primaryKey: 'id',
 })

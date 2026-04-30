@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { type Handle } from 'remix/component'
+import { type Handle } from 'remix/ui'
 
 type TestWindow = Window &
 	typeof globalThis & {
@@ -64,7 +64,8 @@ function installDocumentStub() {
 	globalThis.HTMLInputElement =
 		MockHtmlInputElement as unknown as typeof HTMLInputElement
 	globalThis.document = {
-		addEventListener: documentEventTarget.addEventListener.bind(documentEventTarget),
+		addEventListener:
+			documentEventTarget.addEventListener.bind(documentEventTarget),
 		removeEventListener:
 			documentEventTarget.removeEventListener.bind(documentEventTarget),
 		dispatchEvent: documentEventTarget.dispatchEvent.bind(documentEventTarget),
@@ -98,7 +99,9 @@ test('navigate uses the Navigation API when available', async () => {
 	const { navigate } = await loadClientRouter()
 	navigate('/login?redirectTo=%2Faccount#start')
 
-	expect(navigationNavigate).toHaveBeenCalledWith('/login?redirectTo=%2Faccount#start')
+	expect(navigationNavigate).toHaveBeenCalledWith(
+		'/login?redirectTo=%2Faccount#start',
+	)
 	expect(historyPushState).not.toHaveBeenCalled()
 })
 
@@ -120,7 +123,9 @@ test('listenToRouterNavigation rerenders for intercepted Navigation API events',
 			addEventListener: navigationEventTarget.addEventListener.bind(
 				navigationEventTarget,
 			),
-			dispatchEvent: navigationEventTarget.dispatchEvent.bind(navigationEventTarget),
+			dispatchEvent: navigationEventTarget.dispatchEvent.bind(
+				navigationEventTarget,
+			),
 			navigate: vi.fn(() => ({
 				committed: Promise.resolve(),
 				finished: Promise.resolve(),
@@ -184,7 +189,9 @@ test('reload navigations are not intercepted', async () => {
 			addEventListener: navigationEventTarget.addEventListener.bind(
 				navigationEventTarget,
 			),
-			dispatchEvent: navigationEventTarget.dispatchEvent.bind(navigationEventTarget),
+			dispatchEvent: navigationEventTarget.dispatchEvent.bind(
+				navigationEventTarget,
+			),
 			navigate: vi.fn(() => ({
 				committed: Promise.resolve(),
 				finished: Promise.resolve(),
@@ -248,7 +255,9 @@ test('navigate-event data-router-skip forms are not intercepted', async () => {
 			addEventListener: navigationEventTarget.addEventListener.bind(
 				navigationEventTarget,
 			),
-			dispatchEvent: navigationEventTarget.dispatchEvent.bind(navigationEventTarget),
+			dispatchEvent: navigationEventTarget.dispatchEvent.bind(
+				navigationEventTarget,
+			),
 			navigate: vi.fn(() => ({
 				committed: Promise.resolve(),
 				finished: Promise.resolve(),

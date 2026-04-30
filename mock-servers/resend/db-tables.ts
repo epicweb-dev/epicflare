@@ -1,17 +1,16 @@
-import { createTable } from 'remix/data-table'
-import { number, string } from 'remix/data-schema'
+import { column as c, table } from 'remix/data-table'
 
-export const resendCapturedEmailsTable = createTable({
+export const resendCapturedEmailsTable = table({
 	name: 'resend_captured_emails',
 	columns: {
-		id: string(),
-		token_hash: string(),
-		received_at: number(),
-		from_email: string(),
-		to_json: string(),
-		subject: string(),
-		html: string(),
-		payload_json: string(),
+		id: c.text(),
+		token_hash: c.text(),
+		received_at: c.integer(),
+		from_email: c.text(),
+		to_json: c.text(),
+		subject: c.text(),
+		html: c.text(),
+		payload_json: c.text(),
 	},
 	primaryKey: 'id',
 })

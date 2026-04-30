@@ -1,4 +1,4 @@
-import { type Handle } from 'remix/component'
+import { addEventListeners, type Handle } from 'remix/ui'
 
 type RouterSetup = {
 	routes: Record<string, JSX.Element>
@@ -64,7 +64,9 @@ function notify() {
 
 function getNavigationApi() {
 	if (typeof window === 'undefined') return null
-	return (window as Window & { navigation?: RouterNavigation }).navigation ?? null
+	return (
+		(window as Window & { navigation?: RouterNavigation }).navigation ?? null
+	)
 }
 
 function isSameOriginUrl(url: URL) {
@@ -361,9 +363,12 @@ function ensureRouter() {
 	document.addEventListener('click', handleDocumentClick)
 }
 
-export function listenToRouterNavigation(handle: Handle, listener: () => void) {
+export function listenToRouterNavigation(
+	handle: Handle<any>,
+	listener: () => void,
+) {
 	ensureRouter()
-	handle.on(routerEvents, {
+	addEventListeners(routerEvents, handle.signal, {
 		navigate: () => listener(),
 	})
 }
@@ -399,15 +404,15 @@ export function navigate(to: string) {
 	notify()
 }
 
-export function Router(handle: Handle, setup: RouterSetup) {
+export function Router(handle: Handle<RouterSetup>) {
 	listenToRouterNavigation(handle, () => {
 		void handle.update()
 	})
 
 	return () => {
 		const path = getPathname()
-		const routeElement = matchRoute(path, setup.routes)
+		const routeElement = matchRoute(path, handle.props.routes)
 		if (routeElement) return routeElement
-		return setup.fallback ?? null
+		return handle.props.fallback ?? null
 	}
 }

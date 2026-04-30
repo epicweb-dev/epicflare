@@ -31,7 +31,7 @@ export function createAuthHandler(appEnv: AppEnv) {
 
 	return {
 		middleware: [],
-		async action({ request, url }) {
+		async handler({ request, url }) {
 			let body: unknown
 
 			try {

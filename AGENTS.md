@@ -14,7 +14,7 @@ This file is intentionally brief. Detailed instructions live in focused docs:
 - Tooling and framework references:
   - [docs/agents/harness-engineering.md](./docs/agents/harness-engineering.md)
   - [docs/agents/oxlint-js-plugins.md](./docs/agents/oxlint-js-plugins.md)
-  - [docs/agents/remix/index.md](./docs/agents/remix/index.md)
+  - [Remix skill](./.agents/skills/remix/SKILL.md)
   - [docs/agents/cloudflare-agents-sdk.md](./docs/agents/cloudflare-agents-sdk.md)
   - [docs/agents/mcp-apps-starter-guide.md](./docs/agents/mcp-apps-starter-guide.md)
 - Project setup references:

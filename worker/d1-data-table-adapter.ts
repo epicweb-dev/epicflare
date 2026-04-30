@@ -2,9 +2,15 @@ import {
 	getTableName,
 	getTablePrimaryKey,
 	type AdapterCapabilityOverrides,
-	type AdapterExecuteRequest,
-	type AdapterResult,
-	type AdapterStatement,
+	type AdapterCapabilities,
+	type DataManipulationOperation,
+	type DataManipulationRequest,
+	type DataManipulationResult,
+	type DataMigrationOperation,
+	type DataMigrationRequest,
+	type DataMigrationResult,
+	type SqlStatement,
+	type TableRef,
 	type DatabaseAdapter,
 	type TransactionOptions,
 	type TransactionToken,
@@ -48,11 +54,7 @@ type D1PreparedQuery = {
  */
 export class D1DataTableAdapter implements DatabaseAdapter {
 	dialect = 'sqlite'
-	capabilities: {
-		returning: boolean
-		savepoints: boolean
-		upsert: boolean
-	}
+	capabilities: AdapterCapabilities
 
 	#database: D1Database
 	#transactions = new Set<string>()
@@ -69,51 +71,73 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 			returning: options?.capabilities?.returning ?? true,
 			savepoints: options?.capabilities?.savepoints ?? false,
 			upsert: options?.capabilities?.upsert ?? true,
+			transactionalDdl: options?.capabilities?.transactionalDdl ?? false,
+			migrationLock: options?.capabilities?.migrationLock ?? false,
 		}
 	}
 
-	async execute(request: AdapterExecuteRequest): Promise<AdapterResult> {
+	compileSql(
+		operation: DataManipulationOperation | DataMigrationOperation,
+	): Array<SqlStatement> {
+		const statement =
+			operation.kind === 'raw' ||
+			operation.kind === 'select' ||
+			operation.kind === 'count' ||
+			operation.kind === 'exists' ||
+			operation.kind === 'insert' ||
+			operation.kind === 'insertMany' ||
+			operation.kind === 'update' ||
+			operation.kind === 'delete' ||
+			operation.kind === 'upsert'
+				? compileSqliteStatement(operation)
+				: compileSqliteMigrationStatement(operation)
+		return [{ text: statement.text, values: statement.values }]
+	}
+
+	async execute(
+		request: DataManipulationRequest,
+	): Promise<DataManipulationResult> {
 		if (
-			request.statement.kind === 'insertMany' &&
-			request.statement.values.length === 0
+			request.operation.kind === 'insertMany' &&
+			request.operation.values.length === 0
 		) {
 			return {
 				affectedRows: 0,
 				insertId: undefined,
-				rows: request.statement.returning ? [] : undefined,
+				rows: request.operation.returning ? [] : undefined,
 			}
 		}
 
-		const statement = compileSqliteStatement(request.statement)
+		const statement = compileSqliteStatement(request.operation)
 		const prepared = this.#database
 			.prepare(statement.text)
 			.bind(...statement.values) as unknown as D1PreparedQuery
 
 		const shouldReadRows =
-			request.statement.kind === 'select' ||
-			request.statement.kind === 'count' ||
-			request.statement.kind === 'exists' ||
-			hasReturningClause(request.statement)
+			request.operation.kind === 'select' ||
+			request.operation.kind === 'count' ||
+			request.operation.kind === 'exists' ||
+			hasReturningClause(request.operation)
 
 		if (shouldReadRows) {
 			const result = (await prepared.all()) as D1StatementResult
 			let rows = normalizeRows(result.results ?? [])
 			if (
-				request.statement.kind === 'count' ||
-				request.statement.kind === 'exists'
+				request.operation.kind === 'count' ||
+				request.operation.kind === 'exists'
 			) {
 				rows = normalizeCountRows(rows)
 			}
 			return {
 				rows,
 				affectedRows: normalizeAffectedRowsForReader(
-					request.statement.kind,
+					request.operation.kind,
 					rows,
 					result.meta,
 				),
 				insertId: normalizeInsertIdForReader(
-					request.statement.kind,
-					request.statement,
+					request.operation.kind,
+					request.operation,
 					rows,
 					result.meta,
 				),
@@ -122,13 +146,41 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 
 		const result = (await prepared.run()) as D1StatementResult
 		return {
-			affectedRows: normalizeAffectedRowsForRun(request.statement.kind, result),
+			affectedRows: normalizeAffectedRowsForRun(request.operation.kind, result),
 			insertId: normalizeInsertIdForRun(
-				request.statement.kind,
-				request.statement,
+				request.operation.kind,
+				request.operation,
 				result,
 			),
 		}
+	}
+
+	async migrate(request: DataMigrationRequest): Promise<DataMigrationResult> {
+		const statements = this.compileSql(request.operation)
+		for (const statement of statements) {
+			await this.#database
+				.prepare(statement.text)
+				.bind(...statement.values)
+				.run()
+		}
+		return { affectedOperations: 1 }
+	}
+
+	async hasTable(table: TableRef): Promise<boolean> {
+		const result = await this.#database
+			.prepare(
+				"select 1 from sqlite_master where type = 'table' and name = ? limit 1",
+			)
+			.bind(table.name)
+			.all()
+		return Boolean(result.results?.length)
+	}
+
+	async hasColumn(table: TableRef, column: string): Promise<boolean> {
+		const result = await this.#database
+			.prepare(`pragma table_info(${quotePath(table.name)})`)
+			.all<{ name?: string }>()
+		return (result.results ?? []).some((field) => field.name === column)
 	}
 
 	async beginTransaction(
@@ -194,7 +246,7 @@ export function createD1DataTableAdapter(
 	return new D1DataTableAdapter(database, options)
 }
 
-function hasReturningClause(statement: AdapterStatement) {
+function hasReturningClause(statement: DataManipulationOperation) {
 	return (
 		(statement.kind === 'insert' ||
 			statement.kind === 'insertMany' ||
@@ -237,7 +289,7 @@ function normalizeCountRows(rows: Array<Record<string, unknown>>) {
 }
 
 function normalizeAffectedRowsForReader(
-	kind: AdapterStatement['kind'],
+	kind: DataManipulationOperation['kind'],
 	rows: Array<Record<string, unknown>>,
 	meta?: D1Meta,
 ) {
@@ -251,8 +303,8 @@ function normalizeAffectedRowsForReader(
 }
 
 function normalizeInsertIdForReader(
-	kind: AdapterStatement['kind'],
-	statement: AdapterStatement,
+	kind: DataManipulationOperation['kind'],
+	statement: DataManipulationOperation,
 	rows: Array<Record<string, unknown>>,
 	meta?: D1Meta,
 ) {
@@ -272,7 +324,7 @@ function normalizeInsertIdForReader(
 }
 
 function normalizeAffectedRowsForRun(
-	kind: AdapterStatement['kind'],
+	kind: DataManipulationOperation['kind'],
 	result: D1StatementResult,
 ) {
 	if (kind === 'select' || kind === 'count' || kind === 'exists') {
@@ -282,8 +334,8 @@ function normalizeAffectedRowsForRun(
 }
 
 function normalizeInsertIdForRun(
-	kind: AdapterStatement['kind'],
-	statement: AdapterStatement,
+	kind: DataManipulationOperation['kind'],
+	statement: DataManipulationOperation,
 	result: D1StatementResult,
 ) {
 	if (!isInsertStatementKind(kind) || !isInsertStatement(statement)) {
@@ -295,7 +347,7 @@ function normalizeInsertIdForRun(
 	return result.meta?.last_row_id
 }
 
-function isWriteStatementKind(kind: AdapterStatement['kind']) {
+function isWriteStatementKind(kind: DataManipulationOperation['kind']) {
 	return (
 		kind === 'insert' ||
 		kind === 'insertMany' ||
@@ -305,14 +357,14 @@ function isWriteStatementKind(kind: AdapterStatement['kind']) {
 	)
 }
 
-function isInsertStatementKind(kind: AdapterStatement['kind']) {
+function isInsertStatementKind(kind: DataManipulationOperation['kind']) {
 	return kind === 'insert' || kind === 'insertMany' || kind === 'upsert'
 }
 
 function isInsertStatement(
-	statement: AdapterStatement,
+	statement: DataManipulationOperation,
 ): statement is Extract<
-	AdapterStatement,
+	DataManipulationOperation,
 	{ kind: 'insert' | 'insertMany' | 'upsert' }
 > {
 	return (
@@ -327,7 +379,7 @@ function isInsertStatement(
  * adapter self-contained without depending on internal package paths.
  */
 function compileSqliteStatement(
-	statement: AdapterStatement,
+	statement: DataManipulationOperation,
 ): CompiledSqlStatement {
 	if (statement.kind === 'raw') {
 		return {
@@ -451,10 +503,138 @@ function compileSqliteStatement(
 	throw new Error('Unsupported statement kind')
 }
 
+function compileSqliteMigrationStatement(
+	operation: DataMigrationRequest['operation'],
+): CompiledSqlStatement {
+	if (operation.kind === 'raw') {
+		return {
+			text: operation.sql.text,
+			values: [...operation.sql.values],
+		}
+	}
+
+	if (operation.kind === 'createTable') {
+		const columnDefinitions = Object.entries(operation.columns).map(
+			([name, definition]) =>
+				quotePath(name) + ' ' + compileColumnDefinition(definition),
+		)
+		const constraints: Array<string> = []
+		if (operation.primaryKey) {
+			const columns = operation.primaryKey.columns
+				.map((column) => quotePath(column))
+				.join(', ')
+			const name = operation.primaryKey.name
+				? 'constraint ' + quotePath(operation.primaryKey.name) + ' '
+				: ''
+			constraints.push(name + 'primary key (' + columns + ')')
+		}
+		for (const unique of operation.uniques ?? []) {
+			const columns = unique.columns
+				.map((column) => quotePath(column))
+				.join(', ')
+			const name = unique.name
+				? 'constraint ' + quotePath(unique.name) + ' '
+				: ''
+			constraints.push(name + 'unique (' + columns + ')')
+		}
+		return {
+			text:
+				'create table ' +
+				(operation.ifNotExists ? 'if not exists ' : '') +
+				quoteTableRef(operation.table) +
+				' (' +
+				[...columnDefinitions, ...constraints].join(', ') +
+				')',
+			values: [],
+		}
+	}
+
+	if (operation.kind === 'dropTable') {
+		return {
+			text:
+				'drop table ' +
+				(operation.ifExists ? 'if exists ' : '') +
+				quoteTableRef(operation.table),
+			values: [],
+		}
+	}
+
+	if (operation.kind === 'createIndex') {
+		const index = operation.index
+		const unique = index.unique ? 'unique ' : ''
+		const columns = index.columns.map((column) => quotePath(column)).join(', ')
+		const where = index.where ? ' where ' + index.where : ''
+		return {
+			text:
+				'create ' +
+				unique +
+				'index ' +
+				(operation.ifNotExists ? 'if not exists ' : '') +
+				quotePath(index.name) +
+				' on ' +
+				quoteTableRef(index.table) +
+				' (' +
+				columns +
+				')' +
+				where,
+			values: [],
+		}
+	}
+
+	if (operation.kind === 'dropIndex') {
+		return {
+			text:
+				'drop index ' +
+				(operation.ifExists ? 'if exists ' : '') +
+				quotePath(operation.name),
+			values: [],
+		}
+	}
+
+	if (operation.kind === 'alterTable') {
+		if (operation.changes.length !== 1) {
+			throw new Error('D1 adapter supports one alter-table change at a time')
+		}
+		const change = operation.changes[0]
+		if (!change) {
+			throw new Error('alterTable requires at least one change')
+		}
+		if (change.kind === 'addColumn') {
+			return {
+				text:
+					'alter table ' +
+					quoteTableRef(operation.table) +
+					' add column ' +
+					quotePath(change.column) +
+					' ' +
+					compileColumnDefinition(change.definition),
+				values: [],
+			}
+		}
+		if (change.kind === 'renameColumn') {
+			return {
+				text:
+					'alter table ' +
+					quoteTableRef(operation.table) +
+					' rename column ' +
+					quotePath(change.from) +
+					' to ' +
+					quotePath(change.to),
+				values: [],
+			}
+		}
+	}
+
+	throw new Error('Unsupported D1 migration operation: ' + operation.kind)
+}
+
 function compileInsertStatement(
-	table: Extract<AdapterStatement, { kind: 'insert' }>['table'],
+	table: Extract<DataManipulationOperation, { kind: 'insert' }>['table'],
 	values: Record<string, unknown>,
-	returning: Extract<AdapterStatement, { kind: 'insert' }>['returning'],
+	returning: Extract<
+		DataManipulationOperation,
+		{ kind: 'insert' }
+	>['returning'],
 	context: SqliteCompileContext,
 ): CompiledSqlStatement {
 	const columns = Object.keys(values)
@@ -484,9 +664,12 @@ function compileInsertStatement(
 }
 
 function compileInsertManyStatement(
-	table: Extract<AdapterStatement, { kind: 'insertMany' }>['table'],
+	table: Extract<DataManipulationOperation, { kind: 'insertMany' }>['table'],
 	rows: Array<Record<string, unknown>>,
-	returning: Extract<AdapterStatement, { kind: 'insertMany' }>['returning'],
+	returning: Extract<
+		DataManipulationOperation,
+		{ kind: 'insertMany' }
+	>['returning'],
 	context: SqliteCompileContext,
 ): CompiledSqlStatement {
 	if (rows.length === 0) {
@@ -536,7 +719,7 @@ function compileInsertManyStatement(
 }
 
 function compileUpsertStatement(
-	statement: Extract<AdapterStatement, { kind: 'upsert' }>,
+	statement: Extract<DataManipulationOperation, { kind: 'upsert' }>,
 	context: SqliteCompileContext,
 ): CompiledSqlStatement {
 	const insertColumns = Object.keys(statement.values)
@@ -597,7 +780,7 @@ function compileUpsertStatement(
 }
 
 function compileFromClause(
-	table: AdapterStatement extends infer T
+	table: DataManipulationOperation extends infer T
 		? T extends { table: infer tableType }
 			? tableType
 			: never
@@ -860,6 +1043,49 @@ function quotePath(path: string) {
 			return quoteIdentifier(segment)
 		})
 		.join('.')
+}
+
+function quoteTableRef(table: TableRef) {
+	return table.schema
+		? quotePath(table.schema + '.' + table.name)
+		: quotePath(table.name)
+}
+
+function compileColumnDefinition(definition: {
+	type: string
+	nullable?: boolean
+	primaryKey?: boolean
+	unique?: boolean | { name?: string }
+	default?: unknown
+	autoIncrement?: boolean
+	length?: number
+	precision?: number
+	scale?: number
+}) {
+	const parts = [compileColumnType(definition)]
+	if (definition.primaryKey) parts.push('primary key')
+	if (definition.autoIncrement) parts.push('autoincrement')
+	if (definition.nullable === false) parts.push('not null')
+	if (definition.unique) parts.push('unique')
+	return parts.join(' ')
+}
+
+function compileColumnType(definition: {
+	type: string
+	length?: number
+	precision?: number
+	scale?: number
+}) {
+	if (definition.type === 'integer' || definition.type === 'bigint')
+		return 'integer'
+	if (definition.type === 'decimal') {
+		return definition.precision === undefined
+			? 'real'
+			: `decimal(${definition.precision}, ${definition.scale ?? 0})`
+	}
+	if (definition.type === 'boolean') return 'integer'
+	if (definition.type === 'binary') return 'blob'
+	return 'text'
 }
 
 function pushValue(context: SqliteCompileContext, value: unknown) {
