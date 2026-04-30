@@ -167,8 +167,8 @@ If you ever need to do the same operations manually, use:
 - `bun tools/ci/preview-resources.ts cleanup --worker-name <name>`
 - `bun tools/ci/production-resources.ts ensure --out-config <path>`
 
-## Remix package docs
+## Remix skill
 
-Use the Remix package index for quick navigation:
+Use the packaged Remix skill for Remix-specific implementation guidance:
 
-- `docs/agents/remix/index.md`
+- `.agents/skills/remix/SKILL.md`
