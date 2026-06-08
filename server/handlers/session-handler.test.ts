@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { beforeAll, expect, test } from 'vitest'
-import { RequestContext } from 'remix/fetch-router'
+import { RequestContext } from 'remix/router'
 import {
 	createAuthCookie,
 	setAuthSessionSecret,

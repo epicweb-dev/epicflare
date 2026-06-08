@@ -17,7 +17,7 @@ const inheritTextStyles = {
 	lineHeight: 'inherit',
 	color: 'inherit',
 } as const
-export function EditableText(handle: Handle) {
+export function EditableText(handle: Handle<EditableTextProps>) {
 	let isEditing = false
 	let draftValue = ''
 	let isSaving = false
@@ -36,7 +36,8 @@ export function EditableText(handle: Handle) {
 			button.focus()
 		})
 	}
-	return (props: EditableTextProps) => {
+	return () => {
+		const props = handle.props
 		const buttonId = `${props.id}-button`
 		function startEditing() {
 			if (isSaving) return

@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { beforeAll, expect, test } from 'vitest'
-import { RequestContext } from 'remix/fetch-router'
+import { RequestContext } from 'remix/router'
 import { setAuthSessionSecret } from '#server/auth-session.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
 import { createAuthHandler } from './auth.ts'

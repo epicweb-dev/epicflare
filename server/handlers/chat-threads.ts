@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { readAuthenticatedAppUser } from '#server/authenticated-user.ts'
 import { type routes } from '#server/routes.ts'
 import { createChatThreadsStore } from '#server/chat-threads.ts'
@@ -58,10 +58,7 @@ export function createChatThreadsHandler(appEnv: AppEnv) {
 			const thread = await store.createForUser(user.userId)
 			return jsonResponse({ ok: true, thread }, { status: 201 })
 		},
-	} satisfies BuildAction<
-		typeof routes.chatThreadsCreate.method | typeof routes.chatThreads.method,
-		typeof routes.chatThreads.pattern
-	>
+	} satisfies Action<typeof routes.chatThreads>
 }
 
 export function createDeleteChatThreadHandler(appEnv: AppEnv) {
@@ -111,10 +108,7 @@ export function createDeleteChatThreadHandler(appEnv: AppEnv) {
 
 			return jsonResponse({ ok: true })
 		},
-	} satisfies BuildAction<
-		typeof routes.chatThreadsDelete.method,
-		typeof routes.chatThreadsDelete.pattern
-	>
+	} satisfies Action<typeof routes.chatThreadsDelete>
 }
 
 export function createUpdateChatThreadHandler(appEnv: AppEnv) {
@@ -176,8 +170,5 @@ export function createUpdateChatThreadHandler(appEnv: AppEnv) {
 
 			return jsonResponse({ ok: true, thread })
 		},
-	} satisfies BuildAction<
-		typeof routes.chatThreadsUpdate.method,
-		typeof routes.chatThreadsUpdate.pattern
-	>
+	} satisfies Action<typeof routes.chatThreadsUpdate>
 }

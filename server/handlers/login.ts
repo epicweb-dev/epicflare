@@ -1,8 +1,7 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { type routes } from '#server/routes.ts'
 import { createAuthPageHandler } from './auth-page.ts'
 
-export const login = createAuthPageHandler() satisfies BuildAction<
-	typeof routes.login.method,
-	typeof routes.login.pattern
+export const login = createAuthPageHandler() satisfies Action<
+	typeof routes.login
 >
