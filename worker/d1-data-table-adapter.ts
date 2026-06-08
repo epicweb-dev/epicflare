@@ -139,7 +139,10 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 		}
 	}
 
-	async executeScript(sql: string, _transaction?: TransactionToken): Promise<void> {
+	async executeScript(
+		sql: string,
+		_transaction?: TransactionToken,
+	): Promise<void> {
 		await this.#database.exec(sql)
 	}
 
