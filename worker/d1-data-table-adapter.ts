@@ -6,9 +6,6 @@ import {
 	type DataManipulationOperation,
 	type DataManipulationRequest,
 	type DataManipulationResult,
-	type DataMigrationOperation,
-	type DataMigrationRequest,
-	type DataMigrationResult,
 	type SqlStatement,
 	type TableRef,
 	type DatabaseAdapter,
@@ -76,21 +73,8 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 		}
 	}
 
-	compileSql(
-		operation: DataManipulationOperation | DataMigrationOperation,
-	): Array<SqlStatement> {
-		const statement =
-			operation.kind === 'raw' ||
-			operation.kind === 'select' ||
-			operation.kind === 'count' ||
-			operation.kind === 'exists' ||
-			operation.kind === 'insert' ||
-			operation.kind === 'insertMany' ||
-			operation.kind === 'update' ||
-			operation.kind === 'delete' ||
-			operation.kind === 'upsert'
-				? compileSqliteStatement(operation)
-				: compileSqliteMigrationStatement(operation)
+	compileSql(operation: DataManipulationOperation): Array<SqlStatement> {
+		const statement = compileSqliteStatement(operation)
 		return [{ text: statement.text, values: statement.values }]
 	}
 
@@ -155,15 +139,8 @@ export class D1DataTableAdapter implements DatabaseAdapter {
 		}
 	}
 
-	async migrate(request: DataMigrationRequest): Promise<DataMigrationResult> {
-		const statements = this.compileSql(request.operation)
-		for (const statement of statements) {
-			await this.#database
-				.prepare(statement.text)
-				.bind(...statement.values)
-				.run()
-		}
-		return { affectedOperations: 1 }
+	async executeScript(sql: string, _transaction?: TransactionToken): Promise<void> {
+		await this.#database.exec(sql)
 	}
 
 	async hasTable(table: TableRef): Promise<boolean> {
@@ -501,131 +478,6 @@ function compileSqliteStatement(
 	}
 
 	throw new Error('Unsupported statement kind')
-}
-
-function compileSqliteMigrationStatement(
-	operation: DataMigrationRequest['operation'],
-): CompiledSqlStatement {
-	if (operation.kind === 'raw') {
-		return {
-			text: operation.sql.text,
-			values: [...operation.sql.values],
-		}
-	}
-
-	if (operation.kind === 'createTable') {
-		const columnDefinitions = Object.entries(operation.columns).map(
-			([name, definition]) =>
-				quotePath(name) + ' ' + compileColumnDefinition(definition),
-		)
-		const constraints: Array<string> = []
-		if (operation.primaryKey) {
-			const columns = operation.primaryKey.columns
-				.map((column) => quotePath(column))
-				.join(', ')
-			const name = operation.primaryKey.name
-				? 'constraint ' + quotePath(operation.primaryKey.name) + ' '
-				: ''
-			constraints.push(name + 'primary key (' + columns + ')')
-		}
-		for (const unique of operation.uniques ?? []) {
-			const columns = unique.columns
-				.map((column) => quotePath(column))
-				.join(', ')
-			const name = unique.name
-				? 'constraint ' + quotePath(unique.name) + ' '
-				: ''
-			constraints.push(name + 'unique (' + columns + ')')
-		}
-		return {
-			text:
-				'create table ' +
-				(operation.ifNotExists ? 'if not exists ' : '') +
-				quoteTableRef(operation.table) +
-				' (' +
-				[...columnDefinitions, ...constraints].join(', ') +
-				')',
-			values: [],
-		}
-	}
-
-	if (operation.kind === 'dropTable') {
-		return {
-			text:
-				'drop table ' +
-				(operation.ifExists ? 'if exists ' : '') +
-				quoteTableRef(operation.table),
-			values: [],
-		}
-	}
-
-	if (operation.kind === 'createIndex') {
-		const index = operation.index
-		const unique = index.unique ? 'unique ' : ''
-		const columns = index.columns.map((column) => quotePath(column)).join(', ')
-		const where = index.where ? ' where ' + index.where : ''
-		return {
-			text:
-				'create ' +
-				unique +
-				'index ' +
-				(operation.ifNotExists ? 'if not exists ' : '') +
-				quotePath(index.name) +
-				' on ' +
-				quoteTableRef(index.table) +
-				' (' +
-				columns +
-				')' +
-				where,
-			values: [],
-		}
-	}
-
-	if (operation.kind === 'dropIndex') {
-		return {
-			text:
-				'drop index ' +
-				(operation.ifExists ? 'if exists ' : '') +
-				quotePath(operation.name),
-			values: [],
-		}
-	}
-
-	if (operation.kind === 'alterTable') {
-		if (operation.changes.length !== 1) {
-			throw new Error('D1 adapter supports one alter-table change at a time')
-		}
-		const change = operation.changes[0]
-		if (!change) {
-			throw new Error('alterTable requires at least one change')
-		}
-		if (change.kind === 'addColumn') {
-			return {
-				text:
-					'alter table ' +
-					quoteTableRef(operation.table) +
-					' add column ' +
-					quotePath(change.column) +
-					' ' +
-					compileColumnDefinition(change.definition),
-				values: [],
-			}
-		}
-		if (change.kind === 'renameColumn') {
-			return {
-				text:
-					'alter table ' +
-					quoteTableRef(operation.table) +
-					' rename column ' +
-					quotePath(change.from) +
-					' to ' +
-					quotePath(change.to),
-				values: [],
-			}
-		}
-	}
-
-	throw new Error('Unsupported D1 migration operation: ' + operation.kind)
 }
 
 function compileInsertStatement(
@@ -1043,49 +895,6 @@ function quotePath(path: string) {
 			return quoteIdentifier(segment)
 		})
 		.join('.')
-}
-
-function quoteTableRef(table: TableRef) {
-	return table.schema
-		? quotePath(table.schema + '.' + table.name)
-		: quotePath(table.name)
-}
-
-function compileColumnDefinition(definition: {
-	type: string
-	nullable?: boolean
-	primaryKey?: boolean
-	unique?: boolean | { name?: string }
-	default?: unknown
-	autoIncrement?: boolean
-	length?: number
-	precision?: number
-	scale?: number
-}) {
-	const parts = [compileColumnType(definition)]
-	if (definition.primaryKey) parts.push('primary key')
-	if (definition.autoIncrement) parts.push('autoincrement')
-	if (definition.nullable === false) parts.push('not null')
-	if (definition.unique) parts.push('unique')
-	return parts.join(' ')
-}
-
-function compileColumnType(definition: {
-	type: string
-	length?: number
-	precision?: number
-	scale?: number
-}) {
-	if (definition.type === 'integer' || definition.type === 'bigint')
-		return 'integer'
-	if (definition.type === 'decimal') {
-		return definition.precision === undefined
-			? 'real'
-			: `decimal(${definition.precision}, ${definition.scale ?? 0})`
-	}
-	if (definition.type === 'boolean') return 'integer'
-	if (definition.type === 'binary') return 'blob'
-	return 'text'
 }
 
 function pushValue(context: SqliteCompileContext, value: unknown) {
