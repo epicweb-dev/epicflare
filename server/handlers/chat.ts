@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { readAuthSessionResult } from '#server/auth-session.ts'
 import { redirectToLogin } from '#server/auth-redirect.ts'
 import { Layout } from '#server/layout.ts'
@@ -21,4 +21,4 @@ export const chat = {
 
 		return response
 	},
-} satisfies BuildAction<typeof routes.chat.method, typeof routes.chat.pattern>
+} satisfies Action<typeof routes.chat>

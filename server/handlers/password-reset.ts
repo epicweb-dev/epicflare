@@ -1,4 +1,4 @@
-import { type BuildAction } from 'remix/fetch-router'
+import { type Action } from 'remix/router'
 import { object, parseSafe, string } from 'remix/data-schema'
 import { type AppEnv } from '#types/env-schema.ts'
 import { createDb, passwordResetsTable, usersTable } from '#worker/db.ts'
@@ -181,10 +181,7 @@ export function createPasswordResetRequestHandler(appEnv: AppEnv) {
 				message: 'If the account exists, a reset email has been sent.',
 			})
 		},
-	} satisfies BuildAction<
-		typeof routes.passwordResetRequest.method,
-		typeof routes.passwordResetRequest.pattern
-	>
+	} satisfies Action<typeof routes.passwordResetRequest>
 }
 
 export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
@@ -265,8 +262,5 @@ export function createPasswordResetConfirmHandler(appEnv: AppEnv) {
 
 			return Response.json({ ok: true })
 		},
-	} satisfies BuildAction<
-		typeof routes.passwordResetConfirm.method,
-		typeof routes.passwordResetConfirm.pattern
-	>
+	} satisfies Action<typeof routes.passwordResetConfirm>
 }
