@@ -1,9 +1,11 @@
 import { css, on, type Handle } from 'remix/ui'
-import {
-	fetchSessionInfo,
-	type SessionInfo,
-	type SessionStatus,
-} from '#client/session.ts'
+import { tryConsumeRouteLoaderData } from '#client/loader-data-context.tsx'
+import { consumeStaleNavigationData } from '#client/navigation-data.ts'
+import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
+import { readSession } from '#client/session-context.tsx'
+import { type SessionInfo } from '#client/session.ts'
+import { routes } from '#server/routes.ts'
+import { type OAuthAuthorizeLoaderData } from '#shared/loader-data.ts'
 import {
 	colors,
 	radius,
@@ -23,79 +25,154 @@ type OAuthAuthorizeMessage = {
 	type: 'error' | 'info'
 	text: string
 }
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+type OAuthAuthorizeInfoPayload = {
+	ok?: boolean
+	error?: unknown
+	client?: OAuthAuthorizeInfo['client']
+	scopes?: Array<string>
+}
+type OAuthAuthorizeDecisionPayload = {
+	error?: unknown
+	redirectTo?: unknown
+}
+function getSearch(handle: Handle) {
+	if (typeof window !== 'undefined') return window.location.search
+
+	try {
+		return readRouterSearch(handle)
+	} catch {
+		return ''
+	}
+}
+
+function getSearchParams(handle: Handle) {
+	return new URLSearchParams(getSearch(handle))
+}
+function readQueryErrorFromParams(params: URLSearchParams) {
+	const description = params.get('error_description')
+	if (description) return description
+	const error = params.get('error')
+	return error ? `Authorization error: ${error}` : null
+}
+function getCurrentHref(handle: Pick<Handle, 'context'>) {
+	try {
+		return readRouterUrl(handle)
+	} catch {
+		return typeof window === 'undefined'
+			? routes.oauthAuthorize.href()
+			: `${window.location.pathname}${window.location.search}${window.location.hash}`
+	}
+}
+async function fetchOAuthAuthorizeData(
+	url: URL,
+	signal?: AbortSignal,
+): Promise<OAuthAuthorizeLoaderData> {
+	const queryError = readQueryErrorFromParams(url.searchParams)
+	if (queryError) return { ok: false, error: queryError }
+	const response = await fetch(`${routes.oauthAuthorize.href()}-info${url.search}`, {
+		headers: { Accept: 'application/json' },
+		credentials: 'include',
+		signal,
+	})
+	const payload = (await response
+		.json()
+		.catch(() => null)) as OAuthAuthorizeInfoPayload | null
+	if (
+		!response.ok ||
+		!payload?.ok ||
+		!payload.client ||
+		!Array.isArray(payload.scopes)
+	) {
+		return {
+			ok: false,
+			error:
+				typeof payload?.error === 'string'
+					? payload.error
+					: 'Unable to load authorization details.',
+		}
+	}
+	return {
+		ok: true,
+		client: payload.client,
+		scopes: payload.scopes,
+	}
+}
+export async function loadOAuthAuthorizeRouteData(
+	url: URL,
+	signal: AbortSignal,
+) {
+	return {
+		oauthAuthorize: await fetchOAuthAuthorizeData(url, signal),
+	}
 }
 export function OAuthAuthorizeRoute(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
 	let status: OAuthAuthorizeStatus = 'idle'
-	let message: OAuthAuthorizeMessage | null = null
+	const initialQueryError = readQueryError()
+	let message: OAuthAuthorizeMessage | null = initialQueryError
+		? { type: 'error', text: initialQueryError }
+		: null
 	let submitting = false
 	let lastSearch = ''
-	let session: SessionInfo | null = null
-	let sessionStatus: SessionStatus = 'idle'
+	let lastLoaderHref: string | null = null
+	let session: SessionInfo | null = readSession(handle)
+	let infoLoadQueued = false
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
 		handle.update()
 	}
 	function readQueryError() {
-		const params = getSearchParams()
-		const description = params.get('error_description')
-		if (description) return description
-		const error = params.get('error')
-		return error ? `Authorization error: ${error}` : null
+		return readQueryErrorFromParams(getSearchParams(handle))
+	}
+	function syncEmbeddedSession() {
+		session = readSession(handle)
+	}
+	function applyLoaderData(data: OAuthAuthorizeLoaderData) {
+		if (data.ok) {
+			info = {
+				client: data.client,
+				scopes: data.scopes,
+			}
+			status = 'ready'
+			if (!readQueryError()) {
+				message = null
+			}
+			return
+		}
+		info = null
+		status = 'error'
+		message = { type: 'error', text: data.error }
+	}
+	function syncRouteLoaderData() {
+		const href = getCurrentHref(handle)
+		const data = tryConsumeRouteLoaderData(handle, 'oauthAuthorize', href)
+		if (!data) {
+			if (href !== lastLoaderHref) {
+				lastLoaderHref = href
+			}
+			return false
+		}
+		applyLoaderData(data)
+		lastSearch = getSearch(handle)
+		lastLoaderHref = href
+		return true
 	}
 	async function loadInfo() {
 		status = 'loading'
-		const queryError = readQueryError()
-		if (queryError) {
-			message = { type: 'error', text: queryError }
-		}
+		const url = new URL(getSearch(handle) || routes.oauthAuthorize.href(), window.location.href)
 		try {
-			const query = typeof window === 'undefined' ? '' : window.location.search
-			const response = await fetch(`/oauth/authorize-info${query}`, {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-			})
-			const payload = await response.json().catch(() => null)
-			if (!response.ok || !payload?.ok) {
-				const errorText =
-					typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to load authorization details.'
-				info = null
-				status = 'error'
-				message = { type: 'error', text: errorText }
-				handle.update()
-				return
-			}
-			info = {
-				client: payload.client,
-				scopes: payload.scopes,
-			}
-			status = 'ready'
-			if (!queryError) {
-				message = null
-			}
+			applyLoaderData(await fetchOAuthAuthorizeData(url))
 			handle.update()
 		} catch {
+			const queryError = readQueryError()
 			info = null
 			status = 'error'
 			message = {
 				type: 'error',
-				text: 'Unable to load authorization details.',
+				text: queryError ?? 'Unable to load authorization details.',
 			}
 			handle.update()
 		}
-	}
-	async function loadSession() {
-		if (sessionStatus !== 'idle') return
-		sessionStatus = 'loading'
-		session = await fetchSessionInfo()
-		sessionStatus = 'ready'
-		handle.update()
 	}
 	async function submitDecision(
 		decision: 'approve' | 'deny',
@@ -132,7 +209,9 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				credentials: 'include',
 				body,
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as OAuthAuthorizeDecisionPayload | null
 			if (!response.ok) {
 				const errorText =
 					typeof payload?.error === 'string'
@@ -143,7 +222,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				handle.update()
 				return
 			}
-			if (payload?.redirectTo) {
+			if (typeof payload?.redirectTo === 'string') {
 				window.location.assign(payload.redirectTo)
 				return
 			}
@@ -168,26 +247,35 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		)
 	}
 	return () => {
-		const currentSearch =
-			typeof window === 'undefined' ? '' : window.location.search
-		if (currentSearch !== lastSearch) {
+		const href = getCurrentHref(handle)
+		const appliedRouteData = syncRouteLoaderData()
+		const needsStaleRefresh =
+			consumeStaleNavigationData(href) && !appliedRouteData
+		syncEmbeddedSession()
+		const currentSearch = getSearch(handle)
+		if (
+			typeof window !== 'undefined' &&
+			(needsStaleRefresh || currentSearch !== lastSearch) &&
+			!infoLoadQueued
+		) {
 			lastSearch = currentSearch
-			void loadInfo()
-		}
-		if (sessionStatus === 'idle') {
-			void loadSession()
+			infoLoadQueued = true
+			handle.queueTask(async () => {
+				try {
+					await loadInfo()
+				} finally {
+					infoLoadQueued = false
+				}
+			})
 		}
 		const clientLabel = info?.client?.name ?? 'Unknown client'
 		const scopes = info?.scopes ?? []
 		const scopeLabel =
 			scopes.length > 0 ? scopes.join(', ') : 'No scopes requested.'
 		const sessionEmail = session?.email ?? ''
-		const isSessionReady = sessionStatus === 'ready'
-		const isSessionLoading =
-			sessionStatus === 'loading' || sessionStatus === 'idle'
-		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
-		const actionsDisabled = status !== 'ready' || submitting || isSessionLoading
-		const formReady = status === 'ready' && !isSessionLoading
+		const isLoggedIn = Boolean(sessionEmail)
+		const actionsDisabled = status !== 'ready' || submitting
+		const formReady = status === 'ready'
 		const authorizeLabel = submitting
 			? 'Submitting...'
 			: isLoggedIn
@@ -248,9 +336,6 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						{scopeLabel}
 					</p>
 				</section>
-				{isSessionLoading ? (
-					<p mix={[css({ color: colors.textMuted })]}>Checking your session…</p>
-				) : null}
 				{isLoggedIn ? (
 					<section
 						mix={[
@@ -313,7 +398,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						on<HTMLFormElement, 'submit'>('submit', handleSubmit),
 					]}
 				>
-					{!isLoggedIn && isSessionReady ? (
+					{!isLoggedIn ? (
 						<>
 							<label mix={[css({ display: 'grid', gap: spacing.xs })]}>
 								<span
@@ -422,7 +507,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 					</div>
 				</form>
 				<a
-					href="/"
+					href={routes.home.href()}
 					mix={[
 						css({
 							color: colors.textMuted,

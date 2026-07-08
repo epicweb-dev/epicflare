@@ -1,11 +1,23 @@
 import { colors, radius, spacing, typography } from '#client/styles/tokens.ts'
 import { css, type Handle } from 'remix/ui'
-export function OAuthCallbackRoute(_handle: Handle) {
+import { readRouterSearch } from '#client/router-location.tsx'
+import { routes } from '#server/routes.ts'
+
+function getSearchParams(handle: Handle) {
+	if (typeof window !== 'undefined') {
+		return new URLSearchParams(window.location.search)
+	}
+
+	try {
+		return new URLSearchParams(readRouterSearch(handle))
+	} catch {
+		return new URLSearchParams()
+	}
+}
+
+export function OAuthCallbackRoute(handle: Handle) {
 	return () => {
-		const params =
-			typeof window === 'undefined'
-				? new URLSearchParams()
-				: new URLSearchParams(window.location.search)
+		const params = getSearchParams(handle)
 		const error = params.get('error')
 		const description = params.get('error_description')
 		const code = params.get('code')
@@ -61,7 +73,7 @@ export function OAuthCallbackRoute(_handle: Handle) {
 					</p>
 				) : null}
 				<a
-					href="/"
+					href={routes.home.href()}
 					mix={[
 						css({
 							color: colors.textMuted,

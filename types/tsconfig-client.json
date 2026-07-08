@@ -9,5 +9,10 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "remix/ui"
 	},
-	"include": ["../client/**/*.ts", "../client/**/*.tsx", "../shared/**/*.ts"]
+	"include": [
+		"../client/**/*.ts",
+		"../client/**/*.tsx",
+		"../shared/**/*.ts",
+		"../server/routes.ts"
+	]
 }

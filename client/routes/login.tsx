@@ -4,6 +4,8 @@ import {
 	getPathname,
 	listenToRouterNavigation,
 } from '#client/client-router.tsx'
+import { readRouterSearch } from '#client/router-location.tsx'
+import { routes } from '#server/routes.ts'
 import { fetchSessionInfo, type SessionStatus } from '#client/session.ts'
 import {
 	colors,
@@ -15,10 +17,19 @@ import {
 } from '#client/styles/tokens.ts'
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+type AuthPayload = {
+	error?: unknown
+}
+function getSearchParams(handle: Handle) {
+	if (typeof window !== 'undefined') {
+		return new URLSearchParams(window.location.search)
+	}
+
+	try {
+		return new URLSearchParams(readRouterSearch(handle))
+	} catch {
+		return new URLSearchParams()
+	}
 }
 function normalizeRedirectTo(value: string | null) {
 	if (!value) return null
@@ -27,24 +38,24 @@ function normalizeRedirectTo(value: string | null) {
 	return value
 }
 function buildAuthPath(mode: AuthMode, redirectTo: string | null) {
-	const path = mode === 'signup' ? '/signup' : '/login'
+	const path = mode === 'signup' ? routes.signup.href() : routes.login.href()
 	return buildAuthLink(path, redirectTo)
 }
 function getAuthModeFromPathname(pathname: string): AuthMode {
-	return pathname === '/signup' ? 'signup' : 'login'
+	return pathname === routes.signup.href() ? 'signup' : 'login'
 }
-function getCurrentAuthMode() {
-	return getAuthModeFromPathname(getPathname())
+function getCurrentAuthMode(handle: Handle) {
+	return getAuthModeFromPathname(getPathname(handle))
 }
-function getCurrentRedirectTo() {
-	return normalizeRedirectTo(getSearchParams().get('redirectTo'))
+function getCurrentRedirectTo(handle: Handle) {
+	return normalizeRedirectTo(getSearchParams(handle).get('redirectTo'))
 }
 export function LoginRoute(handle: Handle) {
 	let status: AuthStatus = 'idle'
 	let message: string | null = null
 	let sessionStatus: SessionStatus = 'idle'
 	let sessionEmail = ''
-	let activeMode = getCurrentAuthMode()
+	let activeMode = getCurrentAuthMode(handle)
 	let routePath: string | null = null
 	function setState(nextStatus: AuthStatus, nextMessage: string | null = null) {
 		status = nextStatus
@@ -57,30 +68,34 @@ export function LoginRoute(handle: Handle) {
 	}
 	listenToRouterNavigation(handle, () => {
 		if (!routePath) return
-		if (getPathname() !== routePath) {
+		if (getPathname(handle) !== routePath) {
 			resetAuthState()
 		}
 	})
-	handle.queueTask(async (signal) => {
-		if (sessionStatus !== 'idle') return
-		sessionStatus = 'loading'
-		const session = await fetchSessionInfo(signal)
-		if (signal.aborted) return
-		sessionEmail = session?.email ?? ''
-		sessionStatus = 'ready'
-		if (sessionEmail && typeof window !== 'undefined') {
-			window.location.assign(getCurrentRedirectTo() ?? '/account')
-			return
-		}
-		handle.update()
-	})
+	if (typeof window !== 'undefined') {
+		handle.queueTask(async (signal) => {
+			if (sessionStatus !== 'idle') return
+			sessionStatus = 'loading'
+			const session = await fetchSessionInfo(signal)
+			if (signal.aborted) return
+			sessionEmail = session?.email ?? ''
+			sessionStatus = 'ready'
+			if (sessionEmail) {
+				window.location.assign(
+					getCurrentRedirectTo(handle) ?? routes.account.href(),
+				)
+				return
+			}
+			handle.update()
+		})
+	}
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault()
 		if (!(event.currentTarget instanceof HTMLFormElement)) return
 		const formData = new FormData(event.currentTarget)
 		const email = String(formData.get('email') ?? '').trim()
 		const password = String(formData.get('password') ?? '')
-		const mode = getCurrentAuthMode()
+		const mode = getCurrentAuthMode(handle)
 		const rememberMe = mode === 'login' && formData.get('rememberMe') === 'on'
 		if (!email || !password) {
 			setState('error', 'Email and password are required.')
@@ -94,7 +109,9 @@ export function LoginRoute(handle: Handle) {
 				credentials: 'include',
 				body: JSON.stringify({ email, password, mode, rememberMe }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as AuthPayload | null
 			if (!response.ok) {
 				const errorMessage =
 					typeof payload?.error === 'string'
@@ -104,22 +121,24 @@ export function LoginRoute(handle: Handle) {
 				return
 			}
 			if (typeof window !== 'undefined') {
-				window.location.assign(getCurrentRedirectTo() ?? '/account')
+				window.location.assign(
+					getCurrentRedirectTo(handle) ?? routes.account.href(),
+				)
 			}
 		} catch {
 			setState('error', 'Network error. Please try again.')
 		}
 	}
 	return () => {
-		const mode = getCurrentAuthMode()
+		const mode = getCurrentAuthMode(handle)
 		if (!routePath) {
-			routePath = getPathname()
+			routePath = getPathname(handle)
 		}
 		if (mode !== activeMode) {
 			activeMode = mode
 			resetAuthState()
 		}
-		const redirectTo = getCurrentRedirectTo()
+		const redirectTo = getCurrentRedirectTo(handle)
 		const isSignup = mode === 'signup'
 		const isSubmitting = status === 'submitting'
 		const title = isSignup ? 'Create your account' : 'Welcome back'
@@ -344,7 +363,7 @@ export function LoginRoute(handle: Handle) {
 					</a>
 					{!isSignup ? (
 						<a
-							href="/reset-password"
+							href={routes.resetPassword.href()}
 							mix={[
 								css({
 									background: 'none',
@@ -365,7 +384,7 @@ export function LoginRoute(handle: Handle) {
 						</a>
 					) : null}
 					<a
-						href="/"
+						href={routes.home.href()}
 						mix={[
 							css({
 								color: colors.textMuted,

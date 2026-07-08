@@ -52,6 +52,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: 🔎 Deploy Preview Resources
+    env:
+      CLOUDFLARE_ACCOUNT_ID:
+        ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
     environment:
       name:
         preview-${{ github.event.pull_request.number || inputs.pr_number ||
@@ -433,6 +436,9 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     name: 🧹 Cleanup Preview Resources
+    env:
+      CLOUDFLARE_ACCOUNT_ID:
+        ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
     if: >-
       (github.event_name == 'pull_request' &&
         github.event.action == 'closed' &&

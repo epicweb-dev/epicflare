@@ -1,4 +1,8 @@
 {
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"jsxImportSource": "remix/ui"
+	},
 	"files": [],
 	"references": [
 		{ "path": "./types/tsconfig-tools.json" },

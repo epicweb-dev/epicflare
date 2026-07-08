@@ -8,9 +8,23 @@ import { toHex } from '#server/hex.ts'
 import { normalizeEmail } from '#server/normalize-email.ts'
 import { createPasswordHash } from '#server/password-hash.ts'
 import { type routes } from '#server/routes.ts'
+import { renderAppPage } from '#server/ssr-render.tsx'
 
 const resetTokenBytes = 32
 const resetTokenExpiryMs = 60 * 60 * 1000
+
+export function createResetPasswordPageHandler(appEnv: AppEnv) {
+	return {
+		middleware: [],
+		async handler({ request }) {
+			return renderAppPage({
+				request,
+				appEnv,
+				title: 'Reset password',
+			})
+		},
+	} satisfies Action<typeof routes.resetPassword>
+}
 
 const resetRequestSchema = object({
 	email: string(),
