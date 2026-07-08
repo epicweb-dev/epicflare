@@ -53,6 +53,9 @@ jobs:
     name: 🚀 Deploy to production
     needs: sha-guard
     if: needs.sha-guard.outputs.should_deploy == 'true'
+    env:
+      CLOUDFLARE_ACCOUNT_ID:
+        ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
