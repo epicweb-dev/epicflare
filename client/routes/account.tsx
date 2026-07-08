@@ -1,4 +1,5 @@
 import { css, type Handle } from 'remix/ui'
+import { readSession } from '#client/session-context.tsx'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 import { routes } from '#server/routes.ts'
 type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -9,8 +10,9 @@ type SessionPayload = {
 	}
 }
 export function AccountRoute(handle: Handle) {
-	let status: AccountStatus = 'loading'
-	let email = ''
+	const embeddedEmail = readSession(handle)?.email.trim() ?? ''
+	let status: AccountStatus = embeddedEmail ? 'ready' : 'loading'
+	let email = embeddedEmail
 	let message: string | null = null
 	async function loadAccount(signal: AbortSignal) {
 		try {

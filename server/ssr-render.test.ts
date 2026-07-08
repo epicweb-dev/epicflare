@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { expect, test } from 'vitest'
 import { type AppEnv } from '#types/env-schema.ts'
+import { createAuthCookie, setAuthSessionSecret } from './auth-session.ts'
 import { renderAppPage } from './ssr-render.tsx'
 
 const testAppEnv = {
@@ -42,4 +43,30 @@ test('renderAppPage preserves 404 state in the server-rendered document', async 
 	const html = await response.text()
 	expect(html).toContain('Not Found')
 	expect(html).toContain('"notFound":true')
+})
+
+test('renderAppPage server-renders account session details', async () => {
+	setAuthSessionSecret(testAppEnv.COOKIE_SECRET)
+	const setCookie = await createAuthCookie(
+		{
+			id: '1',
+			email: 'signed-in@example.com',
+			rememberMe: false,
+		},
+		true,
+	)
+	const cookie = setCookie.split(';')[0] ?? ''
+
+	const response = await renderAppPage({
+		request: new Request('https://example.com/account', {
+			headers: { Cookie: cookie },
+		}),
+		appEnv: testAppEnv,
+		title: 'Account',
+	})
+
+	expect(response.status).toBe(200)
+	const html = await response.text()
+	expect(html).toContain('Welcome, signed-in@example.com')
+	expect(html).not.toContain('Loading your account')
 })

@@ -11,6 +11,7 @@ import {
 	type SessionInfo,
 	type SessionStatus,
 } from './session.ts'
+import { SessionProvider } from './session-context.tsx'
 import { buildAuthLink } from './auth-links.ts'
 import { colors, mq, spacing, typography } from './styles/tokens.ts'
 
@@ -185,29 +186,31 @@ export function App(handle: Handle<AppProps>) {
 						</>
 					) : null}
 				</nav>
-				<Router
-					routes={clientRoutes}
-					notFound={handle.props?.notFound === true}
-					fallback={
-						<section>
-							<h2
-								mix={[
-									css({
-										fontSize: typography.fontSize.lg,
-										fontWeight: typography.fontWeight.semibold,
-										marginBottom: spacing.sm,
-										color: colors.text,
-									}),
-								]}
-							>
-								Not Found
-							</h2>
-							<p mix={[css({ color: colors.textMuted })]}>
-								That route does not exist.
-							</p>
-						</section>
-					}
-				/>
+				<SessionProvider session={session}>
+					<Router
+						routes={clientRoutes}
+						notFound={handle.props?.notFound === true}
+						fallback={
+							<section>
+								<h2
+									mix={[
+										css({
+											fontSize: typography.fontSize.lg,
+											fontWeight: typography.fontWeight.semibold,
+											marginBottom: spacing.sm,
+											color: colors.text,
+										}),
+									]}
+								>
+									Not Found
+								</h2>
+								<p mix={[css({ color: colors.textMuted })]}>
+									That route does not exist.
+								</p>
+							</section>
+						}
+					/>
+				</SessionProvider>
 			</main>
 		)
 	}
