@@ -57,12 +57,29 @@ export function tryConsumeEmbeddedLoaderData<K extends keyof AppLoaderData>(
 	return embedded
 }
 
+/**
+ * Route-loader consumption happens mid-render and callers apply the payload by
+ * mutating route closure state. A follow-up render re-derives any values that
+ * were computed before consumption, while consume-once semantics prevent loops.
+ */
+function scheduleCorrectiveRender(handle: Handle) {
+	handle.queueTask(() => {
+		void handle.update()
+	})
+}
+
 export function tryConsumeRouteLoaderData<K extends keyof AppLoaderData>(
 	handle: Handle,
 	key: K,
 	currentHref: string,
 ): AppLoaderData[K] | undefined {
 	const embedded = tryConsumeEmbeddedLoaderData(handle, key, currentHref)
-	if (embedded !== undefined) return embedded
-	return tryConsumePreloadedLoaderData(key, currentHref)
+	const data =
+		embedded !== undefined
+			? embedded
+			: tryConsumePreloadedLoaderData(key, currentHref)
+	if (data !== undefined) {
+		scheduleCorrectiveRender(handle)
+	}
+	return data
 }
