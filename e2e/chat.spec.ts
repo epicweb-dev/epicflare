@@ -17,6 +17,25 @@ test('loads chat page when authenticated', async ({ page, login }) => {
 	).toHaveCount(0)
 })
 
+test('shows navigation progress during slow route navigation', async ({
+	page,
+	login,
+}) => {
+	await login()
+	await page.goto('/account')
+	await page.route('**/chat-threads*', async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, 350))
+		await route.continue()
+	})
+
+	await page.getByRole('link', { name: 'Chat' }).click()
+
+	const progress = page.locator('[data-navigation-progress="true"]')
+	await expect(progress).toBeVisible()
+	await expect(page).toHaveURL(/\/chat$/)
+	await expect(progress).toHaveCount(0)
+})
+
 test('creates and deletes chat threads when authenticated', async ({
 	page,
 	login,
