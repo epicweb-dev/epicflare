@@ -145,14 +145,17 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 	function syncRouteLoaderData() {
 		const href = getCurrentHref(handle)
-		const isStale = consumeStaleNavigationData(href)
-		if (!isStale && href === lastLoaderHref) return
-		lastLoaderHref = href
 		const data = tryConsumeRouteLoaderData(handle, 'oauthAuthorize', href)
-		if (data) {
-			applyLoaderData(data)
-			lastSearch = getSearch(handle)
+		if (!data) {
+			if (href !== lastLoaderHref) {
+				lastLoaderHref = href
+			}
+			return false
 		}
+		applyLoaderData(data)
+		lastSearch = getSearch(handle)
+		lastLoaderHref = href
+		return true
 	}
 	async function loadInfo() {
 		status = 'loading'
@@ -244,12 +247,15 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		)
 	}
 	return () => {
-		syncRouteLoaderData()
+		const href = getCurrentHref(handle)
+		const appliedRouteData = syncRouteLoaderData()
+		const needsStaleRefresh =
+			consumeStaleNavigationData(href) && !appliedRouteData
 		syncEmbeddedSession()
 		const currentSearch = getSearch(handle)
 		if (
 			typeof window !== 'undefined' &&
-			currentSearch !== lastSearch &&
+			(needsStaleRefresh || currentSearch !== lastSearch) &&
 			!infoLoadQueued
 		) {
 			lastSearch = currentSearch
