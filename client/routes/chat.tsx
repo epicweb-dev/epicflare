@@ -521,6 +521,16 @@ export function ChatRoute(handle: Handle) {
 		}
 		threadStatus = 'ready'
 		threadError = null
+		const locationThreadId = getSelectedThreadIdFromLocation(handle)
+		const selectedThreadId =
+			locationThreadId &&
+			data.threads.some((thread) => thread.id === locationThreadId)
+				? locationThreadId
+				: (data.threads[0]?.id ?? null)
+		if (activeThreadId !== selectedThreadId) {
+			activeThreadId = selectedThreadId
+			resetChatSnapshot()
+		}
 		scheduleThreadListScrollFadeSync()
 		if (typeof window !== 'undefined') {
 			void handle.queueTask(async () => {

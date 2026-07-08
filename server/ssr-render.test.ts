@@ -71,6 +71,53 @@ test('renderAppPage server-renders account session details', async () => {
 	expect(html).not.toContain('Loading your account')
 })
 
+test('renderAppPage server-renders deep-linked chat loader data', async () => {
+	setAuthSessionSecret(testAppEnv.COOKIE_SECRET)
+	const setCookie = await createAuthCookie(
+		{
+			id: '1',
+			email: 'chat-user@example.com',
+			rememberMe: false,
+		},
+		true,
+	)
+	const cookie = setCookie.split(';')[0] ?? ''
+
+	const response = await renderAppPage({
+		request: new Request('https://example.com/chat/thread-1', {
+			headers: { Cookie: cookie },
+		}),
+		appEnv: testAppEnv,
+		title: 'Chat',
+		loaderData: {
+			chat: {
+				ok: true,
+				threads: [
+					{
+						id: 'thread-1',
+						title: 'Deep Linked Thread',
+						lastMessagePreview: null,
+						messageCount: 0,
+						createdAt: '2026-07-08T00:00:00.000Z',
+						updatedAt: '2026-07-08T00:00:00.000Z',
+						deletedAt: null,
+					},
+				],
+				hasMore: false,
+				nextCursor: null,
+				totalCount: 1,
+				selectedThread: null,
+				search: '',
+			},
+		},
+	})
+
+	expect(response.status).toBe(200)
+	const html = await response.text()
+	expect(html).toContain('Deep Linked Thread')
+	expect(html).toContain('Send a message')
+})
+
 test('renderAppPage server-renders oauth authorize query errors', async () => {
 	const response = await renderAppPage({
 		request: new Request(
