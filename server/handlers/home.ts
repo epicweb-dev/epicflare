@@ -1,11 +1,13 @@
 import { type Action } from 'remix/router'
-import { Layout } from '#server/layout.ts'
-import { render } from '#server/render.ts'
+import { type AppEnv } from '#types/env-schema.ts'
 import { type routes } from '#server/routes.ts'
+import { renderAppPage } from '#server/ssr-render.tsx'
 
-export const home = {
-	middleware: [],
-	async handler() {
-		return render(Layout({}))
-	},
-} satisfies Action<typeof routes.home>
+export function createHomeHandler(appEnv: AppEnv) {
+	return {
+		middleware: [],
+		async handler({ request }) {
+			return renderAppPage({ request, appEnv })
+		},
+	} satisfies Action<typeof routes.home>
+}

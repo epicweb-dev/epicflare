@@ -1,4 +1,5 @@
 import { css, type Handle } from 'remix/ui'
+import { routes } from '#server/routes.ts'
 import { clientRoutes } from './routes/index.tsx'
 import {
 	getPathname,
@@ -12,12 +13,18 @@ import {
 } from './session.ts'
 import { buildAuthLink } from './auth-links.ts'
 import { colors, mq, spacing, typography } from './styles/tokens.ts'
-export function App(handle: Handle) {
-	let session: SessionInfo | null = null
-	let sessionStatus: SessionStatus = 'idle'
+
+type AppProps = {
+	embeddedSession?: SessionInfo | null
+	notFound?: boolean
+}
+
+export function App(handle: Handle<AppProps>) {
+	let session: SessionInfo | null = handle.props?.embeddedSession ?? null
+	let sessionStatus: SessionStatus = 'ready'
 	let sessionRefreshInFlight = false
 	let sessionRefreshQueued = false
-	let currentPathname = getPathname()
+	let currentPathname = getPathname(handle)
 	function queueSessionRefresh() {
 		sessionRefreshQueued = true
 		if (sessionRefreshInFlight) return
@@ -43,11 +50,13 @@ export function App(handle: Handle) {
 			handle.update()
 		}
 	}
-	handle.queueTask(() => {
-		queueSessionRefresh()
-	})
+	if (typeof window !== 'undefined') {
+		handle.queueTask(() => {
+			queueSessionRefresh()
+		})
+	}
 	listenToRouterNavigation(handle, () => {
-		currentPathname = getPathname()
+		currentPathname = getPathname(handle)
 		queueSessionRefresh()
 		handle.update()
 	})
@@ -85,11 +94,12 @@ export function App(handle: Handle) {
 		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
 		const showAuthLinks = isSessionReady && !isLoggedIn
 		const oauthRedirectTo =
-			typeof window !== 'undefined' && currentPathname === '/oauth/authorize'
+			typeof window !== 'undefined' &&
+			currentPathname === routes.oauthAuthorize.href()
 				? `${currentPathname}${window.location.search}`
 				: null
-		const loginHref = buildAuthLink('/login', oauthRedirectTo)
-		const signupHref = buildAuthLink('/signup', oauthRedirectTo)
+		const loginHref = buildAuthLink(routes.login.href(), oauthRedirectTo)
+		const signupHref = buildAuthLink(routes.signup.href(), oauthRedirectTo)
 		return (
 			<main
 				mix={[
@@ -126,7 +136,11 @@ export function App(handle: Handle) {
 						}),
 					]}
 				>
-					<a href="/" aria-label="Home" mix={[css(navHomeLinkCss)]}>
+					<a
+						href={routes.home.href()}
+						aria-label="Home"
+						mix={[css(navHomeLinkCss)]}
+					>
 						<img
 							src="/logo.png"
 							alt=""
@@ -153,13 +167,17 @@ export function App(handle: Handle) {
 					) : null}
 					{isLoggedIn ? (
 						<>
-							<a href="/chat" mix={[css(navLinkCss)]}>
+							<a href={routes.chat.href()} mix={[css(navLinkCss)]}>
 								Chat
 							</a>
-							<a href="/account" mix={[css(navLinkCss)]}>
+							<a href={routes.account.href()} mix={[css(navLinkCss)]}>
 								{sessionEmail}
 							</a>
-							<form method="post" action="/logout" mix={[css({ margin: 0 })]}>
+							<form
+								method="post"
+								action={routes.logout.href()}
+								mix={[css({ margin: 0 })]}
+							>
 								<button type="submit" mix={[css(logOutButtonCss)]}>
 									Log out
 								</button>
@@ -169,6 +187,7 @@ export function App(handle: Handle) {
 				</nav>
 				<Router
 					routes={clientRoutes}
+					notFound={handle.props?.notFound === true}
 					fallback={
 						<section>
 							<h2

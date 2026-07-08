@@ -14,6 +14,7 @@ import {
 	scrollToEdge,
 } from '#client/scroll-container.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
+import { routes } from '#server/routes.ts'
 import {
 	breakpoints,
 	colors,
@@ -33,13 +34,13 @@ import {
 type ThreadStatus = 'idle' | 'loading' | 'ready' | 'error'
 function getSelectedThreadIdFromLocation() {
 	if (typeof window === 'undefined') return null
-	const prefix = '/chat/'
+	const prefix = `${routes.chat.href()}/`
 	if (!window.location.pathname.startsWith(prefix)) return null
 	const threadId = window.location.pathname.slice(prefix.length).trim()
 	return threadId || null
 }
 function buildThreadHref(threadId: string) {
-	return `/chat/${threadId}`
+	return routes.chatThread.href({ threadId })
 }
 function isMobileViewport() {
 	return (
@@ -655,7 +656,7 @@ export function ChatRoute(handle: Handle) {
 				setMessageScrollFades(false, false)
 				update()
 				if (locationThreadId) {
-					navigate('/chat')
+					navigate(routes.chat.href())
 				}
 				return
 			}
@@ -792,7 +793,7 @@ export function ChatRoute(handle: Handle) {
 				navigate(buildThreadHref(nextThread.id))
 				await connectThread(nextThread.id)
 			} else {
-				navigate('/chat')
+				navigate(routes.chat.href())
 			}
 		} catch (error) {
 			actionError =
@@ -865,7 +866,7 @@ export function ChatRoute(handle: Handle) {
 		}
 	}
 	return () => {
-		if (threadStatus === 'loading') {
+		if (typeof window !== 'undefined' && threadStatus === 'loading') {
 			handle.queueTask(refreshThreads)
 		}
 		const threads = getThreads()
@@ -1291,7 +1292,7 @@ export function ChatRoute(handle: Handle) {
 									]}
 								>
 									<a
-										href="/chat"
+										href={routes.chat.href()}
 										aria-label="Back to chats"
 										mix={[
 											css({

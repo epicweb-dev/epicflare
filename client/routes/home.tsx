@@ -69,8 +69,8 @@ export function HomeRoute(_handle: Handle) {
 							<span mix={[css({ color: colors.primaryText })]}>Remix 3</span>
 						</h1>
 						<p mix={[css({ margin: 0, color: colors.textMuted })]}>
-							Remix 3 components running on the client, backed by Remix 3
-							routing in the worker.
+							Remix 3 components server-rendered by the worker, then hydrated
+							for client navigation.
 						</p>
 					</div>
 				</div>

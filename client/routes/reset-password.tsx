@@ -1,4 +1,6 @@
 import { css, on, type Handle } from 'remix/ui'
+import { readRouterSearch } from '#client/router-location.tsx'
+import { routes } from '#server/routes.ts'
 import {
 	colors,
 	radius,
@@ -7,10 +9,16 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 type ResetStatus = 'idle' | 'submitting' | 'success' | 'error'
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+function getSearchParams(handle: Handle) {
+	if (typeof window !== 'undefined') {
+		return new URLSearchParams(window.location.search)
+	}
+
+	try {
+		return new URLSearchParams(readRouterSearch(handle))
+	} catch {
+		return new URLSearchParams()
+	}
 }
 export function ResetPasswordRoute(handle: Handle) {
 	let status: ResetStatus = 'idle'
@@ -87,7 +95,7 @@ export function ResetPasswordRoute(handle: Handle) {
 		}
 	}
 	return () => {
-		const searchParams = getSearchParams()
+		const searchParams = getSearchParams(handle)
 		const token = String(searchParams.get('token') ?? '').trim()
 		const mode = token ? 'confirm' : 'request'
 		const isSubmitting = status === 'submitting'
@@ -242,7 +250,7 @@ export function ResetPasswordRoute(handle: Handle) {
 				</form>
 				<div mix={[css({ display: 'grid', gap: spacing.sm })]}>
 					<a
-						href="/login"
+						href={routes.login.href()}
 						mix={[
 							css({
 								color: colors.primaryText,
@@ -257,7 +265,7 @@ export function ResetPasswordRoute(handle: Handle) {
 						Back to sign in
 					</a>
 					<a
-						href="/"
+						href={routes.home.href()}
 						mix={[
 							css({
 								color: colors.textMuted,

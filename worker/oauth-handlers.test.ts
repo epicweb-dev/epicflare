@@ -107,7 +107,7 @@ function createFormRequest(
 	})
 }
 
-test('authorize page returns SPA shell', async () => {
+test('authorize page returns server-rendered page', async () => {
 	const response = await handleAuthorizeRequest(
 		new Request('https://example.com/oauth/authorize'),
 		createEnv(createHelpers()),
@@ -116,7 +116,8 @@ test('authorize page returns SPA shell', async () => {
 	expect(response.status).toBe(200)
 	const body = await response.text()
 	expect(body).toContain('client-entry.js')
-	expect(body).toContain('app-shell')
+	expect(body).toContain('Authorize access')
+	expect(body).toContain('<!-- rmx:h:')
 })
 
 test('authorize info returns client and scopes', async () => {
@@ -239,13 +240,15 @@ test('authorize uses default scopes when none requested', async () => {
 	expect(capturedOptions.scope).toEqual(oauthScopes)
 })
 
-test('oauth callback page returns SPA shell', async () => {
-	const response = handleOAuthCallback(
+test('oauth callback page returns server-rendered page', async () => {
+	const response = await handleOAuthCallback(
 		new Request('https://example.com/oauth/callback?code=abc123&state=demo'),
+		createEnv(createHelpers()),
 	)
 
 	expect(response.status).toBe(200)
 	const body = await response.text()
 	expect(body).toContain('client-entry.js')
-	expect(body).toContain('app-shell')
+	expect(body).toContain('OAuth callback')
+	expect(body).toContain('abc123')
 })

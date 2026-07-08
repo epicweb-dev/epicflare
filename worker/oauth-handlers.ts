@@ -1,4 +1,7 @@
-import { type AuthRequest, type OAuthHelpers } from '@cloudflare/workers-oauth-provider'
+import {
+	type AuthRequest,
+	type OAuthHelpers,
+} from '@cloudflare/workers-oauth-provider'
 import { getRequestIp, logAuditEvent } from '#server/audit-log.ts'
 import {
 	readAuthSessionResult,
@@ -7,8 +10,7 @@ import {
 import { getEnv } from '#server/env.ts'
 import { toHex } from '#server/hex.ts'
 import { verifyPassword } from '#server/password-hash.ts'
-import { Layout } from '#server/layout.ts'
-import { render } from '#server/render.ts'
+import { renderAppPage } from '#server/ssr-render.tsx'
 import { createDb, usersTable } from './db.ts'
 import { wantsJson } from './utils.ts'
 
@@ -37,8 +39,12 @@ type OAuthContext = ExecutionContext & {
 	props?: OAuthProps
 }
 
-function renderSpaShell(status = 200) {
-	return render(Layout({}), { status })
+function renderSpaShell(request: Request, env: Env, status = 200) {
+	return renderAppPage({
+		request,
+		appEnv: getEnv(env),
+		status,
+	})
 }
 
 const dummyPasswordHash =
@@ -187,7 +193,7 @@ export async function handleAuthorizeRequest(
 	env: Env,
 ): Promise<Response> {
 	if (request.method === 'GET') {
-		return renderSpaShell()
+		return renderSpaShell(request, env)
 	}
 
 	if (request.method !== 'POST') {
@@ -328,11 +334,14 @@ export async function handleAuthorizeRequest(
 	return respondAuthorizeError(request, resolvedScopes.error)
 }
 
-export function handleOAuthCallback(request: Request): Response {
+export function handleOAuthCallback(
+	request: Request,
+	env: Env,
+): Promise<Response> {
 	const url = new URL(request.url)
 	const hasError =
 		url.searchParams.has('error') || url.searchParams.has('error_description')
-	return renderSpaShell(hasError ? 400 : 200)
+	return renderSpaShell(request, env, hasError ? 400 : 200)
 }
 
 export const apiHandler = {

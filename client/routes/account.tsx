@@ -1,5 +1,6 @@
 import { css, type Handle } from 'remix/ui'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
+import { routes } from '#server/routes.ts'
 type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
 export function AccountRoute(handle: Handle) {
 	let status: AccountStatus = 'loading'
@@ -21,7 +22,7 @@ export function AccountRoute(handle: Handle) {
 					? payload.session.email.trim()
 					: ''
 			if (!sessionEmail) {
-				window.location.assign('/login')
+				window.location.assign(routes.login.href())
 				return
 			}
 			email = sessionEmail
@@ -36,7 +37,7 @@ export function AccountRoute(handle: Handle) {
 		}
 	}
 	return () => {
-		if (status === 'loading') {
+		if (typeof window !== 'undefined' && status === 'loading') {
 			handle.queueTask(loadAccount)
 		}
 		return (

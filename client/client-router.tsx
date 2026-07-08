@@ -1,8 +1,15 @@
 import { addEventListeners, type Handle } from 'remix/ui'
+import { createMultiMatcher } from 'remix/route-pattern/match'
+import {
+	readRouterPathname,
+	readRouterUrl,
+	readSsrRouterUrl,
+} from './router-location.tsx'
 
 type RouterSetup = {
 	routes: Record<string, JSX.Element>
 	fallback?: JSX.Element
+	notFound?: boolean
 }
 
 type FormMethod = 'get' | 'post'
@@ -56,6 +63,11 @@ type FormSubmitDetails = {
 }
 
 export const routerEvents = new EventTarget()
+const clientRouteOrigin = 'https://epicflare.local'
+const routeMatchers = new WeakMap<
+	Record<string, JSX.Element>,
+	ReturnType<typeof createRouteMatcher>
+>()
 let routerInitialized = false
 
 function notify() {
@@ -73,28 +85,30 @@ function isSameOriginUrl(url: URL) {
 	return url.origin === window.location.origin
 }
 
-function compileRoutePattern(pattern: string) {
-	const regexPattern = pattern
-		.replace(/:([^/]+)/g, '([^/]+)')
-		.replace(/\*/g, '.*')
-
-	return {
-		pattern: new RegExp(`^${regexPattern}$`),
+function createRouteMatcher(routes: Record<string, JSX.Element>) {
+	const matcher = createMultiMatcher<JSX.Element>()
+	for (const [pattern, routeElement] of Object.entries(routes)) {
+		matcher.add(pattern, routeElement)
 	}
+	return matcher
 }
 
-function matchRoute(
+function getRouteMatcher(routes: Record<string, JSX.Element>) {
+	const existing = routeMatchers.get(routes)
+	if (existing) return existing
+	const matcher = createRouteMatcher(routes)
+	routeMatchers.set(routes, matcher)
+	return matcher
+}
+
+export function matchRoute(
 	path: string,
 	routes: Record<string, JSX.Element>,
 ): JSX.Element | null {
-	for (const [pattern, routeElement] of Object.entries(routes)) {
-		const { pattern: compiled } = compileRoutePattern(pattern)
-		const result = compiled.exec(path)
-		if (!result) continue
-		return routeElement
-	}
-
-	return null
+	return (
+		getRouteMatcher(routes).match(new URL(path, clientRouteOrigin))?.data ??
+		null
+	)
 }
 
 function shouldHandleClick(event: MouseEvent, anchor: HTMLAnchorElement) {
@@ -367,13 +381,21 @@ export function listenToRouterNavigation(
 	handle: Handle<any>,
 	listener: () => void,
 ) {
+	if (typeof document === 'undefined') return
 	ensureRouter()
 	addEventListeners(routerEvents, handle.signal, {
 		navigate: () => listener(),
 	})
 }
 
-export function getPathname() {
+export function getPathname(handle?: Pick<Handle, 'context'>) {
+	if (handle) {
+		try {
+			return readRouterPathname(handle)
+		} catch {
+			// Router location context is unavailable outside the app tree.
+		}
+	}
 	if (typeof window === 'undefined') return '/'
 	return window.location.pathname
 }
@@ -404,13 +426,35 @@ export function navigate(to: string) {
 	notify()
 }
 
-export function Router(handle: Handle<RouterSetup>) {
-	listenToRouterNavigation(handle, () => {
-		void handle.update()
-	})
+type RouterHandle = Pick<Handle, 'context' | 'signal' | 'update'> & {
+	props: RouterSetup
+}
+
+function normalizeHref(href: string) {
+	const url = new URL(href, clientRouteOrigin)
+	return `${url.pathname}${url.search}${url.hash}`
+}
+
+function isOnSsrUrl(handle: Pick<Handle, 'context'>) {
+	return (
+		normalizeHref(readRouterUrl(handle)) ===
+		normalizeHref(readSsrRouterUrl(handle))
+	)
+}
+
+export function Router(handle: RouterHandle) {
+	if (typeof document !== 'undefined') {
+		listenToRouterNavigation(handle as Handle, () => {
+			void handle.update()
+		})
+	}
 
 	return () => {
-		const path = getPathname()
+		if (handle.props.notFound && isOnSsrUrl(handle)) {
+			return handle.props.fallback ?? null
+		}
+
+		const path = getPathname(handle)
 		const routeElement = matchRoute(path, handle.props.routes)
 		if (routeElement) return routeElement
 		return handle.props.fallback ?? null

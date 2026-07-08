@@ -1,24 +1,25 @@
 import { type Action } from 'remix/router'
-import { readAuthSessionResult } from '#server/auth-session.ts'
+import { type AppEnv } from '#types/env-schema.ts'
+import {
+	readAuthSessionResult,
+	setAuthSessionSecret,
+} from '#server/auth-session.ts'
 import { redirectToLogin } from '#server/auth-redirect.ts'
-import { Layout } from '#server/layout.ts'
-import { render } from '#server/render.ts'
 import { type routes } from '#server/routes.ts'
+import { renderAppPage } from '#server/ssr-render.tsx'
 
-export const chat = {
-	middleware: [],
-	async handler({ request }) {
-		const { session, setCookie } = await readAuthSessionResult(request)
+export function createChatHandler(appEnv: AppEnv) {
+	return {
+		middleware: [],
+		async handler({ request }) {
+			setAuthSessionSecret(appEnv.COOKIE_SECRET)
+			const { session } = await readAuthSessionResult(request)
 
-		if (!session) {
-			return redirectToLogin(request)
-		}
+			if (!session) {
+				return redirectToLogin(request)
+			}
 
-		const response = render(Layout({}))
-		if (setCookie) {
-			response.headers.set('Set-Cookie', setCookie)
-		}
-
-		return response
-	},
-} satisfies Action<typeof routes.chat>
+			return renderAppPage({ request, appEnv, title: 'Chat' })
+		},
+	} satisfies Action<typeof routes.chat>
+}

@@ -4,6 +4,8 @@ import {
 	type SessionInfo,
 	type SessionStatus,
 } from '#client/session.ts'
+import { readRouterSearch } from '#client/router-location.tsx'
+import { routes } from '#server/routes.ts'
 import {
 	colors,
 	radius,
@@ -23,10 +25,18 @@ type OAuthAuthorizeMessage = {
 	type: 'error' | 'info'
 	text: string
 }
-function getSearchParams() {
-	return typeof window === 'undefined'
-		? new URLSearchParams()
-		: new URLSearchParams(window.location.search)
+function getSearch(handle: Handle) {
+	if (typeof window !== 'undefined') return window.location.search
+
+	try {
+		return readRouterSearch(handle)
+	} catch {
+		return ''
+	}
+}
+
+function getSearchParams(handle: Handle) {
+	return new URLSearchParams(getSearch(handle))
 }
 export function OAuthAuthorizeRoute(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
@@ -41,7 +51,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		handle.update()
 	}
 	function readQueryError() {
-		const params = getSearchParams()
+		const params = getSearchParams(handle)
 		const description = params.get('error_description')
 		if (description) return description
 		const error = params.get('error')
@@ -54,7 +64,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 			message = { type: 'error', text: queryError }
 		}
 		try {
-			const query = typeof window === 'undefined' ? '' : window.location.search
+			const query = getSearch(handle)
 			const response = await fetch(`/oauth/authorize-info${query}`, {
 				headers: { Accept: 'application/json' },
 				credentials: 'include',
@@ -168,13 +178,12 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		)
 	}
 	return () => {
-		const currentSearch =
-			typeof window === 'undefined' ? '' : window.location.search
-		if (currentSearch !== lastSearch) {
+		const currentSearch = getSearch(handle)
+		if (typeof window !== 'undefined' && currentSearch !== lastSearch) {
 			lastSearch = currentSearch
 			void loadInfo()
 		}
-		if (sessionStatus === 'idle') {
+		if (typeof window !== 'undefined' && sessionStatus === 'idle') {
 			void loadSession()
 		}
 		const clientLabel = info?.client?.name ?? 'Unknown client'
@@ -422,7 +431,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 					</div>
 				</form>
 				<a
-					href="/"
+					href={routes.home.href()}
 					mix={[
 						css({
 							color: colors.textMuted,

@@ -1,3 +1,4 @@
+import { routes } from '#server/routes.ts'
 import { AccountRoute } from './account.tsx'
 import { ChatRoute } from './chat.tsx'
 import { HomeRoute } from './home.tsx'
@@ -7,13 +8,13 @@ import { OAuthCallbackRoute } from './oauth-callback.tsx'
 import { ResetPasswordRoute } from './reset-password.tsx'
 
 export const clientRoutes = {
-	'/': <HomeRoute />,
-	'/chat': <ChatRoute />,
+	[routes.home.href()]: <HomeRoute />,
+	[routes.chat.href()]: <ChatRoute />,
 	'/chat/:threadId': <ChatRoute />,
-	'/account': <AccountRoute />,
-	'/login': <LoginRoute />,
-	'/signup': <LoginRoute />,
-	'/reset-password': <ResetPasswordRoute />,
-	'/oauth/authorize': <OAuthAuthorizeRoute />,
-	'/oauth/callback': <OAuthCallbackRoute />,
+	[routes.account.href()]: <AccountRoute />,
+	[routes.login.href()]: <LoginRoute />,
+	[routes.signup.href()]: <LoginRoute />,
+	[routes.resetPassword.href()]: <ResetPasswordRoute />,
+	[routes.oauthAuthorize.href()]: <OAuthAuthorizeRoute />,
+	[routes.oauthCallback.href()]: <OAuthCallbackRoute />,
 }
