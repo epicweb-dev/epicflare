@@ -11,6 +11,7 @@ import {
 	type SessionInfo,
 	type SessionStatus,
 } from './session.ts'
+import { NavigationProgress } from './navigation-progress.tsx'
 import { SessionProvider } from './session-context.tsx'
 import { buildAuthLink } from './auth-links.ts'
 import { colors, mq, spacing, typography } from './styles/tokens.ts'
@@ -200,6 +201,7 @@ export function App(handle: Handle<AppProps>) {
 					) : null}
 				</nav>
 				<SessionProvider session={session}>
+					<NavigationProgress />
 					<Router
 						loaders={clientRouteLoaders}
 						routes={clientRoutes}

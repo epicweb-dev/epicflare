@@ -85,9 +85,45 @@ const routeLoaderMatchers = new WeakMap<
 let routerInitialized = false
 let activeRouteLoaders: Record<string, RouteLoader> | null = null
 let pendingProgrammaticNavigationPath: string | null = null
+let pendingProgrammaticNavigationSuppressStart = false
+let navigationAbortController: AbortController | null = null
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
+}
+
+function dispatchNavigationStart() {
+	routerEvents.dispatchEvent(
+		new CustomEvent('navigationstart', {
+			detail: { location: getCurrentPathWithSearchAndHash() },
+		}),
+	)
+}
+
+function dispatchNavigationEnd(location = getCurrentPathWithSearchAndHash()) {
+	routerEvents.dispatchEvent(
+		new CustomEvent('navigationend', {
+			detail: { location },
+		}),
+	)
+}
+
+function beginNavigation(options: { suppressStart?: boolean } = {}) {
+	navigationAbortController?.abort()
+	const controller = new AbortController()
+	navigationAbortController = controller
+	if (!options.suppressStart) {
+		dispatchNavigationStart()
+	}
+	return controller
+}
+
+function finishNavigation(controller: AbortController, location?: string) {
+	if (navigationAbortController !== controller) return
+	navigationAbortController = null
+	if (!controller.signal.aborted) {
+		dispatchNavigationEnd(location)
+	}
 }
 
 function getNavigationApi() {
@@ -300,9 +336,13 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 }
 
 function consumeProgrammaticNavigation(path: string) {
-	if (pendingProgrammaticNavigationPath !== path) return false
+	if (pendingProgrammaticNavigationPath !== path) {
+		return { matched: false, suppressStart: false }
+	}
+	const suppressStart = pendingProgrammaticNavigationSuppressStart
 	pendingProgrammaticNavigationPath = null
-	return true
+	pendingProgrammaticNavigationSuppressStart = false
+	return { matched: true, suppressStart }
 }
 
 async function preloadRouteData(destination: URL, signal: AbortSignal) {
@@ -333,10 +373,9 @@ async function preloadAndCommitNavigationData(
 	signal: AbortSignal,
 ) {
 	try {
-		return commitRouteLoaderResult(
-			destination,
-			await preloadRouteData(destination, signal),
-		)
+		const result = await preloadRouteData(destination, signal)
+		if (signal.aborted) return false
+		return commitRouteLoaderResult(destination, result)
 	} catch (error) {
 		if (signal.aborted) return false
 		markNavigationDataStale(getPathWithSearchAndHashFromUrl(destination))
@@ -345,24 +384,37 @@ async function preloadAndCommitNavigationData(
 	}
 }
 
-async function navigateWithRefreshForSamePath(destination: URL) {
+async function navigateWithRefreshForSamePath(
+	destination: URL,
+	options: { signal?: AbortSignal; suppressStart?: boolean } = {},
+) {
 	const path = getPathWithSearchAndHashFromUrl(destination)
 	if (path === getCurrentPathWithSearchAndHash()) {
+		const controller = options.signal
+			? null
+			: beginNavigation({ suppressStart: options.suppressStart })
 		const redirected = await preloadAndCommitNavigationData(
 			destination,
-			new AbortController().signal,
+			options.signal ?? controller?.signal ?? new AbortController().signal,
 		)
 		if (!redirected) notify()
+		if (controller) {
+			finishNavigation(controller, path)
+		}
 		return
 	}
-	navigate(destination.toString())
+	navigate(destination.toString(), { suppressStart: options.suppressStart })
 }
 
-async function submitPostFormThroughRouter(details: FormSubmitDetails) {
+async function submitPostFormThroughRouter(
+	details: FormSubmitDetails,
+	signal?: AbortSignal,
+) {
 	const init: RequestInit = {
 		method: details.method.toUpperCase(),
 		credentials: 'include',
 		redirect: 'follow',
+		signal,
 	}
 
 	if (details.enctype === 'application/x-www-form-urlencoded') {
@@ -400,8 +452,24 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 		return
 	}
 
-	const destination = await submitPostFormThroughRouter(details)
-	await navigateWithRefreshForSamePath(destination)
+	const controller = beginNavigation()
+	try {
+		const destination = await submitPostFormThroughRouter(
+			details,
+			controller.signal,
+		)
+		if (controller.signal.aborted) return
+		await navigateWithRefreshForSamePath(destination, {
+			signal: controller.signal,
+			suppressStart: true,
+		})
+		finishNavigation(controller, getPathWithSearchAndHashFromUrl(destination))
+	} catch (error) {
+		if (!controller.signal.aborted) {
+			console.error('Router form submit failed', error)
+			finishNavigation(controller)
+		}
+	}
 }
 
 function handleDocumentSubmit(event: Event) {
@@ -416,16 +484,13 @@ function handleDocumentSubmit(event: Event) {
 	if (!details) return
 
 	event.preventDefault()
-	void submitFormThroughRouter(details).catch((error: unknown) => {
-		console.error('Router form submit failed', error)
-	})
+	void submitFormThroughRouter(details)
 }
 
 function shouldInterceptNavigationEvent(event: RouterNavigateEvent) {
 	if (typeof window === 'undefined') return false
 	if (!event.canIntercept) return false
 	if (event.downloadRequest !== null) return false
-	if (event.hashChange) return false
 	if (event.navigationType === 'reload') return false
 
 	const destination = new URL(event.destination.url, window.location.href)
@@ -436,6 +501,22 @@ function shouldInterceptNavigationEvent(event: RouterNavigateEvent) {
 function handleNavigationEvent(event: RouterNavigateEvent) {
 	if (!shouldInterceptNavigationEvent(event)) return
 
+	if (event.hashChange) {
+		event.intercept({
+			handler() {
+				const controller = beginNavigation()
+				notify()
+				finishNavigation(
+					controller,
+					getPathWithSearchAndHashFromUrl(
+						new URL(event.destination.url, window.location.href),
+					),
+				)
+			},
+		})
+		return
+	}
+
 	const { form } = getFormForSourceElement(event.sourceElement)
 	if (form) {
 		// Keep form submissions on the submit-handler path until precommit
@@ -444,22 +525,37 @@ function handleNavigationEvent(event: RouterNavigateEvent) {
 	}
 	const destination = new URL(event.destination.url, window.location.href)
 	const nextPath = getPathWithSearchAndHashFromUrl(destination)
-	const isProgrammaticNavigation = consumeProgrammaticNavigation(nextPath)
+	const programmaticNavigation = consumeProgrammaticNavigation(nextPath)
+	const controller = programmaticNavigation.matched
+		? beginNavigation({
+				suppressStart: programmaticNavigation.suppressStart,
+			})
+		: beginNavigation()
 
 	event.intercept({
 		async handler() {
-			if (isProgrammaticNavigation) {
+			if (programmaticNavigation.matched) {
 				notify()
+				finishNavigation(controller, nextPath)
 				return
 			}
-			const controller = new AbortController()
 			const redirected = await preloadAndCommitNavigationData(
 				destination,
 				controller.signal,
 			)
-			if (!redirected) notify()
+			if (controller.signal.aborted) return
+			if (!redirected) {
+				notify()
+			}
+			finishNavigation(controller, nextPath)
 		},
 	})
+}
+
+function handlePopstate() {
+	const controller = beginNavigation()
+	notify()
+	finishNavigation(controller)
 }
 
 function ensureRouter() {
@@ -474,7 +570,7 @@ function ensureRouter() {
 		return
 	}
 
-	window.addEventListener('popstate', notify)
+	window.addEventListener('popstate', handlePopstate)
 	document.addEventListener('click', handleDocumentClick)
 }
 
@@ -506,7 +602,10 @@ function getCurrentPathWithSearchAndHash() {
 	return `${window.location.pathname}${window.location.search}${window.location.hash}`
 }
 
-export function navigate(to: string) {
+export function navigate(
+	to: string,
+	options: { suppressStart?: boolean } = {},
+) {
 	if (typeof window === 'undefined') return
 	const destination = new URL(to, window.location.href)
 	if (destination.origin !== window.location.origin) {
@@ -520,12 +619,15 @@ export function navigate(to: string) {
 	const navigationApi = getNavigationApi()
 	if (navigationApi) {
 		pendingProgrammaticNavigationPath = nextPath
+		pendingProgrammaticNavigationSuppressStart = options.suppressStart === true
 		navigationApi.navigate(nextPath)
 		return
 	}
 
+	const controller = beginNavigation({ suppressStart: options.suppressStart })
 	window.history.pushState({}, '', nextPath)
 	notify()
+	finishNavigation(controller, nextPath)
 }
 
 type RouterHandle = Pick<Handle, 'context' | 'signal' | 'update'> & {
