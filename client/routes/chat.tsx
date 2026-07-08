@@ -1,6 +1,6 @@
 import { addEventListeners, css, on, type Handle } from 'remix/ui'
 import { ChatClient, type ChatClientSnapshot } from '#client/chat-client.ts'
-import { navigate, routerEvents } from '#client/client-router.tsx'
+import { getPathname, navigate, routerEvents } from '#client/client-router.tsx'
 import { EditableText } from '#client/editable-text.tsx'
 import {
 	createInfiniteList,
@@ -32,11 +32,11 @@ import {
 	type ChatThreadUpdateResponse,
 } from '#shared/chat.ts'
 type ThreadStatus = 'idle' | 'loading' | 'ready' | 'error'
-function getSelectedThreadIdFromLocation() {
-	if (typeof window === 'undefined') return null
+function getSelectedThreadIdFromLocation(handle: Pick<Handle, 'context'>) {
+	const pathname = getPathname(handle)
 	const prefix = `${routes.chat.href()}/`
-	if (!window.location.pathname.startsWith(prefix)) return null
-	const threadId = window.location.pathname.slice(prefix.length).trim()
+	if (!pathname.startsWith(prefix)) return null
+	const threadId = pathname.slice(prefix.length).trim()
 	return threadId || null
 }
 function buildThreadHref(threadId: string) {
@@ -645,7 +645,7 @@ export function ChatRoute(handle: Handle) {
 		if (threadStatus !== 'ready' || syncInFlight) return
 		syncInFlight = true
 		try {
-			const locationThreadId = getSelectedThreadIdFromLocation()
+			const locationThreadId = getSelectedThreadIdFromLocation(handle)
 			const threads = getThreads()
 			if (threads.length === 0) {
 				activeClient?.close()
@@ -877,7 +877,7 @@ export function ChatRoute(handle: Handle) {
 			: null
 		const showEmptyStateComposer =
 			!activeThread && threads.length === 0 && threadStatus !== 'error'
-		const hasThreadInUrl = Boolean(getSelectedThreadIdFromLocation())
+		const hasThreadInUrl = Boolean(getSelectedThreadIdFromLocation(handle))
 		return (
 			<section
 				mix={[
