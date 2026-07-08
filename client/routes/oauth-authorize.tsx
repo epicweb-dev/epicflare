@@ -151,6 +151,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		const data = tryConsumeRouteLoaderData(handle, 'oauthAuthorize', href)
 		if (data) {
 			applyLoaderData(data)
+			lastSearch = getSearch(handle)
 		}
 	}
 	async function loadInfo() {

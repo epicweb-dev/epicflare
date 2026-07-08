@@ -84,6 +84,7 @@ const routeLoaderMatchers = new WeakMap<
 >()
 let routerInitialized = false
 let activeRouteLoaders: Record<string, RouteLoader> | null = null
+let pendingProgrammaticNavigationPath: string | null = null
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
@@ -298,6 +299,12 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
+function consumeProgrammaticNavigation(path: string) {
+	if (pendingProgrammaticNavigationPath !== path) return false
+	pendingProgrammaticNavigationPath = null
+	return true
+}
+
 async function preloadRouteData(destination: URL, signal: AbortSignal) {
 	const path = getPathWithSearchAndHashFromUrl(destination)
 	const loader = matchRouteLoader(path)
@@ -436,9 +443,15 @@ function handleNavigationEvent(event: RouterNavigateEvent) {
 		return
 	}
 	const destination = new URL(event.destination.url, window.location.href)
+	const nextPath = getPathWithSearchAndHashFromUrl(destination)
+	const isProgrammaticNavigation = consumeProgrammaticNavigation(nextPath)
 
 	event.intercept({
 		async handler() {
+			if (isProgrammaticNavigation) {
+				notify()
+				return
+			}
 			const controller = new AbortController()
 			const redirected = await preloadAndCommitNavigationData(
 				destination,
@@ -503,6 +516,13 @@ export function navigate(to: string) {
 
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
+
+	const navigationApi = getNavigationApi()
+	if (navigationApi) {
+		pendingProgrammaticNavigationPath = nextPath
+		navigationApi.navigate(nextPath)
+		return
+	}
 
 	window.history.pushState({}, '', nextPath)
 	notify()
