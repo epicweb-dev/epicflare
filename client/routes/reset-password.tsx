@@ -9,6 +9,10 @@ import {
 	typography,
 } from '#client/styles/tokens.ts'
 type ResetStatus = 'idle' | 'submitting' | 'success' | 'error'
+type ResetPayload = {
+	error?: unknown
+	message?: unknown
+}
 function getSearchParams(handle: Handle) {
 	if (typeof window !== 'undefined') {
 		return new URLSearchParams(window.location.search)
@@ -47,7 +51,9 @@ export function ResetPasswordRoute(handle: Handle) {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as ResetPayload | null
 			if (!response.ok) {
 				const errorMessage =
 					typeof payload?.error === 'string'
@@ -58,7 +64,9 @@ export function ResetPasswordRoute(handle: Handle) {
 			}
 			setState(
 				'success',
-				payload?.message ?? 'Check your inbox for a reset link.',
+				typeof payload?.message === 'string'
+					? payload.message
+					: 'Check your inbox for a reset link.',
 			)
 		} catch {
 			setState('error', 'Network error. Please try again.')
@@ -80,7 +88,9 @@ export function ResetPasswordRoute(handle: Handle) {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ token, password }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as ResetPayload | null
 			if (!response.ok) {
 				const errorMessage =
 					typeof payload?.error === 'string'

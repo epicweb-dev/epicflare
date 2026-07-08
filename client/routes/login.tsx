@@ -17,6 +17,9 @@ import {
 } from '#client/styles/tokens.ts'
 type AuthMode = 'login' | 'signup'
 type AuthStatus = 'idle' | 'submitting' | 'success' | 'error'
+type AuthPayload = {
+	error?: unknown
+}
 function getSearchParams(handle: Handle) {
 	if (typeof window !== 'undefined') {
 		return new URLSearchParams(window.location.search)
@@ -106,7 +109,9 @@ export function LoginRoute(handle: Handle) {
 				credentials: 'include',
 				body: JSON.stringify({ email, password, mode, rememberMe }),
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as AuthPayload | null
 			if (!response.ok) {
 				const errorMessage =
 					typeof payload?.error === 'string'

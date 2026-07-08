@@ -25,6 +25,16 @@ type OAuthAuthorizeMessage = {
 	type: 'error' | 'info'
 	text: string
 }
+type OAuthAuthorizeInfoPayload = {
+	ok?: boolean
+	error?: unknown
+	client?: OAuthAuthorizeInfo['client']
+	scopes?: Array<string>
+}
+type OAuthAuthorizeDecisionPayload = {
+	error?: unknown
+	redirectTo?: unknown
+}
 function getSearch(handle: Handle) {
 	if (typeof window !== 'undefined') return window.location.search
 
@@ -46,6 +56,8 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	let lastSearch = ''
 	let session: SessionInfo | null = null
 	let sessionStatus: SessionStatus = 'idle'
+	let infoLoadQueued = false
+	let sessionLoadQueued = false
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
 		handle.update()
@@ -69,8 +81,15 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				headers: { Accept: 'application/json' },
 				credentials: 'include',
 			})
-			const payload = await response.json().catch(() => null)
-			if (!response.ok || !payload?.ok) {
+			const payload = (await response
+				.json()
+				.catch(() => null)) as OAuthAuthorizeInfoPayload | null
+			if (
+				!response.ok ||
+				!payload?.ok ||
+				!payload.client ||
+				!Array.isArray(payload.scopes)
+			) {
 				const errorText =
 					typeof payload?.error === 'string'
 						? payload.error
@@ -142,7 +161,9 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				credentials: 'include',
 				body,
 			})
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as OAuthAuthorizeDecisionPayload | null
 			if (!response.ok) {
 				const errorText =
 					typeof payload?.error === 'string'
@@ -153,7 +174,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				handle.update()
 				return
 			}
-			if (payload?.redirectTo) {
+			if (typeof payload?.redirectTo === 'string') {
 				window.location.assign(payload.redirectTo)
 				return
 			}
@@ -179,12 +200,34 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 	return () => {
 		const currentSearch = getSearch(handle)
-		if (typeof window !== 'undefined' && currentSearch !== lastSearch) {
+		if (
+			typeof window !== 'undefined' &&
+			currentSearch !== lastSearch &&
+			!infoLoadQueued
+		) {
 			lastSearch = currentSearch
-			void loadInfo()
+			infoLoadQueued = true
+			handle.queueTask(async () => {
+				try {
+					await loadInfo()
+				} finally {
+					infoLoadQueued = false
+				}
+			})
 		}
-		if (typeof window !== 'undefined' && sessionStatus === 'idle') {
-			void loadSession()
+		if (
+			typeof window !== 'undefined' &&
+			sessionStatus === 'idle' &&
+			!sessionLoadQueued
+		) {
+			sessionLoadQueued = true
+			handle.queueTask(async () => {
+				try {
+					await loadSession()
+				} finally {
+					sessionLoadQueued = false
+				}
+			})
 		}
 		const clientLabel = info?.client?.name ?? 'Unknown client'
 		const scopes = info?.scopes ?? []

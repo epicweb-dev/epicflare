@@ -5,7 +5,7 @@
 		"allowImportingTsExtensions": true,
 		"tsBuildInfoFile": "../node_modules/.tmp/tsconfig.worker.tsbuildinfo",
 		"target": "ES2023",
-		"lib": ["ES2023", "WebWorker", "WebWorker.Iterable"],
+		"lib": ["DOM", "DOM.Iterable", "ES2023", "WebWorker", "WebWorker.Iterable"],
 		"baseUrl": ".",
 		// Force MCP SDK to resolve to the hoisted install to avoid duplicate
 		// private type conflicts when multiple copies are present.
@@ -18,6 +18,8 @@
 			]
 		},
 		"module": "ESNext",
+		"jsx": "react-jsx",
+		"jsxImportSource": "remix/ui",
 		"types": [],
 		"moduleResolution": "bundler",
 		"verbatimModuleSyntax": true,
@@ -33,9 +35,12 @@
 		"./env-schema.ts",
 		"./worker-configuration.d.ts",
 		"../shared/**/*.ts",
+		"../client/**/*.ts",
+		"../client/**/*.tsx",
 		"../mock-servers/**/*.ts",
 		"../worker/**/*.ts",
 		"../server/**/*.ts",
+		"../server/**/*.tsx",
 		"../mcp/**/*.ts"
 	],
 	"exclude": [

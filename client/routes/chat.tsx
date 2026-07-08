@@ -747,13 +747,15 @@ export function ChatRoute(handle: Handle) {
 			)
 		}
 	}
-	addEventListeners(routerEvents, handle.signal, {
-		navigate: () => {
-			void handle.queueTask(async () => {
-				await syncActiveThreadFromLocation()
-			})
-		},
-	})
+	if (typeof window !== 'undefined') {
+		addEventListeners(routerEvents, handle.signal, {
+			navigate: () => {
+				void handle.queueTask(async () => {
+					await syncActiveThreadFromLocation()
+				})
+			},
+		})
+	}
 	async function createAndSelectThread() {
 		const thread = await createThread()
 		navigate(buildThreadHref(thread.id))

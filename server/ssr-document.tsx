@@ -1,3 +1,5 @@
+/** @jsxImportSource remix/ui */
+/** @jsxRuntime automatic */
 import { type Handle } from 'remix/ui'
 import {
 	APP_ROOT_ENTRY_ID,

@@ -2,6 +2,12 @@ import { css, type Handle } from 'remix/ui'
 import { colors, spacing, typography } from '#client/styles/tokens.ts'
 import { routes } from '#server/routes.ts'
 type AccountStatus = 'idle' | 'loading' | 'ready' | 'error'
+type SessionPayload = {
+	ok?: boolean
+	session?: {
+		email?: unknown
+	}
+}
 export function AccountRoute(handle: Handle) {
 	let status: AccountStatus = 'loading'
 	let email = ''
@@ -14,7 +20,9 @@ export function AccountRoute(handle: Handle) {
 				signal,
 			})
 			if (signal.aborted) return
-			const payload = await response.json().catch(() => null)
+			const payload = (await response
+				.json()
+				.catch(() => null)) as SessionPayload | null
 			const sessionEmail =
 				response.ok &&
 				payload?.ok &&

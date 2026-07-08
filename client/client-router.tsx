@@ -378,7 +378,7 @@ function ensureRouter() {
 }
 
 export function listenToRouterNavigation(
-	handle: Handle<any>,
+	handle: Pick<Handle, 'signal'>,
 	listener: () => void,
 ) {
 	if (typeof document === 'undefined') return
@@ -444,7 +444,7 @@ function isOnSsrUrl(handle: Pick<Handle, 'context'>) {
 
 export function Router(handle: RouterHandle) {
 	if (typeof document !== 'undefined') {
-		listenToRouterNavigation(handle as Handle, () => {
+		listenToRouterNavigation(handle, () => {
 			void handle.update()
 		})
 	}

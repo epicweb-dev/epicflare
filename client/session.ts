@@ -4,6 +4,13 @@ export type SessionInfo = {
 
 export type SessionStatus = 'idle' | 'loading' | 'ready'
 
+type SessionPayload = {
+	ok?: boolean
+	session?: {
+		email?: unknown
+	}
+}
+
 export async function fetchSessionInfo(
 	signal?: AbortSignal,
 ): Promise<SessionInfo | null> {
@@ -14,7 +21,9 @@ export async function fetchSessionInfo(
 			signal,
 		})
 		if (signal?.aborted) return null
-		const payload = await response.json().catch(() => null)
+		const payload = (await response
+			.json()
+			.catch(() => null)) as SessionPayload | null
 		const email =
 			response.ok && payload?.ok && typeof payload?.session?.email === 'string'
 				? payload.session.email.trim()
