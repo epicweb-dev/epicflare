@@ -70,3 +70,44 @@ test('renderAppPage server-renders account session details', async () => {
 	expect(html).toContain('Welcome, signed-in@example.com')
 	expect(html).not.toContain('Loading your account')
 })
+
+test('renderAppPage server-renders oauth authorize query errors', async () => {
+	const response = await renderAppPage({
+		request: new Request(
+			'https://example.com/oauth/authorize?error=access_denied&error_description=Denied',
+		),
+		appEnv: testAppEnv,
+		title: 'Authorize',
+	})
+
+	expect(response.status).toBe(200)
+	const html = await response.text()
+	expect(html).toContain('Denied')
+	expect(html).not.toContain('Checking your session')
+})
+
+test('renderAppPage server-renders oauth authorize session details', async () => {
+	setAuthSessionSecret(testAppEnv.COOKIE_SECRET)
+	const setCookie = await createAuthCookie(
+		{
+			id: '1',
+			email: 'oauth-user@example.com',
+			rememberMe: false,
+		},
+		true,
+	)
+	const cookie = setCookie.split(';')[0] ?? ''
+
+	const response = await renderAppPage({
+		request: new Request('https://example.com/oauth/authorize', {
+			headers: { Cookie: cookie },
+		}),
+		appEnv: testAppEnv,
+		title: 'Authorize',
+	})
+
+	expect(response.status).toBe(200)
+	const html = await response.text()
+	expect(html).toContain('Signed in as oauth-user@example.com')
+	expect(html).not.toContain('Checking your session')
+})

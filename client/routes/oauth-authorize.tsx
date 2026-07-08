@@ -1,10 +1,7 @@
 import { css, on, type Handle } from 'remix/ui'
-import {
-	fetchSessionInfo,
-	type SessionInfo,
-	type SessionStatus,
-} from '#client/session.ts'
 import { readRouterSearch } from '#client/router-location.tsx'
+import { readSession } from '#client/session-context.tsx'
+import { type SessionInfo } from '#client/session.ts'
 import { routes } from '#server/routes.ts'
 import {
 	colors,
@@ -51,13 +48,14 @@ function getSearchParams(handle: Handle) {
 export function OAuthAuthorizeRoute(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
 	let status: OAuthAuthorizeStatus = 'idle'
-	let message: OAuthAuthorizeMessage | null = null
+	const initialQueryError = readQueryError()
+	let message: OAuthAuthorizeMessage | null = initialQueryError
+		? { type: 'error', text: initialQueryError }
+		: null
 	let submitting = false
 	let lastSearch = ''
-	let session: SessionInfo | null = null
-	let sessionStatus: SessionStatus = 'idle'
+	let session: SessionInfo | null = readSession(handle)
 	let infoLoadQueued = false
-	let sessionLoadQueued = false
 	function setMessage(next: OAuthAuthorizeMessage | null) {
 		message = next
 		handle.update()
@@ -68,6 +66,9 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		if (description) return description
 		const error = params.get('error')
 		return error ? `Authorization error: ${error}` : null
+	}
+	function syncEmbeddedSession() {
+		session = readSession(handle)
 	}
 	async function loadInfo() {
 		status = 'loading'
@@ -91,9 +92,10 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				!Array.isArray(payload.scopes)
 			) {
 				const errorText =
-					typeof payload?.error === 'string'
+					queryError ??
+					(typeof payload?.error === 'string'
 						? payload.error
-						: 'Unable to load authorization details.'
+						: 'Unable to load authorization details.')
 				info = null
 				status = 'error'
 				message = { type: 'error', text: errorText }
@@ -110,21 +112,15 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 			}
 			handle.update()
 		} catch {
+			const queryError = readQueryError()
 			info = null
 			status = 'error'
 			message = {
 				type: 'error',
-				text: 'Unable to load authorization details.',
+				text: queryError ?? 'Unable to load authorization details.',
 			}
 			handle.update()
 		}
-	}
-	async function loadSession() {
-		if (sessionStatus !== 'idle') return
-		sessionStatus = 'loading'
-		session = await fetchSessionInfo()
-		sessionStatus = 'ready'
-		handle.update()
 	}
 	async function submitDecision(
 		decision: 'approve' | 'deny',
@@ -199,6 +195,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		)
 	}
 	return () => {
+		syncEmbeddedSession()
 		const currentSearch = getSearch(handle)
 		if (
 			typeof window !== 'undefined' &&
@@ -215,31 +212,14 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 				}
 			})
 		}
-		if (
-			typeof window !== 'undefined' &&
-			sessionStatus === 'idle' &&
-			!sessionLoadQueued
-		) {
-			sessionLoadQueued = true
-			handle.queueTask(async () => {
-				try {
-					await loadSession()
-				} finally {
-					sessionLoadQueued = false
-				}
-			})
-		}
 		const clientLabel = info?.client?.name ?? 'Unknown client'
 		const scopes = info?.scopes ?? []
 		const scopeLabel =
 			scopes.length > 0 ? scopes.join(', ') : 'No scopes requested.'
 		const sessionEmail = session?.email ?? ''
-		const isSessionReady = sessionStatus === 'ready'
-		const isSessionLoading =
-			sessionStatus === 'loading' || sessionStatus === 'idle'
-		const isLoggedIn = isSessionReady && Boolean(sessionEmail)
-		const actionsDisabled = status !== 'ready' || submitting || isSessionLoading
-		const formReady = status === 'ready' && !isSessionLoading
+		const isLoggedIn = Boolean(sessionEmail)
+		const actionsDisabled = status !== 'ready' || submitting
+		const formReady = status === 'ready'
 		const authorizeLabel = submitting
 			? 'Submitting...'
 			: isLoggedIn
@@ -300,9 +280,6 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						{scopeLabel}
 					</p>
 				</section>
-				{isSessionLoading ? (
-					<p mix={[css({ color: colors.textMuted })]}>Checking your session…</p>
-				) : null}
 				{isLoggedIn ? (
 					<section
 						mix={[
@@ -365,7 +342,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						on<HTMLFormElement, 'submit'>('submit', handleSubmit),
 					]}
 				>
-					{!isLoggedIn && isSessionReady ? (
+					{!isLoggedIn ? (
 						<>
 							<label mix={[css({ display: 'grid', gap: spacing.xs })]}>
 								<span
