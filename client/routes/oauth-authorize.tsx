@@ -1,8 +1,11 @@
 import { css, on, type Handle } from 'remix/ui'
-import { readRouterSearch } from '#client/router-location.tsx'
+import { tryConsumeRouteLoaderData } from '#client/loader-data-context.tsx'
+import { consumeStaleNavigationData } from '#client/navigation-data.ts'
+import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
 import { readSession } from '#client/session-context.tsx'
 import { type SessionInfo } from '#client/session.ts'
 import { routes } from '#server/routes.ts'
+import { type OAuthAuthorizeLoaderData } from '#shared/loader-data.ts'
 import {
 	colors,
 	radius,
@@ -45,6 +48,63 @@ function getSearch(handle: Handle) {
 function getSearchParams(handle: Handle) {
 	return new URLSearchParams(getSearch(handle))
 }
+function readQueryErrorFromParams(params: URLSearchParams) {
+	const description = params.get('error_description')
+	if (description) return description
+	const error = params.get('error')
+	return error ? `Authorization error: ${error}` : null
+}
+function getCurrentHref(handle: Pick<Handle, 'context'>) {
+	try {
+		return readRouterUrl(handle)
+	} catch {
+		return typeof window === 'undefined'
+			? routes.oauthAuthorize.href()
+			: `${window.location.pathname}${window.location.search}${window.location.hash}`
+	}
+}
+async function fetchOAuthAuthorizeData(
+	url: URL,
+	signal?: AbortSignal,
+): Promise<OAuthAuthorizeLoaderData> {
+	const queryError = readQueryErrorFromParams(url.searchParams)
+	if (queryError) return { ok: false, error: queryError }
+	const response = await fetch(`${routes.oauthAuthorize.href()}-info${url.search}`, {
+		headers: { Accept: 'application/json' },
+		credentials: 'include',
+		signal,
+	})
+	const payload = (await response
+		.json()
+		.catch(() => null)) as OAuthAuthorizeInfoPayload | null
+	if (
+		!response.ok ||
+		!payload?.ok ||
+		!payload.client ||
+		!Array.isArray(payload.scopes)
+	) {
+		return {
+			ok: false,
+			error:
+				typeof payload?.error === 'string'
+					? payload.error
+					: 'Unable to load authorization details.',
+		}
+	}
+	return {
+		ok: true,
+		client: payload.client,
+		scopes: payload.scopes,
+	}
+}
+export async function loadOAuthAuthorizeRouteData(
+	url: URL,
+	signal: AbortSignal,
+) {
+	return {
+		oauthAuthorize: await fetchOAuthAuthorizeData(url, signal),
+	}
+}
 export function OAuthAuthorizeRoute(handle: Handle) {
 	let info: OAuthAuthorizeInfo | null = null
 	let status: OAuthAuthorizeStatus = 'idle'
@@ -54,6 +114,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		: null
 	let submitting = false
 	let lastSearch = ''
+	let lastLoaderHref: string | null = null
 	let session: SessionInfo | null = readSession(handle)
 	let infoLoadQueued = false
 	function setMessage(next: OAuthAuthorizeMessage | null) {
@@ -61,55 +122,42 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		handle.update()
 	}
 	function readQueryError() {
-		const params = getSearchParams(handle)
-		const description = params.get('error_description')
-		if (description) return description
-		const error = params.get('error')
-		return error ? `Authorization error: ${error}` : null
+		return readQueryErrorFromParams(getSearchParams(handle))
 	}
 	function syncEmbeddedSession() {
 		session = readSession(handle)
 	}
-	async function loadInfo() {
-		status = 'loading'
-		const queryError = readQueryError()
-		if (queryError) {
-			message = { type: 'error', text: queryError }
-		}
-		try {
-			const query = getSearch(handle)
-			const response = await fetch(`/oauth/authorize-info${query}`, {
-				headers: { Accept: 'application/json' },
-				credentials: 'include',
-			})
-			const payload = (await response
-				.json()
-				.catch(() => null)) as OAuthAuthorizeInfoPayload | null
-			if (
-				!response.ok ||
-				!payload?.ok ||
-				!payload.client ||
-				!Array.isArray(payload.scopes)
-			) {
-				const errorText =
-					queryError ??
-					(typeof payload?.error === 'string'
-						? payload.error
-						: 'Unable to load authorization details.')
-				info = null
-				status = 'error'
-				message = { type: 'error', text: errorText }
-				handle.update()
-				return
-			}
+	function applyLoaderData(data: OAuthAuthorizeLoaderData) {
+		if (data.ok) {
 			info = {
-				client: payload.client,
-				scopes: payload.scopes,
+				client: data.client,
+				scopes: data.scopes,
 			}
 			status = 'ready'
-			if (!queryError) {
+			if (!readQueryError()) {
 				message = null
 			}
+			return
+		}
+		info = null
+		status = 'error'
+		message = { type: 'error', text: data.error }
+	}
+	function syncRouteLoaderData() {
+		const href = getCurrentHref(handle)
+		const isStale = consumeStaleNavigationData(href)
+		if (!isStale && href === lastLoaderHref) return
+		lastLoaderHref = href
+		const data = tryConsumeRouteLoaderData(handle, 'oauthAuthorize', href)
+		if (data) {
+			applyLoaderData(data)
+		}
+	}
+	async function loadInfo() {
+		status = 'loading'
+		const url = new URL(getSearch(handle) || routes.oauthAuthorize.href(), window.location.href)
+		try {
+			applyLoaderData(await fetchOAuthAuthorizeData(url))
 			handle.update()
 		} catch {
 			const queryError = readQueryError()
@@ -195,6 +243,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 		)
 	}
 	return () => {
+		syncRouteLoaderData()
 		syncEmbeddedSession()
 		const currentSearch = getSearch(handle)
 		if (

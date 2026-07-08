@@ -23,6 +23,12 @@ export function createAccountHandler(appEnv: AppEnv) {
 				request,
 				appEnv,
 				title: 'Account',
+				loaderData: {
+					account: {
+						ok: true,
+						email: session.email,
+					},
+				},
 			})
 		},
 	} satisfies Action<typeof routes.account>

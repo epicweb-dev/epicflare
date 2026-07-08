@@ -1,6 +1,15 @@
 import { addEventListeners, type Handle } from 'remix/ui'
 import { createMultiMatcher } from 'remix/route-pattern/match'
 import {
+	markNavigationDataStale,
+	setPreloadedNavigationData,
+} from './navigation-data.ts'
+import {
+	isRouteLoaderRedirect,
+	type RouteLoader,
+	type RouteLoaderResult,
+} from './route-loader.ts'
+import {
 	readRouterPathname,
 	readRouterUrl,
 	readSsrRouterUrl,
@@ -9,6 +18,7 @@ import {
 type RouterSetup = {
 	routes: Record<string, JSX.Element>
 	fallback?: JSX.Element
+	loaders?: Record<string, RouteLoader>
 	notFound?: boolean
 }
 
@@ -68,7 +78,12 @@ const routeMatchers = new WeakMap<
 	Record<string, JSX.Element>,
 	ReturnType<typeof createRouteMatcher>
 >()
+const routeLoaderMatchers = new WeakMap<
+	Record<string, RouteLoader>,
+	ReturnType<typeof createRouteLoaderMatcher>
+>()
 let routerInitialized = false
+let activeRouteLoaders: Record<string, RouteLoader> | null = null
 
 function notify() {
 	routerEvents.dispatchEvent(new Event('navigate'))
@@ -93,11 +108,27 @@ function createRouteMatcher(routes: Record<string, JSX.Element>) {
 	return matcher
 }
 
+function createRouteLoaderMatcher(loaders: Record<string, RouteLoader>) {
+	const matcher = createMultiMatcher<RouteLoader>()
+	for (const [pattern, loader] of Object.entries(loaders)) {
+		matcher.add(pattern, loader)
+	}
+	return matcher
+}
+
 function getRouteMatcher(routes: Record<string, JSX.Element>) {
 	const existing = routeMatchers.get(routes)
 	if (existing) return existing
 	const matcher = createRouteMatcher(routes)
 	routeMatchers.set(routes, matcher)
+	return matcher
+}
+
+function getRouteLoaderMatcher(loaders: Record<string, RouteLoader>) {
+	const existing = routeLoaderMatchers.get(loaders)
+	if (existing) return existing
+	const matcher = createRouteLoaderMatcher(loaders)
+	routeLoaderMatchers.set(loaders, matcher)
 	return matcher
 }
 
@@ -108,6 +139,15 @@ export function matchRoute(
 	return (
 		getRouteMatcher(routes).match(new URL(path, clientRouteOrigin))?.data ??
 		null
+	)
+}
+
+function matchRouteLoader(path: string) {
+	if (!activeRouteLoaders) return null
+	return (
+		getRouteLoaderMatcher(activeRouteLoaders).match(
+			new URL(path, clientRouteOrigin),
+		)?.data ?? null
 	)
 }
 
@@ -258,12 +298,54 @@ function getPathWithSearchAndHashFromUrl(url: URL) {
 	return `${url.pathname}${url.search}${url.hash}`
 }
 
-function navigateWithRefreshForSamePath(destination: URL) {
-	if (
-		getPathWithSearchAndHashFromUrl(destination) ===
-		getCurrentPathWithSearchAndHash()
-	) {
-		notify()
+async function preloadRouteData(destination: URL, signal: AbortSignal) {
+	const path = getPathWithSearchAndHashFromUrl(destination)
+	const loader = matchRouteLoader(path)
+	if (!loader) return null
+	return loader(destination, signal)
+}
+
+function commitRouteLoaderResult(
+	destination: URL,
+	result: RouteLoaderResult | null,
+) {
+	const path = getPathWithSearchAndHashFromUrl(destination)
+	if (!result) return false
+	if (isRouteLoaderRedirect(result)) {
+		window.location.assign(result.to)
+		return true
+	}
+	if (Object.keys(result).length > 0) {
+		setPreloadedNavigationData(path, result)
+	}
+	return false
+}
+
+async function preloadAndCommitNavigationData(
+	destination: URL,
+	signal: AbortSignal,
+) {
+	try {
+		return commitRouteLoaderResult(
+			destination,
+			await preloadRouteData(destination, signal),
+		)
+	} catch (error) {
+		if (signal.aborted) return false
+		markNavigationDataStale(getPathWithSearchAndHashFromUrl(destination))
+		console.error('Route loader failed', error)
+		return false
+	}
+}
+
+async function navigateWithRefreshForSamePath(destination: URL) {
+	const path = getPathWithSearchAndHashFromUrl(destination)
+	if (path === getCurrentPathWithSearchAndHash()) {
+		const redirected = await preloadAndCommitNavigationData(
+			destination,
+			new AbortController().signal,
+		)
+		if (!redirected) notify()
 		return
 	}
 	navigate(destination.toString())
@@ -312,7 +394,7 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 	}
 
 	const destination = await submitPostFormThroughRouter(details)
-	navigateWithRefreshForSamePath(destination)
+	await navigateWithRefreshForSamePath(destination)
 }
 
 function handleDocumentSubmit(event: Event) {
@@ -353,10 +435,16 @@ function handleNavigationEvent(event: RouterNavigateEvent) {
 		// handling is consistently supported across Navigation API browsers.
 		return
 	}
+	const destination = new URL(event.destination.url, window.location.href)
 
 	event.intercept({
-		handler() {
-			notify()
+		async handler() {
+			const controller = new AbortController()
+			const redirected = await preloadAndCommitNavigationData(
+				destination,
+				controller.signal,
+			)
+			if (!redirected) notify()
 		},
 	})
 }
@@ -416,12 +504,6 @@ export function navigate(to: string) {
 	const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
 	if (nextPath === getCurrentPathWithSearchAndHash()) return
 
-	const navigationApi = getNavigationApi()
-	if (navigationApi) {
-		navigationApi.navigate(nextPath)
-		return
-	}
-
 	window.history.pushState({}, '', nextPath)
 	notify()
 }
@@ -443,6 +525,7 @@ function isOnSsrUrl(handle: Pick<Handle, 'context'>) {
 }
 
 export function Router(handle: RouterHandle) {
+	activeRouteLoaders = handle.props.loaders ?? null
 	if (typeof document !== 'undefined') {
 		listenToRouterNavigation(handle, () => {
 			void handle.update()

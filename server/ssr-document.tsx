@@ -48,6 +48,7 @@ export function SsrDocument(handle: Handle<SsrDocumentProps>) {
 					<AppRoot
 						url={handle.props.url}
 						session={handle.props.session}
+						loaderData={handle.props.loaderData}
 						notFound={handle.props.notFound === true}
 					/>
 				</div>

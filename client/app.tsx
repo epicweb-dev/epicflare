@@ -1,6 +1,6 @@
 import { css, type Handle } from 'remix/ui'
 import { routes } from '#server/routes.ts'
-import { clientRoutes } from './routes/index.tsx'
+import { clientRouteLoaders, clientRoutes } from './routes/index.tsx'
 import {
 	getPathname,
 	listenToRouterNavigation,
@@ -37,9 +37,22 @@ export function App(handle: Handle<AppProps>) {
 		sessionRefreshQueued = false
 		sessionRefreshInFlight = true
 		handle.queueTask(async (signal) => {
-			const nextSession = await fetchSessionInfo(signal)
+			let nextSession: SessionInfo | null = null
+			try {
+				nextSession = await fetchSessionInfo(signal)
+			} catch (error) {
+				sessionRefreshInFlight = false
+				if (signal.aborted) return
+				console.error('Session refresh failed', error)
+				sessionStatus = 'ready'
+				handle.update()
+				return
+			}
 			sessionRefreshInFlight = false
-			if (signal.aborted) return
+			if (signal.aborted) {
+				if (sessionRefreshQueued) queueSessionRefresh()
+				return
+			}
 			session = nextSession
 			sessionStatus = 'ready'
 			handle.update()
@@ -188,6 +201,7 @@ export function App(handle: Handle<AppProps>) {
 				</nav>
 				<SessionProvider session={session}>
 					<Router
+						loaders={clientRouteLoaders}
 						routes={clientRoutes}
 						notFound={handle.props?.notFound === true}
 						fallback={

@@ -2,6 +2,7 @@
 /** @jsxRuntime automatic */
 import { type RemixNode } from 'remix/ui'
 import { renderToStream } from 'remix/ui/server'
+import { type AppLoaderData } from '#shared/loader-data.ts'
 import { type AppEnv } from '#types/env-schema.ts'
 import { readAuthSessionResult, setAuthSessionSecret } from './auth-session.ts'
 import { SsrDocument } from './ssr-document.tsx'
@@ -10,6 +11,7 @@ export type RenderAppPageInput = {
 	request: Request
 	appEnv: AppEnv
 	title?: string
+	loaderData?: AppLoaderData
 	notFound?: boolean
 	status?: number
 }
@@ -20,7 +22,7 @@ function getRequestUrl(request: Request) {
 }
 
 export async function renderAppPage(input: RenderAppPageInput) {
-	const { request, appEnv, title, notFound, status } = input
+	const { request, appEnv, title, loaderData, notFound, status } = input
 
 	setAuthSessionSecret(appEnv.COOKIE_SECRET)
 	const { session, setCookie } = await readAuthSessionResult(request)
@@ -30,6 +32,7 @@ export async function renderAppPage(input: RenderAppPageInput) {
 				title={title}
 				url={getRequestUrl(request)}
 				session={session ? { email: session.email } : null}
+				loaderData={loaderData}
 				notFound={notFound === true}
 			/>
 		) as RemixNode,

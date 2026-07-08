@@ -1,4 +1,5 @@
 import { addEventListeners, css, on, type Handle } from 'remix/ui'
+import { buildAuthLink } from '#client/auth-links.ts'
 import { ChatClient, type ChatClientSnapshot } from '#client/chat-client.ts'
 import { getPathname, navigate, routerEvents } from '#client/client-router.tsx'
 import { EditableText } from '#client/editable-text.tsx'
@@ -13,6 +14,10 @@ import {
 	restoreScrollAnchorAfterPrepend,
 	scrollToEdge,
 } from '#client/scroll-container.ts'
+import { tryConsumeRouteLoaderData } from '#client/loader-data-context.tsx'
+import { consumeStaleNavigationData } from '#client/navigation-data.ts'
+import { readRouterUrl } from '#client/router-location.tsx'
+import { routeLoaderRedirect } from '#client/route-loader.ts'
 import { createSpinDelay } from '#client/spin-delay.ts'
 import { routes } from '#server/routes.ts'
 import {
@@ -31,16 +36,22 @@ import {
 	type ChatThreadSummary,
 	type ChatThreadUpdateResponse,
 } from '#shared/chat.ts'
+import { type ChatLoaderData } from '#shared/loader-data.ts'
 type ThreadStatus = 'idle' | 'loading' | 'ready' | 'error'
 function getSelectedThreadIdFromLocation(handle: Pick<Handle, 'context'>) {
-	const pathname = getPathname(handle)
-	const prefix = `${routes.chat.href()}/`
-	if (!pathname.startsWith(prefix)) return null
-	const threadId = pathname.slice(prefix.length).trim()
-	return threadId || null
+	return getSelectedThreadIdFromPathname(getPathname(handle))
 }
 function buildThreadHref(threadId: string) {
 	return routes.chatThread.href({ threadId })
+}
+function getCurrentHref(handle: Pick<Handle, 'context'>) {
+	try {
+		return readRouterUrl(handle)
+	} catch {
+		return typeof window === 'undefined'
+			? routes.chat.href()
+			: `${window.location.pathname}${window.location.search}${window.location.hash}`
+	}
 }
 function isMobileViewport() {
 	return (
@@ -165,6 +176,75 @@ async function fetchThreadById(threadId: string, signal?: AbortSignal) {
 		throw new Error(payload?.error || 'Unable to load the selected thread.')
 	}
 	return payload.thread
+}
+async function loadChatThreadsData(url: URL, signal?: AbortSignal) {
+	const threadsUrl = new URL(routes.chatThreads.href(), url.origin)
+	threadsUrl.searchParams.set('limit', String(THREADS_PAGE_LIMIT))
+	const response = await fetch(threadsUrl.toString(), {
+		credentials: 'include',
+		headers: { Accept: 'application/json' },
+		signal,
+	})
+	if (response.status === 401) {
+		return routeLoaderRedirect(
+			buildAuthLink(routes.login.href(), `${url.pathname}${url.search}`),
+		)
+	}
+	const payload = (await response.json().catch(() => null)) as
+		| (ChatThreadListResponse & { error?: string })
+		| null
+	if (
+		!response.ok ||
+		!payload?.ok ||
+		!Array.isArray(payload.threads) ||
+		typeof payload.totalCount !== 'number' ||
+		typeof payload.hasMore !== 'boolean'
+	) {
+		throw new Error(payload?.error || 'Unable to load threads.')
+	}
+	const selectedThreadId = getSelectedThreadIdFromPathname(url.pathname)
+	let selectedThread = payload.threads.find(
+		(thread) => thread.id === selectedThreadId,
+	)
+	if (selectedThreadId && !selectedThread) {
+		const threadUrl = new URL(routes.chatThreads.href(), url.origin)
+		threadUrl.searchParams.set('threadId', selectedThreadId)
+		const threadResponse = await fetch(threadUrl.toString(), {
+			credentials: 'include',
+			headers: { Accept: 'application/json' },
+			signal,
+		})
+		const threadPayload = (await threadResponse.json().catch(() => null)) as
+			| (ChatThreadLookupResponse & { error?: string })
+			| null
+		if (threadResponse.ok && threadPayload?.ok && threadPayload.thread) {
+			selectedThread = threadPayload.thread
+		}
+	}
+	const threads =
+		selectedThread &&
+		!payload.threads.some((thread) => thread.id === selectedThread.id)
+			? [selectedThread, ...payload.threads]
+			: payload.threads
+	const data: ChatLoaderData = {
+		ok: true,
+		threads,
+		hasMore: payload.hasMore,
+		nextCursor: payload.nextCursor,
+		totalCount: payload.totalCount,
+		selectedThread: selectedThread ?? null,
+		search: '',
+	}
+	return { chat: data }
+}
+function getSelectedThreadIdFromPathname(pathname: string) {
+	const prefix = `${routes.chat.href()}/`
+	if (!pathname.startsWith(prefix)) return null
+	const threadId = pathname.slice(prefix.length).trim()
+	return threadId || null
+}
+export async function loadChatRouteData(url: URL, signal: AbortSignal) {
+	return loadChatThreadsData(url, signal)
 }
 async function createThread() {
 	const response = await fetch('/chat-threads', {
@@ -374,10 +454,12 @@ export function ChatRoute(handle: Handle) {
 	let threadListCursor: string | null = null
 	let activeThreadId: string | null = null
 	let threadSearch = ''
+	let lastLoaderHref: string | null = null
 	let chatSnapshot = createInitialSnapshot()
 	let activeClient: ChatClient | null = null
 	let actionError: string | null = null
 	let syncInFlight = false
+	let suppressThreadListSnapshotUpdate = false
 	let shouldAutoScrollMessages = true
 	let showMessageScrollFadeTop = false
 	let showMessageScrollFadeBottom = false
@@ -408,7 +490,9 @@ export function ChatRoute(handle: Handle) {
 			} else {
 				threadStatus = 'ready'
 			}
-			update()
+			if (!suppressThreadListSnapshotUpdate) {
+				update()
+			}
 		},
 	})
 	function update() {
@@ -421,6 +505,35 @@ export function ChatRoute(handle: Handle) {
 		threadStatus = nextStatus
 		threadError = nextError
 		update()
+	}
+	function applyChatLoaderData(data: ChatLoaderData) {
+		threadSearch = data.search
+		threadListCursor = data.nextCursor
+		suppressThreadListSnapshotUpdate = true
+		try {
+			threadList.replaceWindow({
+				items: data.threads,
+				hasMore: data.hasMore,
+				totalCount: data.totalCount,
+			})
+		} finally {
+			suppressThreadListSnapshotUpdate = false
+		}
+		threadStatus = 'ready'
+		threadError = null
+		scheduleThreadListScrollFadeSync()
+		if (typeof window !== 'undefined') {
+			void handle.queueTask(async () => {
+				await syncActiveThreadFromLocation()
+			})
+		}
+	}
+	function applyRouteLoaderData(href: string) {
+		const data = tryConsumeRouteLoaderData(handle, 'chat', href)
+		if (!data?.ok) return false
+		applyChatLoaderData(data)
+		lastLoaderHref = href
+		return true
 	}
 	function resetChatSnapshot() {
 		chatSnapshot = createInitialSnapshot()
@@ -868,7 +981,18 @@ export function ChatRoute(handle: Handle) {
 		}
 	}
 	return () => {
-		if (typeof window !== 'undefined' && threadStatus === 'loading') {
+		const currentHref = getCurrentHref(handle)
+		const appliedRouteData = applyRouteLoaderData(currentHref)
+		const needsStaleRefresh =
+			consumeStaleNavigationData(currentHref) && !appliedRouteData
+		if (
+			!appliedRouteData &&
+			(threadStatus === 'loading' ||
+				needsStaleRefresh ||
+				currentHref !== lastLoaderHref) &&
+			typeof window !== 'undefined'
+		) {
+			lastLoaderHref = currentHref
 			handle.queueTask(refreshThreads)
 		}
 		const threads = getThreads()
