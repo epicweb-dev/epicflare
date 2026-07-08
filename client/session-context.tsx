@@ -11,9 +11,10 @@ export function SessionProvider(
 		SessionContextValue
 	>,
 ) {
-	handle.context.set({ session: handle.props.session })
-
-	return () => handle.props.children
+	return () => {
+		handle.context.set({ session: handle.props.session })
+		return handle.props.children
+	}
 }
 
 export function readSession(handle: Pick<Handle, 'context'>) {

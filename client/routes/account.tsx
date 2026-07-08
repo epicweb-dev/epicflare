@@ -10,10 +10,28 @@ type SessionPayload = {
 	}
 }
 export function AccountRoute(handle: Handle) {
-	const embeddedEmail = readSession(handle)?.email.trim() ?? ''
-	let status: AccountStatus = embeddedEmail ? 'ready' : 'loading'
-	let email = embeddedEmail
+	function readEmbeddedEmail() {
+		return readSession(handle)?.email.trim() ?? ''
+	}
+	const initialEmail = readEmbeddedEmail()
+	let status: AccountStatus = initialEmail ? 'ready' : 'loading'
+	let email = initialEmail
 	let message: string | null = null
+	let loadInFlight = false
+	function syncEmbeddedSession() {
+		const nextEmail = readEmbeddedEmail()
+		if (nextEmail) {
+			email = nextEmail
+			status = 'ready'
+			message = null
+			return
+		}
+		if (status === 'ready') {
+			email = ''
+			status = 'loading'
+			message = null
+		}
+	}
 	async function loadAccount(signal: AbortSignal) {
 		try {
 			const response = await fetch('/session', {
@@ -44,10 +62,18 @@ export function AccountRoute(handle: Handle) {
 			status = 'error'
 			message = 'Unable to load your account.'
 			handle.update()
+		} finally {
+			loadInFlight = false
 		}
 	}
 	return () => {
-		if (typeof window !== 'undefined' && status === 'loading') {
+		syncEmbeddedSession()
+		if (
+			typeof window !== 'undefined' &&
+			status === 'loading' &&
+			!loadInFlight
+		) {
+			loadInFlight = true
 			handle.queueTask(loadAccount)
 		}
 		return (
