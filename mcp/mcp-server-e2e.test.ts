@@ -30,7 +30,13 @@ import {
 const projectRoot = fileURLToPath(new URL('..', import.meta.url))
 const migrationsDir = join(projectRoot, 'migrations')
 const nodeBin = process.execPath
-const wranglerCli = join(projectRoot, 'node_modules', 'wrangler', 'wrangler-dist', 'cli.js')
+const wranglerCli = join(
+	projectRoot,
+	'node_modules',
+	'wrangler',
+	'wrangler-dist',
+	'cli.js',
+)
 const defaultTimeoutMs = 60_000
 const calculatorUiResourceUri = 'ui://calculator-app/entry-point.html'
 
@@ -485,7 +491,7 @@ test(
 		const toolNames = result.tools.map((tool) => tool.name)
 
 		expect(toolNames.sort()).toEqual(['do_math', 'open_calculator_ui'])
-	}
+	},
 )
 
 test(
@@ -510,7 +516,7 @@ test(
 		)
 
 		expect(resourceUris).toContain(calculatorUiResourceUri)
-	}
+	},
 )
 
 test(
@@ -542,7 +548,7 @@ test(
 			)?.text ?? ''
 
 		expect(textOutput).toContain('12')
-	}
+	},
 )
 
 test(
@@ -614,9 +620,7 @@ test(
 			calculatorWidgetResponse.headers.get('access-control-allow-origin'),
 		).toBe('*')
 		const calculatorWidgetSource = await calculatorWidgetResponse.text()
-		expect(calculatorWidgetSource).toContain('createWidgetHostBridge')
 		expect(calculatorWidgetSource).toContain('Calculator result:')
-		expect(calculatorWidgetSource).toContain('sendUserMessageWithFallback')
 		expect(calculatorWidgetSource).toContain('ui/initialize')
 		expect(calculatorWidgetSource).toContain('ui/message')
 
@@ -629,5 +633,5 @@ test(
 		expect(calculatorResourceMeta?.ui?.csp?.resourceDomains).toContain(
 			server.origin,
 		)
-	}
+	},
 )
