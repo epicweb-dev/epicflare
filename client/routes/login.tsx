@@ -1,4 +1,7 @@
 import { css, on, type Handle } from 'remix/ui'
+import button from 'remix/ui/button'
+import checkbox from 'remix/ui/checkbox'
+import input from 'remix/ui/input'
 import { buildAuthLink } from '#client/auth-links.ts'
 import {
 	getPathname,
@@ -12,7 +15,6 @@ import {
 	radius,
 	shadows,
 	spacing,
-	transitions,
 	typography,
 } from '#client/styles/tokens.ts'
 type AuthMode = 'login' | 'signup'
@@ -103,7 +105,7 @@ export function LoginRoute(handle: Handle) {
 		}
 		setState('submitting')
 		try {
-			const response = await fetch('/auth', {
+			const response = await fetch(routes.auth.href(), {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
@@ -208,15 +210,7 @@ export function LoginRoute(handle: Handle) {
 							autoFocus
 							autoComplete="email"
 							placeholder="you@example.com"
-							mix={[
-								css({
-									padding: spacing.sm,
-									borderRadius: radius.md,
-									border: `1px solid ${colors.border}`,
-									fontSize: typography.fontSize.base,
-									fontFamily: typography.fontFamily,
-								}),
-							]}
+							mix={input({ size: 'lg' })}
 						/>
 					</label>
 					<label mix={[css({ display: 'grid', gap: spacing.xs })]}>
@@ -237,15 +231,7 @@ export function LoginRoute(handle: Handle) {
 							required
 							autoComplete={isSignup ? 'new-password' : 'current-password'}
 							placeholder="At least 8 characters"
-							mix={[
-								css({
-									padding: spacing.sm,
-									borderRadius: radius.md,
-									border: `1px solid ${colors.border}`,
-									fontSize: typography.fontSize.base,
-									fontFamily: typography.fontFamily,
-								}),
-							]}
+							mix={input({ size: 'lg' })}
 						/>
 					</label>
 					{!isSignup ? (
@@ -263,6 +249,7 @@ export function LoginRoute(handle: Handle) {
 								type="checkbox"
 								name="rememberMe"
 								mix={[
+									checkbox({ size: 'lg' }),
 									css({
 										marginTop: '0.15rem',
 									}),
@@ -296,32 +283,7 @@ export function LoginRoute(handle: Handle) {
 					<button
 						type="submit"
 						disabled={isSubmitting}
-						mix={[
-							css({
-								padding: `${spacing.sm} ${spacing.lg}`,
-								borderRadius: radius.full,
-								border: 'none',
-								backgroundColor: colors.primary,
-								color: colors.onPrimary,
-								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.semibold,
-								cursor: isSubmitting ? 'not-allowed' : 'pointer',
-								opacity: isSubmitting ? 0.7 : 1,
-								transition: `transform ${transitions.fast}, background-color ${transitions.normal}`,
-								'&:hover': isSubmitting
-									? undefined
-									: {
-											backgroundColor: colors.primaryHover,
-											transform: 'translateY(-1px)',
-										},
-								'&:active': isSubmitting
-									? undefined
-									: {
-											backgroundColor: colors.primaryActive,
-											transform: 'translateY(0)',
-										},
-							}),
-						]}
+						mix={button({ size: 'lg', tone: 'primary' })}
 					>
 						{isSubmitting ? 'Submitting...' : submitLabel}
 					</button>
@@ -342,7 +304,6 @@ export function LoginRoute(handle: Handle) {
 				<div mix={[css({ display: 'grid', gap: spacing.sm })]}>
 					<a
 						href={buildAuthPath(isSignup ? 'login' : 'signup', redirectTo)}
-						aria-pressed={isSignup}
 						mix={[
 							css({
 								background: 'none',
