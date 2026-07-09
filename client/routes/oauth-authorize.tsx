@@ -1,4 +1,6 @@
 import { css, on, type Handle } from 'remix/ui'
+import button from 'remix/ui/button'
+import input from 'remix/ui/input'
 import { tryConsumeRouteLoaderData } from '#client/loader-data-context.tsx'
 import { consumeStaleNavigationData } from '#client/navigation-data.ts'
 import { readRouterSearch, readRouterUrl } from '#client/router-location.tsx'
@@ -69,11 +71,14 @@ async function fetchOAuthAuthorizeData(
 ): Promise<OAuthAuthorizeLoaderData> {
 	const queryError = readQueryErrorFromParams(url.searchParams)
 	if (queryError) return { ok: false, error: queryError }
-	const response = await fetch(`${routes.oauthAuthorize.href()}-info${url.search}`, {
-		headers: { Accept: 'application/json' },
-		credentials: 'include',
-		signal,
-	})
+	const response = await fetch(
+		`${routes.oauthAuthorize.href()}-info${url.search}`,
+		{
+			headers: { Accept: 'application/json' },
+			credentials: 'include',
+			signal,
+		},
+	)
 	const payload = (await response
 		.json()
 		.catch(() => null)) as OAuthAuthorizeInfoPayload | null
@@ -159,7 +164,10 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 	}
 	async function loadInfo() {
 		status = 'loading'
-		const url = new URL(getSearch(handle) || routes.oauthAuthorize.href(), window.location.href)
+		const url = new URL(
+			getSearch(handle) || routes.oauthAuthorize.href(),
+			window.location.href,
+		)
 		try {
 			applyLoaderData(await fetchOAuthAuthorizeData(url))
 			handle.update()
@@ -419,15 +427,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 									autoComplete="email"
 									placeholder="you@example.com"
 									disabled={actionsDisabled}
-									mix={[
-										css({
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${colors.border}`,
-											fontSize: typography.fontSize.base,
-											fontFamily: typography.fontFamily,
-										}),
-									]}
+									mix={input({ size: 'lg' })}
 								/>
 							</label>
 							<label mix={[css({ display: 'grid', gap: spacing.xs })]}>
@@ -449,15 +449,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 									autoComplete="current-password"
 									placeholder="Enter your password"
 									disabled={actionsDisabled}
-									mix={[
-										css({
-											padding: spacing.sm,
-											borderRadius: radius.md,
-											border: `1px solid ${colors.border}`,
-											fontSize: typography.fontSize.base,
-											fontFamily: typography.fontFamily,
-										}),
-									]}
+									mix={input({ size: 'lg' })}
 								/>
 							</label>
 						</>
@@ -468,19 +460,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 						<button
 							type="submit"
 							disabled={actionsDisabled}
-							mix={[
-								css({
-									padding: `${spacing.sm} ${spacing.lg}`,
-									borderRadius: radius.full,
-									border: 'none',
-									backgroundColor: colors.primary,
-									color: colors.onPrimary,
-									fontSize: typography.fontSize.base,
-									fontWeight: typography.fontWeight.semibold,
-									cursor: actionsDisabled ? 'not-allowed' : 'pointer',
-									opacity: actionsDisabled ? 0.7 : 1,
-								}),
-							]}
+							mix={button({ size: 'lg', tone: 'primary' })}
 						>
 							{authorizeLabel}
 						</button>
@@ -489,17 +469,7 @@ export function OAuthAuthorizeRoute(handle: Handle) {
 							disabled={actionsDisabled}
 							mix={[
 								on('click', () => submitDecision('deny')),
-								css({
-									padding: `${spacing.sm} ${spacing.lg}`,
-									borderRadius: radius.full,
-									border: `1px solid ${colors.border}`,
-									backgroundColor: 'transparent',
-									color: colors.text,
-									fontSize: typography.fontSize.base,
-									fontWeight: typography.fontWeight.medium,
-									cursor: actionsDisabled ? 'not-allowed' : 'pointer',
-									opacity: actionsDisabled ? 0.7 : 1,
-								}),
+								button({ size: 'lg' }),
 							]}
 						>
 							Deny

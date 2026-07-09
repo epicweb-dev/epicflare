@@ -1,4 +1,6 @@
 import { css, on, type Handle } from 'remix/ui'
+import button from 'remix/ui/button'
+import input from 'remix/ui/input'
 import { readRouterSearch } from '#client/router-location.tsx'
 import { routes } from '#server/routes.ts'
 import {
@@ -46,7 +48,7 @@ export function ResetPasswordRoute(handle: Handle) {
 		}
 		setState('submitting')
 		try {
-			const response = await fetch('/password-reset', {
+			const response = await fetch(routes.passwordResetRequest.href(), {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email }),
@@ -83,7 +85,7 @@ export function ResetPasswordRoute(handle: Handle) {
 		}
 		setState('submitting')
 		try {
-			const response = await fetch('/password-reset/confirm', {
+			const response = await fetch(routes.passwordResetConfirm.href(), {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ token, password }),
@@ -178,15 +180,7 @@ export function ResetPasswordRoute(handle: Handle) {
 								autoComplete="new-password"
 								placeholder="At least 8 characters"
 								disabled={isSubmitting}
-								mix={[
-									css({
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										border: `1px solid ${colors.border}`,
-										fontSize: typography.fontSize.base,
-										fontFamily: typography.fontFamily,
-									}),
-								]}
+								mix={input({ size: 'lg' })}
 							/>
 						</label>
 					) : (
@@ -209,34 +203,14 @@ export function ResetPasswordRoute(handle: Handle) {
 								autoComplete="email"
 								placeholder="you@example.com"
 								disabled={isSubmitting}
-								mix={[
-									css({
-										padding: spacing.sm,
-										borderRadius: radius.md,
-										border: `1px solid ${colors.border}`,
-										fontSize: typography.fontSize.base,
-										fontFamily: typography.fontFamily,
-									}),
-								]}
+								mix={input({ size: 'lg' })}
 							/>
 						</label>
 					)}
 					<button
 						type="submit"
 						disabled={isSubmitting}
-						mix={[
-							css({
-								padding: `${spacing.sm} ${spacing.lg}`,
-								borderRadius: radius.full,
-								border: 'none',
-								backgroundColor: colors.primary,
-								color: colors.onPrimary,
-								fontSize: typography.fontSize.base,
-								fontWeight: typography.fontWeight.semibold,
-								cursor: isSubmitting ? 'not-allowed' : 'pointer',
-								opacity: isSubmitting ? 0.7 : 1,
-							}),
-						]}
+						mix={button({ size: 'lg', tone: 'primary' })}
 					>
 						{isSubmitting
 							? 'Submitting...'
