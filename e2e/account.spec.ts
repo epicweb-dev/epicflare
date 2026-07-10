@@ -65,3 +65,24 @@ test('logs out from the account page', async ({ page }) => {
 	)
 	expect(markerAfterLogout).toBe(marker)
 })
+
+test('shows navigation progress during slow logout redirect', async ({ page }) => {
+	await page.goto('/login')
+	await page.getByLabel('Email').fill(testUser.email)
+	await page.getByLabel('Password').fill(testUser.password)
+	await page.getByRole('button', { name: 'Sign in' }).click()
+	await expect(page).toHaveURL(/\/account$/)
+
+	await page.route('**/logout', async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, 350))
+		await route.continue()
+	})
+
+	await page.getByRole('button', { name: 'Log out' }).click()
+
+	const progress = page.locator('[data-navigation-progress="true"]')
+	await expect(progress).toBeVisible()
+	await expect(page).toHaveURL(/\/login$/)
+	await expect(page.getByRole('link', { name: 'Login' })).toBeVisible()
+	await expect(progress).toHaveCount(0)
+})

@@ -401,9 +401,10 @@ async function navigateWithRefreshForSamePath(
 		if (controller) {
 			finishNavigation(controller, path)
 		}
-		return
+		return true
 	}
 	navigate(destination.toString(), { suppressStart: options.suppressStart })
+	return false
 }
 
 async function submitPostFormThroughRouter(
@@ -459,11 +460,16 @@ async function submitFormThroughRouter(details: FormSubmitDetails) {
 			controller.signal,
 		)
 		if (controller.signal.aborted) return
-		await navigateWithRefreshForSamePath(destination, {
-			signal: controller.signal,
-			suppressStart: true,
-		})
-		finishNavigation(controller, getPathWithSearchAndHashFromUrl(destination))
+		const completedNavigation = await navigateWithRefreshForSamePath(
+			destination,
+			{
+				signal: controller.signal,
+				suppressStart: true,
+			},
+		)
+		if (completedNavigation) {
+			finishNavigation(controller, getPathWithSearchAndHashFromUrl(destination))
+		}
 	} catch (error) {
 		if (!controller.signal.aborted) {
 			console.error('Router form submit failed', error)
